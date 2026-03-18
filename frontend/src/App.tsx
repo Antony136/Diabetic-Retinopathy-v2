@@ -1,11 +1,45 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { LoginForm } from './components/LoginForm'
 import { RegisterForm } from './components/RegisterForm'
+import { Dashboard } from './components/Dashboard'
+import { authService } from './services/authService'
 import './App.css'
 
 function App() {
   const [isLogin, setIsLogin] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loading, setLoading] = useState(true)
 
+  useEffect(() => {
+    // Check if user is already logged in
+    if (authService.isAuthenticated()) {
+      setIsAuthenticated(true)
+    }
+    setLoading(false)
+  }, [])
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true)
+  }
+
+  if (loading) {
+    return (
+      <div className="app-container">
+        <div className="auth-container">
+          <p style={{ textAlign: 'center', color: '#667eea', fontSize: '16px' }}>
+            Loading...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show Dashboard if authenticated
+  if (isAuthenticated) {
+    return <Dashboard />
+  }
+
+  // Show Auth pages if not authenticated
   return (
     <div className="app-container">
       <div className="auth-container">
@@ -31,7 +65,7 @@ function App() {
 
         <div className="auth-form">
           {isLogin ? (
-            <LoginForm onSuccess={() => setIsLogin(true)} />
+            <LoginForm onSuccess={handleLoginSuccess} />
           ) : (
             <RegisterForm onSuccess={() => setIsLogin(true)} />
           )}

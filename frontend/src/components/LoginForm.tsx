@@ -18,10 +18,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
     try {
       await authService.login(email, password);
-      // Redirect to dashboard after successful login
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 500);
+      // Call success callback to update App component
+      onSuccess();
     } catch (err) {
       setError('Login failed. Please check your credentials.');
       console.error(err);
