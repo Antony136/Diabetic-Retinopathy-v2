@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { APP_NAME } from "../../utils/constants";
+import { clearAuthToken } from "../../services/authStorage";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -14,6 +15,17 @@ export default function Navbar() {
           {APP_NAME}
         </div>
         <div className="flex items-center gap-6">
+          <button
+            onClick={() => {
+              clearAuthToken();
+              navigate("/login", { replace: true });
+            }}
+            className="text-slate-400 hover:text-purple-300 transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+            title="Logout"
+            aria-label="Logout"
+          >
+            <span className="material-symbols-outlined">logout</span>
+          </button>
           <button 
             onClick={() => navigate('/notifications')}
             className="text-slate-400 hover:text-purple-300 transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
