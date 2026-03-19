@@ -1,7 +1,10 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import RequireAuth from "../features/auth/RequireAuth";
 
 // Lazy-loaded pages
+const Login = lazy(() => import("../features/auth/Login"));
+const Register = lazy(() => import("../features/auth/Register"));
 const Dashboard = lazy(() => import("../features/dashboard/Dashboard"));
 const Screening = lazy(() => import("../features/screening/Screening"));
 const Records = lazy(() => import("../features/records/Records"));
@@ -20,13 +23,67 @@ export default function AppRoutes() {
       }
     >
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/screening" element={<Screening />} />
-        <Route path="/records" element={<Records />} />
-        <Route path="/triage" element={<Triage />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        <Route
+          path="/"
+          element={
+            <RequireAuth>
+              <Dashboard />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/screening"
+          element={
+            <RequireAuth>
+              <Screening />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/records"
+          element={
+            <RequireAuth>
+              <Records />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/triage"
+          element={
+            <RequireAuth>
+              <Triage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <RequireAuth>
+              <Settings />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <RequireAuth>
+              <Profile />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <RequireAuth>
+              <Notifications />
+            </RequireAuth>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );

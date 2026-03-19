@@ -1,9 +1,21 @@
-import axios from "axios";
+import axios, { AxiosHeaders, type InternalAxiosRequestConfig } from "axios";
 import { API_BASE_URL } from "../utils/constants";
+import { getAuthToken } from "./authStorage";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
+});
+
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const token = getAuthToken();
+  if (!token) return config;
+
+  const headers = AxiosHeaders.from(config.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  config.headers = headers;
+
+  return config;
 });
 
 /** Upload a retinal image for AI analysis */
