@@ -26,3 +26,13 @@ export async function listReports() {
   return data;
 }
 
+export async function createManualReport(params: {
+  patient_id: number;
+  prediction: string;
+  confidence: number;
+  description?: string;
+}) {
+  const { data } = await api.post<ReportResponse>("/reports/manual", params);
+  return data;
+}
+

@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, desc, cast, String
+from typing import Optional
 from app.db.database import SessionLocal
 from app.models.patient import Patient
 from app.models.users import User
 from app.models.notification import Notification
+from app.models.report import Report
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientResponse
 from app.api.auth import get_current_user
 
@@ -53,12 +56,61 @@ def create_patient(
 
 @router.get("", response_model=list[PatientResponse])
 def get_all_patients(
+    search: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all patients for the authenticated doctor"""
-    patients = db.query(Patient).filter(Patient.doctor_id == current_user.id).all()
-    return patients
+    query = db.query(Patient).filter(Patient.doctor_id == current_user.id)
+    
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                Patient.name.ilike(search_term),
+                cast(Patient.id, String).ilike(search_term)
+            )
+        )
+        
+    patients = query.all()
+    
+    result = []
+    for patient in patients:
+        latest_report = db.query(Report).filter(Report.patient_id == patient.id).order_by(desc(Report.created_at)).first()
+        
+        p_dict = {
+            "id": patient.id,
+            "name": patient.name,
+            "age": patient.age,
+            "gender": patient.gender,
+            "phone": patient.phone,
+            "address": patient.address,
+            "created_at": patient.created_at,
+            "doctor_id": patient.doctor_id,
+            "latest_prediction": None,
+            "latest_confidence": None
+        }
+        
+        if latest_report:
+            p_dict["latest_prediction"] = latest_report.prediction
+            p_dict["latest_confidence"] = latest_report.confidence
+            
+            if severity and severity != "All Severities":
+                pred = latest_report.prediction
+                if severity == "Critical" and pred not in ["Severe", "Proliferative DR"]:
+                    continue
+                if severity == "Moderate" and pred not in ["Moderate", "Mild"]:
+                    continue
+                if severity == "Stable" and pred != "No DR":
+                    continue
+        else:
+            if severity and severity != "All Severities":
+                continue
+                
+        result.append(p_dict)
+        
+    return result
 
 @router.get("/{patient_id}", response_model=PatientResponse)
 def get_patient(
