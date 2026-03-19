@@ -38,6 +38,9 @@ def get_preferences(
     return PreferenceResponse(
         notifications_high_risk=pref.notifications_high_risk,
         notifications_daily_summary=pref.notifications_daily_summary,
+        follow_up_days_moderate=pref.follow_up_days_moderate,
+        urgent_review_hours=pref.urgent_review_hours,
+        min_confidence_threshold=pref.min_confidence_threshold,
     )
 
 
@@ -52,10 +55,18 @@ def update_preferences(
         pref.notifications_high_risk = request.notifications_high_risk
     if request.notifications_daily_summary is not None:
         pref.notifications_daily_summary = request.notifications_daily_summary
+    if request.follow_up_days_moderate is not None:
+        pref.follow_up_days_moderate = request.follow_up_days_moderate
+    if request.urgent_review_hours is not None:
+        pref.urgent_review_hours = request.urgent_review_hours
+    if request.min_confidence_threshold is not None:
+        pref.min_confidence_threshold = request.min_confidence_threshold
     db.commit()
     db.refresh(pref)
     return PreferenceResponse(
         notifications_high_risk=pref.notifications_high_risk,
         notifications_daily_summary=pref.notifications_daily_summary,
+        follow_up_days_moderate=pref.follow_up_days_moderate,
+        urgent_review_hours=pref.urgent_review_hours,
+        min_confidence_threshold=pref.min_confidence_threshold,
     )
-

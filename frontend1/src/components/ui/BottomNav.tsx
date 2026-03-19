@@ -1,13 +1,17 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { NAV_ITEMS } from "../../utils/constants";
+import { ADMIN_NAV_ITEMS, DOCTOR_NAV_ITEMS } from "../../utils/constants";
+import { getAuthToken } from "../../services/authStorage";
+import { getRoleFromToken } from "../../services/jwt";
 
 export default function BottomNav() {
   const location = useLocation();
+  const role = getRoleFromToken(getAuthToken());
+  const items = role === "admin" ? ADMIN_NAV_ITEMS : DOCTOR_NAV_ITEMS;
 
   return (
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-2 mb-6 bg-surface-container-high backdrop-blur-xl rounded-full mx-auto w-fit shadow-[0_0_32px_rgba(148,34,156,0.1)] font-label text-xs font-medium border border-outline-variant/10">
-      {NAV_ITEMS.map((item) => {
-        const isActive = location.pathname === item.path;
+      {items.map((item) => {
+        const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
         return (
           <NavLink
             key={item.path}

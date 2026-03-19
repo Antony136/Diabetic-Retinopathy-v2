@@ -15,4 +15,8 @@ class Settings:
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./test.db")
 
+    # Admin bootstrap (optional)
+    # Set `ADMIN_BOOTSTRAP_SECRET` in env to enable the bootstrap endpoint.
+    ADMIN_BOOTSTRAP_SECRET: str = os.getenv("ADMIN_BOOTSTRAP_SECRET", "")
+
 settings = Settings()

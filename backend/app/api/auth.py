@@ -48,7 +48,8 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     new_user = User(
         name=request.name,
         email=request.email,
-        password=hashed_password
+        password=hashed_password,
+        role="doctor",
     )
     
     db.add(new_user)
@@ -80,7 +81,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         )
     
     # Create and return JWT token
-    access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
+    access_token = create_access_token(data={"sub": str(user.id), "email": user.email, "role": user.role})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)
@@ -140,3 +141,9 @@ def get_current_user(
         )
     
     return user
+
+
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if getattr(current_user, "role", "doctor") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return current_user

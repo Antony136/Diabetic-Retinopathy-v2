@@ -1,11 +1,10 @@
 import Card from "../../components/ui/Card";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getThemeMode, setThemeMode, type ThemeMode } from "../../services/theme";
 import {
   getAppSettings,
   setAppSettings,
   type AppSettings,
-  type ModelOption,
 } from "../../services/appSettings";
 import { applyAnimationsEnabled } from "../../services/animations";
 import { applyHighContrastEnabled } from "../../services/contrast";
@@ -298,16 +297,6 @@ export default function Settings() {
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const printFrameRef = useRef<HTMLIFrameElement | null>(null);
 
-  const modelOptions = useMemo(
-    () =>
-      [
-        { value: "efficientnet_v2_2_4", label: "EfficientNet v2.4 (Default)" },
-        { value: "resnet50_optimized", label: "ResNet-50 Optimized" },
-        { value: "ensemble_experimental", label: "Ensemble (Experimental)" },
-      ] satisfies Array<{ value: ModelOption; label: string }>,
-    [],
-  );
-
   function persistSettings(next: AppSettings) {
     setSettingsState(next);
     setAppSettings(next);
@@ -324,6 +313,9 @@ export default function Settings() {
           ...settings,
           notificationsHighRisk: pref.notifications_high_risk,
           notificationsDailySummary: pref.notifications_daily_summary,
+          followUpDaysModerate: pref.follow_up_days_moderate,
+          urgentReviewHours: pref.urgent_review_hours,
+          confidenceThreshold: clamp(Math.round(pref.min_confidence_threshold * 100), 0, 100),
         };
         setSettingsState(merged);
         setAppSettings(merged);
@@ -457,51 +449,6 @@ export default function Settings() {
       </div>
 
       <div className="space-y-8">
-        {/* A. Model Settings */}
-        <Card className="p-8">
-          <h3 className="text-xl font-headline font-bold mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">smart_toy</span>
-            Model Settings
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Primary AI Model</label>
-              <select
-                value={settings.model}
-                onChange={(e) => persistSettings({ ...settings, model: e.target.value as ModelOption })}
-                className="w-full bg-surface-container-lowest border border-outline/10 rounded-xl px-4 py-3 text-on-surface outline-none focus:ring-1 focus:ring-primary/40"
-              >
-                {modelOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <label className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Confidence Threshold</label>
-                <span className="text-xs font-bold text-primary">{settings.confidenceThreshold}%</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={settings.confidenceThreshold}
-                onChange={(e) =>
-                  persistSettings({
-                    ...settings,
-                    confidenceThreshold: clamp(Number(e.target.value), 0, 100),
-                  })
-                }
-                className="w-full accent-primary mt-3 h-1.5 bg-surface-container-highest rounded-lg cursor-pointer"
-              />
-              <p className="text-[10px] text-on-surface-variant mt-1">Predictions below this value will be flagged for manual review.</p>
-            </div>
-          </div>
-        </Card>
-
         {/* B. System Preferences */}
         <Card className="p-8">
           <h3 className="text-xl font-headline font-bold mb-6 flex items-center gap-2">

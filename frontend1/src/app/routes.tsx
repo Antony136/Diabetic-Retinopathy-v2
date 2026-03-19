@@ -1,6 +1,10 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import RequireAuth from "../features/auth/RequireAuth";
+import RequireAdmin from "../services/RequireAdmin";
+import RequireDoctor from "../services/RequireDoctor";
+import { getAuthToken } from "../services/authStorage";
+import { getRoleFromToken } from "../services/jwt";
 
 // Lazy-loaded pages
 const Login = lazy(() => import("../features/auth/Login"));
@@ -12,6 +16,13 @@ const Triage = lazy(() => import("../features/triage/Triage"));
 const Settings = lazy(() => import("../features/settings/Settings"));
 const Profile = lazy(() => import("../features/profile/Profile"));
 const Notifications = lazy(() => import("../features/notifications/Notifications"));
+const AdminDashboard = lazy(() => import("../features/admin/AdminDashboard"));
+
+function RoleHome() {
+  const role = getRoleFromToken(getAuthToken());
+  if (role === "admin") return <Navigate to="/admin/overview" replace />;
+  return <Dashboard />;
+}
 
 export default function AppRoutes() {
   return (
@@ -30,56 +41,74 @@ export default function AppRoutes() {
           path="/"
           element={
             <RequireAuth>
-              <Dashboard />
+              <RoleHome />
             </RequireAuth>
           }
         />
+
+        <Route
+          path="/admin"
+          element={
+            <RequireAdmin>
+              <Navigate to="/admin/overview" replace />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/:section"
+          element={
+            <RequireAdmin>
+              <AdminDashboard />
+            </RequireAdmin>
+          }
+        />
+
         <Route
           path="/screening"
           element={
-            <RequireAuth>
+            <RequireDoctor>
               <Screening />
-            </RequireAuth>
+            </RequireDoctor>
           }
         />
         <Route
           path="/records"
           element={
-            <RequireAuth>
+            <RequireDoctor>
               <Records />
-            </RequireAuth>
+            </RequireDoctor>
           }
         />
         <Route
           path="/triage"
           element={
-            <RequireAuth>
+            <RequireDoctor>
               <Triage />
-            </RequireAuth>
+            </RequireDoctor>
           }
         />
         <Route
           path="/settings"
           element={
-            <RequireAuth>
+            <RequireDoctor>
               <Settings />
-            </RequireAuth>
+            </RequireDoctor>
           }
         />
         <Route
           path="/profile"
           element={
-            <RequireAuth>
+            <RequireDoctor>
               <Profile />
-            </RequireAuth>
+            </RequireDoctor>
           }
         />
         <Route
           path="/notifications"
           element={
-            <RequireAuth>
+            <RequireDoctor>
               <Notifications />
-            </RequireAuth>
+            </RequireDoctor>
           }
         />
 

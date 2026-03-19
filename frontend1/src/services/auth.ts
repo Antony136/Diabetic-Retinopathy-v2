@@ -20,6 +20,7 @@ export interface UserResponse {
   id: number;
   name: string;
   email: string;
+  role: "doctor" | "admin" | string;
 }
 
 export async function registerUser(request: RegisterRequest) {
@@ -36,4 +37,3 @@ export async function getMe() {
   const { data } = await api.get<UserResponse>("/auth/me");
   return data;
 }
-

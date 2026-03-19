@@ -30,6 +30,8 @@ function typeMeta(type: string) {
     return { dot: "bg-error", icon: "emergency", label: "High risk" };
   if (type === "FOLLOW_UP")
     return { dot: "bg-tertiary", icon: "event", label: "Follow-up" };
+  if (type === "MANUAL_REVIEW")
+    return { dot: "bg-secondary", icon: "assignment_turned_in", label: "Manual review" };
   if (type === "REPORT_READY")
     return { dot: "bg-primary", icon: "check_circle", label: "Report ready" };
   if (type === "NEW_PATIENT_ASSIGNED")
@@ -60,7 +62,8 @@ export default function Notifications() {
 
   const filtered = useMemo(() => {
     return items.filter((n) => {
-      if (n.type === "HIGH_RISK" || n.type === "FOLLOW_UP") return settings.notificationsHighRisk;
+      if (n.type === "HIGH_RISK" || n.type === "FOLLOW_UP" || n.type === "MANUAL_REVIEW")
+        return settings.notificationsHighRisk;
       if (n.type === "DAILY_SUMMARY") return settings.notificationsDailySummary;
       return true;
     });

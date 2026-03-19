@@ -63,11 +63,11 @@ async def create_report(
     - Run AI prediction
     - Store report in database
     """
-    # Verify patient belongs to current doctor
-    patient = db.query(Patient).filter(
-        Patient.id == patient_id,
-        Patient.doctor_id == current_user.id
-    ).first()
+    # Verify patient belongs to current doctor (admin can access any patient)
+    patient_query = db.query(Patient).filter(Patient.id == patient_id)
+    if getattr(current_user, "role", "doctor") != "admin":
+        patient_query = patient_query.filter(Patient.doctor_id == current_user.id)
+    patient = patient_query.first()
     
     if not patient:
         raise HTTPException(
@@ -125,7 +125,7 @@ async def create_report(
                     report_id=new_report.id,
                     type="HIGH_RISK",
                     title="🔴 Severe DR detected → urgent review",
-                    message=f"{patient.name} has {prediction}. Immediate attention required.",
+                    message=f"{patient.name} has {prediction}. Review within {pref.urgent_review_hours}h.",
                 )
             )
         elif prediction == "Moderate":
@@ -136,9 +136,22 @@ async def create_report(
                     report_id=new_report.id,
                     type="FOLLOW_UP",
                     title="🟡 Moderate DR → schedule follow-up",
-                    message=f"{patient.name} has Moderate DR. Schedule follow-up screening.",
+                    message=f"{patient.name} has Moderate DR. Follow-up in {pref.follow_up_days_moderate} days.",
                 )
             )
+
+    # Low-confidence case -> manual review reminder
+    if confidence < pref.min_confidence_threshold:
+        db.add(
+            Notification(
+                user_id=current_user.id,
+                patient_id=patient.id,
+                report_id=new_report.id,
+                type="MANUAL_REVIEW",
+                title="🟠 Low confidence → manual review",
+                message=f"Report #{new_report.id} confidence is {round(confidence * 100, 1)}%. Please review before action.",
+            )
+        )
 
     db.commit()
     
@@ -150,9 +163,12 @@ def get_all_reports(
     db: Session = Depends(get_db)
 ):
     """Get all reports for the authenticated doctor's patients"""
-    reports = db.query(Report).join(Patient).filter(
-        Patient.doctor_id == current_user.id
-    ).all()
+    if getattr(current_user, "role", "doctor") == "admin":
+        reports = db.query(Report).all()
+    else:
+        reports = db.query(Report).join(Patient).filter(
+            Patient.doctor_id == current_user.id
+        ).all()
     return reports
 
 @router.get("/{report_id}", response_model=ReportResponse)

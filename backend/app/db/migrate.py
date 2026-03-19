@@ -27,5 +27,36 @@ def run_migrations(engine: Engine):
             # in local dev, table is usually new. Best-effort attempt:
             ddl = "ALTER TABLE user_profiles ADD COLUMN avatar_url VARCHAR NOT NULL DEFAULT ''"
         with engine.begin() as conn:
+            if dialect == "postgresql":
+                conn.execute(text("SET statement_timeout TO 0"))
             conn.execute(text(ddl))
 
+    # users.role was added after the table may already exist.
+    if _has_column(engine, "users", "id") and not _has_column(engine, "users", "role"):
+        if dialect == "postgresql":
+            ddl = "ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR NOT NULL DEFAULT 'doctor'"
+        else:
+            ddl = "ALTER TABLE users ADD COLUMN role VARCHAR NOT NULL DEFAULT 'doctor'"
+        with engine.begin() as conn:
+            if dialect == "postgresql":
+                conn.execute(text("SET statement_timeout TO 0"))
+            conn.execute(text(ddl))
+
+    # user_preferences: triage settings columns
+    if _has_column(engine, "user_preferences", "user_id"):
+        migrations: list[str] = []
+        if not _has_column(engine, "user_preferences", "follow_up_days_moderate"):
+            migrations.append("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS follow_up_days_moderate INTEGER NOT NULL DEFAULT 14")
+        if not _has_column(engine, "user_preferences", "urgent_review_hours"):
+            migrations.append("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS urgent_review_hours INTEGER NOT NULL DEFAULT 24")
+        if not _has_column(engine, "user_preferences", "min_confidence_threshold"):
+            migrations.append("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS min_confidence_threshold FLOAT NOT NULL DEFAULT 0.85")
+
+        if migrations:
+            with engine.begin() as conn:
+                if dialect == "postgresql":
+                    conn.execute(text("SET statement_timeout TO 0"))
+                for ddl in migrations:
+                    if dialect != "postgresql":
+                        ddl = ddl.replace(" IF NOT EXISTS", "")
+                    conn.execute(text(ddl))
