@@ -35,6 +35,29 @@ body {
 .theme-light .text-on-surface-variant { color: #4b4a5d !important; }
 .theme-light .text-outline { color: #6b7280 !important; }
 
+/* Disable animations/transitions globally */
+.animations-off *,
+.animations-off *::before,
+.animations-off *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* High contrast mode */
+.contrast-high .text-on-surface-variant {
+  color: rgba(233, 230, 247, 0.92) !important;
+}
+.theme-light.contrast-high .text-on-surface-variant {
+  color: #2f2e3a !important;
+}
+.contrast-high .border-outline\/10 {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+.theme-light.contrast-high .border-outline\/10 {
+  border-color: rgba(17, 24, 39, 0.16) !important;
+}
+
 ::selection {
   background: rgba(251, 130, 253, 0.3);
 }

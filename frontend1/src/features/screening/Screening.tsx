@@ -13,6 +13,7 @@ import {
   type ReportResponse,
 } from "../../services/reports";
 import { severityFromStage, stageDescription } from "./mockAnalysis";
+import { getAppSettings } from "../../services/appSettings";
 
 type ReportRow = ReportResponse & { priority_score: 1 | 2 | 3 | 4 | 5 };
 
@@ -178,9 +179,11 @@ export default function Screening() {
     const frame = printFrameRef.current;
     if (!frame) return;
 
+    const pdfSettings = getAppSettings();
     const imageUrl = resolveBackendUrl(report.image_url);
     const heatmapUrl = resolveBackendUrl(report.heatmap_url);
     const createdAt = new Date(report.created_at).toLocaleString();
+    const paperSizeCss = pdfSettings.pdfPaperSize === "letter" ? "Letter" : "A4";
 
     const html = `<!doctype html>
 <html>
@@ -197,6 +200,7 @@ export default function Screening() {
     .row { display:grid; grid-template-columns:120px 1fr; gap:8px; margin:4px 0; font-size: 12px; }
     .k { color:#6b7280; }
     img { width: 100%; border-radius: 10px; border: 1px solid #e5e7eb; }
+    @page { size: ${paperSizeCss}; margin: 12mm; }
     @media print { body { margin: 0; } }
   </style>
 </head>
@@ -210,8 +214,12 @@ export default function Screening() {
       <div class="row"><div class="k">Name</div><div>${selectedPatient.name}</div></div>
       <div class="row"><div class="k">Age</div><div>${selectedPatient.age}</div></div>
       <div class="row"><div class="k">Gender</div><div>${selectedPatient.gender}</div></div>
-      <div class="row"><div class="k">Phone</div><div>${selectedPatient.phone}</div></div>
-      <div class="row"><div class="k">Address</div><div>${selectedPatient.address}</div></div>
+      ${
+        pdfSettings.pdfIncludePatientContact
+          ? `<div class="row"><div class="k">Phone</div><div>${selectedPatient.phone}</div></div>
+      <div class="row"><div class="k">Address</div><div>${selectedPatient.address}</div></div>`
+          : ""
+      }
     </div>
     <div class="card">
       <div style="font-weight:700; margin-bottom:6px;">Report</div>
@@ -227,10 +235,14 @@ export default function Screening() {
       <div style="font-weight:700; margin-bottom:6px;">Input Image</div>
       <img src="${imageUrl}" />
     </div>
-    <div class="card">
+    ${
+      pdfSettings.pdfIncludeHeatmap
+        ? `<div class="card">
       <div style="font-weight:700; margin-bottom:6px;">Heatmap</div>
       <img src="${heatmapUrl}" />
-    </div>
+    </div>`
+        : ""
+    }
   </div>
 </body>
 </html>`;
