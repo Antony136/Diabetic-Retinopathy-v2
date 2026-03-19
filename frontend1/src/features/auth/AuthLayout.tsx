@@ -66,15 +66,6 @@ export default function AuthLayout(props: AuthLayoutProps) {
           </div>
 
           <div className="hidden lg:flex gap-2 text-xs text-on-surface-variant">
-            <span className="px-3 py-1 rounded-full bg-surface-container-high/70 backdrop-blur border border-outline-variant/10">
-              Secure JWT sessions
-            </span>
-            <span className="px-3 py-1 rounded-full bg-surface-container-high/70 backdrop-blur border border-outline-variant/10">
-              Reports stored in DB
-            </span>
-            <span className="px-3 py-1 rounded-full bg-surface-container-high/70 backdrop-blur border border-outline-variant/10">
-              PDF export
-            </span>
           </div>
         </div>
       </section>
@@ -92,10 +83,6 @@ export default function AuthLayout(props: AuthLayoutProps) {
 
           <div className="mt-7 text-sm text-on-surface-variant animate-[fadeInUp_760ms_ease-out_1]">
             {props.footer}
-          </div>
-
-          <div className="mt-6 text-[11px] text-on-surface-variant/80">
-            Put the provided image at <code className="font-mono">frontend1/public/auth-hero.jpg</code>.
           </div>
         </div>
       </section>
