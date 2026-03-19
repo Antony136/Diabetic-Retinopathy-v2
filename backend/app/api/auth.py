@@ -79,6 +79,13 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
+
+    # Active check
+    if getattr(user, "is_active", True) is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is disabled. Contact admin.",
+        )
     
     # Create and return JWT token
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email, "role": user.role})

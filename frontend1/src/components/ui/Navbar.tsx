@@ -82,6 +82,41 @@ export default function Navbar() {
               </button>
             </>
           )}
+          {role === "admin" && (
+            <>
+              <button
+                onClick={() => navigate("/admin/notifications")}
+                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+                title="Notifications"
+                aria-label="Notifications"
+              >
+                <span className="material-symbols-outlined relative">
+                  notifications
+                  {unread > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-on-primary text-[10px] leading-4 text-center font-bold">
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  )}
+                </span>
+              </button>
+              <button
+                onClick={() => navigate("/admin/settings")}
+                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+                title="Settings"
+                aria-label="Settings"
+              >
+                <span className="material-symbols-outlined">settings</span>
+              </button>
+              <button
+                onClick={() => navigate("/admin/profile")}
+                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+                title="Profile"
+                aria-label="Profile"
+              >
+                <span className="material-symbols-outlined">account_circle</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -282,22 +282,6 @@ export default function Profile() {
                   <div className="flex-1 bg-surface-container-lowest border border-outline/10 rounded-xl px-4 py-3 text-on-surface font-body">
                     {data?.email ?? "—"}
                   </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    icon="content_copy"
-                    onClick={async () => {
-                      if (!data?.email) return;
-                      try {
-                        await navigator.clipboard.writeText(data.email);
-                      } catch {
-                        // ignore
-                      }
-                    }}
-                    className="px-4"
-                  >
-                    Copy
-                  </Button>
                 </div>
               </div>
 

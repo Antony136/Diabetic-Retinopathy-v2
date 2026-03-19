@@ -8,13 +8,17 @@ from app.models.users import User
 from app.models.patient import Patient
 from app.models.report import Report
 from app.models.user_preference import UserPreference
+from app.models.notification import Notification
 from app.schemas.admin import (
     AdminUserResponse,
     AdminUserCreate,
     AdminRoleUpdate,
+    AdminStatusUpdate,
     AdminPatientResponse,
     AdminReportResponse,
+    AdminNotificationCreate,
 )
+from app.schemas.notification import NotificationResponse
 
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -110,6 +114,22 @@ def update_role(
     return user
 
 
+@router.put("/users/{user_id}/status", response_model=AdminUserResponse)
+def update_status(
+    user_id: int,
+    request: AdminStatusUpdate,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user.is_active = bool(request.is_active)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 @router.get("/patients", response_model=list[AdminPatientResponse])
 def list_patients(
     _admin: User = Depends(require_admin),
@@ -144,3 +164,82 @@ def list_reports(
 ):
     return db.query(Report).order_by(Report.created_at.desc(), Report.id.desc()).all()
 
+
+@router.get("/notifications", response_model=list[NotificationResponse])
+def list_notifications_for_user(
+    user_id: int = Query(...),
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    items = (
+        db.query(Notification)
+        .filter(Notification.user_id == user_id)
+        .order_by(Notification.created_at.desc(), Notification.id.desc())
+        .all()
+    )
+    return items
+
+
+@router.post("/notifications", response_model=NotificationResponse, status_code=status.HTTP_201_CREATED)
+def create_notification_for_user(
+    request: AdminNotificationCreate,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.id == request.user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target user not found")
+    item = Notification(
+        user_id=request.user_id,
+        patient_id=request.patient_id,
+        report_id=request.report_id,
+        type=request.type,
+        title=request.title,
+        message=request.message,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.put("/notifications/{notification_id}/read", response_model=NotificationResponse)
+def admin_mark_notification_read(
+    notification_id: int,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    item = db.query(Notification).filter(Notification.id == notification_id).first()
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    item.is_read = True
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.put("/notifications/read-all", status_code=status.HTTP_204_NO_CONTENT)
+def admin_read_all(
+    user_id: int = Query(...),
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    db.query(Notification).filter(Notification.user_id == user_id, Notification.is_read == False).update(  # noqa: E712
+        {"is_read": True}
+    )
+    db.commit()
+    return None
+
+
+@router.delete("/notifications/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_delete_notification(
+    notification_id: int,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    item = db.query(Notification).filter(Notification.id == notification_id).first()
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+    db.delete(item)
+    db.commit()
+    return None

@@ -17,6 +17,7 @@ const Settings = lazy(() => import("../features/settings/Settings"));
 const Profile = lazy(() => import("../features/profile/Profile"));
 const Notifications = lazy(() => import("../features/notifications/Notifications"));
 const AdminDashboard = lazy(() => import("../features/admin/AdminDashboard"));
+const AdminNotifications = lazy(() => import("../features/admin/AdminNotifications"));
 
 function RoleHome() {
   const role = getRoleFromToken(getAuthToken());
@@ -59,6 +60,30 @@ export default function AppRoutes() {
           element={
             <RequireAdmin>
               <AdminDashboard />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <RequireAdmin>
+              <Settings />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/profile"
+          element={
+            <RequireAdmin>
+              <Profile />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/notifications"
+          element={
+            <RequireAdmin>
+              <AdminNotifications />
             </RequireAdmin>
           }
         />

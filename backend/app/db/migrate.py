@@ -42,6 +42,26 @@ def run_migrations(engine: Engine):
                 conn.execute(text("SET statement_timeout TO 0"))
             conn.execute(text(ddl))
 
+    # users.is_active / users.created_at
+    if _has_column(engine, "users", "id"):
+        ddl_list: list[str] = []
+        if not _has_column(engine, "users", "is_active"):
+            ddl_list.append("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE")
+        if not _has_column(engine, "users", "created_at"):
+            ddl_list.append("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+        if ddl_list:
+            with engine.begin() as conn:
+                if dialect == "postgresql":
+                    conn.execute(text("SET statement_timeout TO 0"))
+                for ddl in ddl_list:
+                    if dialect != "postgresql":
+                        ddl = ddl.replace(" IF NOT EXISTS", "")
+                        ddl = ddl.replace("BOOLEAN", "INTEGER")
+                        ddl = ddl.replace("TRUE", "1")
+                        ddl = ddl.replace("TIMESTAMP", "DATETIME")
+                        ddl = ddl.replace("CURRENT_TIMESTAMP", "CURRENT_TIMESTAMP")
+                    conn.execute(text(ddl))
+
     # user_preferences: triage settings columns
     if _has_column(engine, "user_preferences", "user_id"):
         migrations: list[str] = []

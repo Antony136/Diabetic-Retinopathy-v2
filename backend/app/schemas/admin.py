@@ -7,6 +7,8 @@ class AdminUserResponse(BaseModel):
     name: str
     email: str
     role: str
+    is_active: bool | None = None
+    created_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -20,6 +22,19 @@ class AdminUserCreate(BaseModel):
 
 class AdminRoleUpdate(BaseModel):
     role: str
+
+
+class AdminStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class AdminNotificationCreate(BaseModel):
+    user_id: int
+    patient_id: int | None = None
+    report_id: int | None = None
+    type: str
+    title: str
+    message: str
 
 
 class AdminPatientResponse(BaseModel):
@@ -47,4 +62,3 @@ class AdminReportResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
