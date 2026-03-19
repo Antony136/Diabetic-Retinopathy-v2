@@ -79,7 +79,10 @@ def get_all_patients(
     db: Session = Depends(get_db)
 ):
     """Get all patients for the authenticated doctor"""
-    query = db.query(Patient).filter(Patient.doctor_id == current_user.id)
+    if getattr(current_user, "role", "doctor") == "admin":
+        query = db.query(Patient)
+    else:
+        query = db.query(Patient).filter(Patient.doctor_id == current_user.id)
     
     if search:
         search_term = f"%{search}%"
@@ -128,11 +131,6 @@ def get_all_patients(
         result.append(p_dict)
         
     return result
-    if getattr(current_user, "role", "doctor") == "admin":
-        patients = db.query(Patient).all()
-    else:
-        patients = db.query(Patient).filter(Patient.doctor_id == current_user.id).all()
-    return patients
 
 @router.get("/{patient_id}", response_model=PatientResponse)
 def get_patient(

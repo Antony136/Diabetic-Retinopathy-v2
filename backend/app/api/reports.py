@@ -317,9 +317,10 @@ def get_all_reports(
     db: Session = Depends(get_db)
 ):
     """Get all reports for the authenticated doctor's patients"""
-    reports_with_patient = db.query(Report, Patient.name).join(Patient).filter(
-        Patient.doctor_id == current_user.id
-    ).all()
+    query = db.query(Report, Patient.name).join(Patient)
+    if getattr(current_user, "role", "doctor") != "admin":
+        query = query.filter(Patient.doctor_id == current_user.id)
+    reports_with_patient = query.all()
     
     result = []
     for report, patient_name in reports_with_patient:
@@ -336,13 +337,6 @@ def get_all_reports(
         }
         result.append(r_dict)
     return result
-    if getattr(current_user, "role", "doctor") == "admin":
-        reports = db.query(Report).all()
-    else:
-        reports = db.query(Report).join(Patient).filter(
-            Patient.doctor_id == current_user.id
-        ).all()
-    return reports
 
 @router.get("/{report_id}", response_model=ReportResponse)
 def get_report(
