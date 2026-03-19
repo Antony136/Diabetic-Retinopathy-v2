@@ -54,7 +54,7 @@ export default function Records() {
         <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-surface-container-high/50">
+              <tr className="bg-surface-container-high">
                 {["Patient Name", "Date", "Result", "Confidence", "Actions"].map((h, i) => (
                   <th
                     key={h}
@@ -69,7 +69,7 @@ export default function Records() {
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
               {patients.map((p) => (
-                <tr key={p.pid} className="hover:bg-surface-container-highest/30 transition-colors">
+                <tr key={p.pid} className="hover:bg-surface-container-highest transition-colors">
                   <td className="px-6 py-6">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary font-bold">

@@ -1,6 +1,10 @@
 import Card from "../../components/ui/Card";
+import { useState } from "react";
+import { getThemeMode, setThemeMode, type ThemeMode } from "../../services/theme";
 
 export default function Settings() {
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
+
   return (
     <main className="min-h-screen pt-24 pb-32 px-6 md:px-12 max-w-4xl mx-auto">
       <div className="mb-10">
@@ -51,8 +55,26 @@ export default function Settings() {
                 <p className="font-bold text-on-surface">Dark Mode</p>
                 <p className="text-xs text-on-surface-variant">Switch between dark and light themes.</p>
               </div>
-              <button className="w-12 h-6 rounded-full bg-primary relative transition-colors duration-300">
-                <div className="absolute right-1 top-1 w-4 h-4 rounded-full bg-white shadow-sm" />
+              <button
+                type="button"
+                onClick={() => {
+                  const next: ThemeMode = themeMode === "dark" ? "light" : "dark";
+                  setThemeMode(next);
+                  setThemeModeState(next);
+                }}
+                className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${
+                  themeMode === "dark" ? "bg-primary" : "bg-surface-container-highest"
+                }`}
+                aria-label="Toggle dark mode"
+                aria-pressed={themeMode === "dark"}
+              >
+                <div
+                  className={`absolute top-1 w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${
+                    themeMode === "dark"
+                      ? "bg-white translate-x-6"
+                      : "bg-outline translate-x-1"
+                  }`}
+                />
               </button>
             </div>
             <div className="flex items-center justify-between">

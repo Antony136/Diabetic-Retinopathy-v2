@@ -9,7 +9,7 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-[60] bg-transparent font-headline font-semibold tracking-tight">
       <div className="flex justify-between items-center w-full px-8 py-4">
         <div 
-          className="text-xl font-bold text-slate-100 cursor-pointer"
+          className="text-xl font-bold text-on-surface cursor-pointer"
           onClick={() => navigate('/')}
         >
           {APP_NAME}
@@ -20,7 +20,7 @@ export default function Navbar() {
               clearAuthToken();
               navigate("/login", { replace: true });
             }}
-            className="text-slate-400 hover:text-purple-300 transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+            className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
             title="Logout"
             aria-label="Logout"
           >
@@ -28,13 +28,13 @@ export default function Navbar() {
           </button>
           <button 
             onClick={() => navigate('/notifications')}
-            className="text-slate-400 hover:text-purple-300 transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+            className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
           >
             <span className="material-symbols-outlined">notifications</span>
           </button>
           <button 
             onClick={() => navigate('/profile')}
-            className="text-slate-400 hover:text-purple-300 transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+            className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
           >
             <span className="material-symbols-outlined">account_circle</span>
           </button>
