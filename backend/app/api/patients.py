@@ -26,6 +26,23 @@ def create_patient(
     db: Session = Depends(get_db)
 ):
     """Create a new patient for the authenticated doctor"""
+    # De-duplicate: if the same patient is re-entered, reuse existing row.
+    phone = (request.phone or "").strip()
+    if phone:
+        existing = db.query(Patient).filter(Patient.doctor_id == current_user.id, Patient.phone == phone).first()
+        if existing:
+            return existing
+    else:
+        existing = db.query(Patient).filter(
+            Patient.doctor_id == current_user.id,
+            Patient.name == request.name,
+            Patient.age == request.age,
+            Patient.gender == request.gender,
+            Patient.address == request.address,
+        ).first()
+        if existing:
+            return existing
+
     new_patient = Patient(
         name=request.name,
         age=request.age,
@@ -111,6 +128,11 @@ def get_all_patients(
         result.append(p_dict)
         
     return result
+    if getattr(current_user, "role", "doctor") == "admin":
+        patients = db.query(Patient).all()
+    else:
+        patients = db.query(Patient).filter(Patient.doctor_id == current_user.id).all()
+    return patients
 
 @router.get("/{patient_id}", response_model=PatientResponse)
 def get_patient(

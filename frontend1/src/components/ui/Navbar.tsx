@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { APP_NAME } from "../../utils/constants";
-import { clearAuthToken } from "../../services/authStorage";
+import { clearAuthToken, getAuthToken } from "../../services/authStorage";
 import { listNotifications } from "../../services/notifications";
 import { getAppSettings } from "../../services/appSettings";
+import { getRoleFromToken } from "../../services/jwt";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const [unread, setUnread] = useState(0);
+  const role = getRoleFromToken(getAuthToken());
 
   useEffect(() => {
     let active = true;
@@ -17,7 +19,8 @@ export default function Navbar() {
         const items = await listNotifications();
         if (!active) return;
         const filtered = items.filter((n) => {
-          if (n.type === "HIGH_RISK" || n.type === "FOLLOW_UP") return alertSettings.notificationsHighRisk;
+          if (n.type === "HIGH_RISK" || n.type === "FOLLOW_UP" || n.type === "MANUAL_REVIEW")
+            return alertSettings.notificationsHighRisk;
           if (n.type === "DAILY_SUMMARY") return alertSettings.notificationsDailySummary;
           return true;
         });
@@ -40,7 +43,7 @@ export default function Navbar() {
       <div className="flex justify-between items-center w-full px-8 py-4">
         <div 
           className="text-xl font-bold text-on-surface cursor-pointer"
-          onClick={() => navigate('/')}
+          onClick={() => navigate(role === "admin" ? "/admin/overview" : "/")}
         >
           {APP_NAME}
         </div>
@@ -56,25 +59,64 @@ export default function Navbar() {
           >
             <span className="material-symbols-outlined">logout</span>
           </button>
-          <button 
-            onClick={() => navigate('/notifications')}
-            className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
-          >
-            <span className="material-symbols-outlined relative">
-              notifications
-              {unread > 0 && (
-                <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-on-primary text-[10px] leading-4 text-center font-bold">
-                  {unread > 99 ? "99+" : unread}
+          {role !== "admin" && (
+            <>
+              <button
+                onClick={() => navigate("/notifications")}
+                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+              >
+                <span className="material-symbols-outlined relative">
+                  notifications
+                  {unread > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-on-primary text-[10px] leading-4 text-center font-bold">
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  )}
                 </span>
-              )}
-            </span>
-          </button>
-          <button 
-            onClick={() => navigate('/profile')}
-            className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
-          >
-            <span className="material-symbols-outlined">account_circle</span>
-          </button>
+              </button>
+              <button
+                onClick={() => navigate("/profile")}
+                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+              >
+                <span className="material-symbols-outlined">account_circle</span>
+              </button>
+            </>
+          )}
+          {role === "admin" && (
+            <>
+              <button
+                onClick={() => navigate("/admin/notifications")}
+                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+                title="Notifications"
+                aria-label="Notifications"
+              >
+                <span className="material-symbols-outlined relative">
+                  notifications
+                  {unread > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-on-primary text-[10px] leading-4 text-center font-bold">
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  )}
+                </span>
+              </button>
+              <button
+                onClick={() => navigate("/admin/settings")}
+                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+                title="Settings"
+                aria-label="Settings"
+              >
+                <span className="material-symbols-outlined">settings</span>
+              </button>
+              <button
+                onClick={() => navigate("/admin/profile")}
+                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+                title="Profile"
+                aria-label="Profile"
+              >
+                <span className="material-symbols-outlined">account_circle</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -1,7 +1,4 @@
-export type ModelOption = "efficientnet_v2_2_4" | "resnet50_optimized" | "ensemble_experimental";
-
 export type AppSettings = {
-  model: ModelOption;
   confidenceThreshold: number; // 0..100
   animationsEnabled: boolean;
   highContrastEnabled: boolean;
@@ -10,12 +7,13 @@ export type AppSettings = {
   pdfPaperSize: "a4" | "letter";
   pdfIncludeHeatmap: boolean;
   pdfIncludePatientContact: boolean;
+  followUpDaysModerate: number;
+  urgentReviewHours: number;
 };
 
 const STORAGE_KEY = "retinamax_app_settings_v1";
 
 const DEFAULT_SETTINGS: AppSettings = {
-  model: "efficientnet_v2_2_4",
   confidenceThreshold: 85,
   animationsEnabled: true,
   highContrastEnabled: false,
@@ -24,6 +22,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   pdfPaperSize: "a4",
   pdfIncludeHeatmap: true,
   pdfIncludePatientContact: true,
+  followUpDaysModerate: 14,
+  urgentReviewHours: 24,
 };
 
 export function getAppSettings(): AppSettings {
@@ -32,7 +32,6 @@ export function getAppSettings(): AppSettings {
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
     return {
-      model: parsed.model ?? DEFAULT_SETTINGS.model,
       confidenceThreshold:
         typeof parsed.confidenceThreshold === "number"
           ? parsed.confidenceThreshold
@@ -65,6 +64,14 @@ export function getAppSettings(): AppSettings {
         typeof parsed.pdfIncludePatientContact === "boolean"
           ? parsed.pdfIncludePatientContact
           : DEFAULT_SETTINGS.pdfIncludePatientContact,
+      followUpDaysModerate:
+        typeof parsed.followUpDaysModerate === "number"
+          ? parsed.followUpDaysModerate
+          : DEFAULT_SETTINGS.followUpDaysModerate,
+      urgentReviewHours:
+        typeof parsed.urgentReviewHours === "number"
+          ? parsed.urgentReviewHours
+          : DEFAULT_SETTINGS.urgentReviewHours,
     };
   } catch {
     return DEFAULT_SETTINGS;
