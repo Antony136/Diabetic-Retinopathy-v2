@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.api import health, auth, patients, reports, notifications, preferences
+from app.api import health, auth, patients, reports, notifications, preferences, profile
 from app.db.database import engine, Base
+from app.db.migrate import run_migrations
 from pathlib import Path
 
 app = FastAPI()
@@ -33,5 +34,7 @@ app.include_router(patients.router)
 app.include_router(reports.router)
 app.include_router(notifications.router)
 app.include_router(preferences.router)
+app.include_router(profile.router)
 
 Base.metadata.create_all(bind=engine)
+run_migrations(engine)
