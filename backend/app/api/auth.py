@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.users import User
+from app.models.user_preference import UserPreference
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserResponse
 from app.core.security import hash_password, verify_password, create_access_token, decode_token
 
@@ -53,6 +54,10 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Create default preferences row for this user
+    db.add(UserPreference(user_id=new_user.id))
+    db.commit()
     
     return new_user
 

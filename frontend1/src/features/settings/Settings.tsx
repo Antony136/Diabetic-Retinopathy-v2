@@ -1,5 +1,5 @@
 import Card from "../../components/ui/Card";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getThemeMode, setThemeMode, type ThemeMode } from "../../services/theme";
 import {
   getAppSettings,
@@ -12,6 +12,7 @@ import { applyHighContrastEnabled } from "../../services/contrast";
 import { listPatients } from "../../services/patients";
 import { listReports } from "../../services/reports";
 import { severityFromStage } from "../screening/mockAnalysis";
+import { getPreferences, updatePreferences } from "../../services/preferences";
 
 type ToggleProps = {
   value: boolean;
@@ -312,6 +313,30 @@ export default function Settings() {
     setAppSettings(next);
   }
 
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const pref = await getPreferences();
+        if (!active) return;
+        const merged: AppSettings = {
+          ...getAppSettings(),
+          ...settings,
+          notificationsHighRisk: pref.notifications_high_risk,
+          notificationsDailySummary: pref.notifications_daily_summary,
+        };
+        setSettingsState(merged);
+        setAppSettings(merged);
+      } catch {
+        // ignore (offline / not logged in)
+      }
+    })();
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function onDownloadYesterdayDashboard() {
     const frame = printFrameRef.current;
     if (!frame) return;
@@ -544,7 +569,10 @@ export default function Settings() {
               </div>
               <Toggle
                 value={settings.notificationsHighRisk}
-                onChange={(next) => persistSettings({ ...settings, notificationsHighRisk: next })}
+                onChange={(next) => {
+                  persistSettings({ ...settings, notificationsHighRisk: next });
+                  updatePreferences({ notifications_high_risk: next }).catch(() => undefined);
+                }}
                 label="Toggle high-risk alerts"
               />
             </div>
@@ -555,7 +583,10 @@ export default function Settings() {
               </div>
               <Toggle
                 value={settings.notificationsDailySummary}
-                onChange={(next) => persistSettings({ ...settings, notificationsDailySummary: next })}
+                onChange={(next) => {
+                  persistSettings({ ...settings, notificationsDailySummary: next });
+                  updatePreferences({ notifications_daily_summary: next }).catch(() => undefined);
+                }}
                 label="Toggle daily summary notifications"
               />
             </div>

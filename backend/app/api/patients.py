@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.patient import Patient
 from app.models.users import User
+from app.models.notification import Notification
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientResponse
 from app.api.auth import get_current_user
 
@@ -34,6 +35,19 @@ def create_patient(
     db.add(new_patient)
     db.commit()
     db.refresh(new_patient)
+
+    # Notify the assigned doctor/user
+    db.add(
+        Notification(
+            user_id=current_user.id,
+            patient_id=new_patient.id,
+            report_id=None,
+            type="NEW_PATIENT_ASSIGNED",
+            title="👨‍⚕️ New patient assigned",
+            message=f"{new_patient.name} has been added to your patient list.",
+        )
+    )
+    db.commit()
     
     return new_patient
 

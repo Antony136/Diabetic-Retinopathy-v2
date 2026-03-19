@@ -1,9 +1,39 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { APP_NAME } from "../../utils/constants";
 import { clearAuthToken } from "../../services/authStorage";
+import { listNotifications } from "../../services/notifications";
+import { getAppSettings } from "../../services/appSettings";
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const alertSettings = getAppSettings();
+        const items = await listNotifications();
+        if (!active) return;
+        const filtered = items.filter((n) => {
+          if (n.type === "HIGH_RISK" || n.type === "FOLLOW_UP") return alertSettings.notificationsHighRisk;
+          if (n.type === "DAILY_SUMMARY") return alertSettings.notificationsDailySummary;
+          return true;
+        });
+        setUnread(filtered.filter((n) => !n.is_read).length);
+      } catch {
+        // ignore
+      }
+    };
+
+    load();
+    const id = window.setInterval(load, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+    };
+  }, []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-[60] bg-transparent font-headline font-semibold tracking-tight">
@@ -30,7 +60,14 @@ export default function Navbar() {
             onClick={() => navigate('/notifications')}
             className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
           >
-            <span className="material-symbols-outlined">notifications</span>
+            <span className="material-symbols-outlined relative">
+              notifications
+              {unread > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-on-primary text-[10px] leading-4 text-center font-bold">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
+            </span>
           </button>
           <button 
             onClick={() => navigate('/profile')}

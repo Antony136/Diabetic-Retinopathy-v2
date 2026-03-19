@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.api import health, auth, patients, reports
+from app.api import health, auth, patients, reports, notifications, preferences
 from app.db.database import engine, Base
 from pathlib import Path
 
@@ -31,5 +31,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(patients.router)
 app.include_router(reports.router)
+app.include_router(notifications.router)
+app.include_router(preferences.router)
 
 Base.metadata.create_all(bind=engine)

@@ -4,6 +4,8 @@ from app.db.database import SessionLocal
 from app.models.report import Report
 from app.models.patient import Patient
 from app.models.users import User
+from app.models.notification import Notification
+from app.models.user_preference import UserPreference
 from app.schemas.report import ReportCreate, ReportResponse
 from app.api.auth import get_current_user
 import os
@@ -35,6 +37,16 @@ def save_upload_file(upload_file: UploadFile) -> str:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to save file: {str(e)}"
         )
+
+def get_or_create_preferences(db: Session, user_id: int) -> UserPreference:
+    pref = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
+    if pref:
+        return pref
+    pref = UserPreference(user_id=user_id)
+    db.add(pref)
+    db.commit()
+    db.refresh(pref)
+    return pref
 
 @router.post("/", response_model=ReportResponse)
 async def create_report(
@@ -88,6 +100,47 @@ async def create_report(
     db.add(new_report)
     db.commit()
     db.refresh(new_report)
+
+    # Create contextual notifications (respect user preferences)
+    pref = get_or_create_preferences(db, current_user.id)
+
+    # Report ready
+    db.add(
+        Notification(
+            user_id=current_user.id,
+            patient_id=patient.id,
+            report_id=new_report.id,
+            type="REPORT_READY",
+            title="🟢 Report ready",
+            message=f"Report #{new_report.id} for {patient.name} is ready.",
+        )
+    )
+
+    if pref.notifications_high_risk:
+        if prediction in ["Severe", "Proliferative DR"]:
+            db.add(
+                Notification(
+                    user_id=current_user.id,
+                    patient_id=patient.id,
+                    report_id=new_report.id,
+                    type="HIGH_RISK",
+                    title="🔴 Severe DR detected → urgent review",
+                    message=f"{patient.name} has {prediction}. Immediate attention required.",
+                )
+            )
+        elif prediction == "Moderate":
+            db.add(
+                Notification(
+                    user_id=current_user.id,
+                    patient_id=patient.id,
+                    report_id=new_report.id,
+                    type="FOLLOW_UP",
+                    title="🟡 Moderate DR → schedule follow-up",
+                    message=f"{patient.name} has Moderate DR. Schedule follow-up screening.",
+                )
+            )
+
+    db.commit()
     
     return new_report
 
