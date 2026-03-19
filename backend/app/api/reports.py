@@ -48,6 +48,82 @@ def get_or_create_preferences(db: Session, user_id: int) -> UserPreference:
     db.refresh(pref)
     return pref
 
+@router.post("/manual", response_model=ReportResponse)
+async def create_manual_report(
+    report_in: ReportCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new manual report without AI prediction.
+    """
+    # Verify patient belongs to current doctor
+    patient = db.query(Patient).filter(
+        Patient.id == report_in.patient_id,
+        Patient.doctor_id == current_user.id
+    ).first()
+    
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found or access denied"
+        )
+    
+    # Create manual report record
+    new_report = Report(
+        patient_id=report_in.patient_id,
+        image_url=report_in.image_url,
+        heatmap_url=report_in.heatmap_url,
+        prediction=report_in.prediction,
+        confidence=report_in.confidence,
+        description=report_in.description
+    )
+    
+    db.add(new_report)
+    db.commit()
+    db.refresh(new_report)
+
+    # Create contextual notifications
+    pref = get_or_create_preferences(db, current_user.id)
+
+    db.add(
+        Notification(
+            user_id=current_user.id,
+            patient_id=patient.id,
+            report_id=new_report.id,
+            type="REPORT_READY",
+            title="🟢 Manual report created",
+            message=f"A manual triage report for {patient.name} was added.",
+        )
+    )
+
+    if pref.notifications_high_risk:
+        if report_in.prediction in ["Severe", "Proliferative DR"]:
+            db.add(
+                Notification(
+                    user_id=current_user.id,
+                    patient_id=patient.id,
+                    report_id=new_report.id,
+                    type="HIGH_RISK",
+                    title="🔴 Severe DR noted → review",
+                    message=f"{patient.name} manually marked as {report_in.prediction}.",
+                )
+            )
+        elif report_in.prediction == "Moderate":
+            db.add(
+                Notification(
+                    user_id=current_user.id,
+                    patient_id=patient.id,
+                    report_id=new_report.id,
+                    type="FOLLOW_UP",
+                    title="🟡 Moderate DR noted → follow-up",
+                    message=f"{patient.name} marked as Moderate DR.",
+                )
+            )
+
+    db.commit()
+    return new_report
+
 @router.post("/", response_model=ReportResponse)
 async def create_report(
     patient_id: int = Query(...),
@@ -157,19 +233,110 @@ async def create_report(
     
     return new_report
 
+@router.post("/manual", response_model=ReportResponse)
+async def create_manual_report(
+    report_in: ReportCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new manual report without AI prediction.
+    """
+    # Verify patient belongs to current doctor
+    patient = db.query(Patient).filter(
+        Patient.id == report_in.patient_id,
+        Patient.doctor_id == current_user.id
+    ).first()
+    
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found or access denied"
+        )
+    
+    # Create manual report record
+    new_report = Report(
+        patient_id=report_in.patient_id,
+        image_url=report_in.image_url,
+        heatmap_url=report_in.heatmap_url,
+        prediction=report_in.prediction,
+        confidence=report_in.confidence,
+        description=report_in.description
+    )
+    
+    db.add(new_report)
+    db.commit()
+    db.refresh(new_report)
+
+    # Create contextual notifications
+    pref = get_or_create_preferences(db, current_user.id)
+
+    # Report ready
+    db.add(
+        Notification(
+            user_id=current_user.id,
+            patient_id=patient.id,
+            report_id=new_report.id,
+            type="REPORT_READY",
+            title="🟢 Manual report created",
+            message=f"A manual triage report for {patient.name} was added.",
+        )
+    )
+
+    if pref.notifications_high_risk:
+        if report_in.prediction in ["Severe", "Proliferative DR"]:
+            db.add(
+                Notification(
+                    user_id=current_user.id,
+                    patient_id=patient.id,
+                    report_id=new_report.id,
+                    type="HIGH_RISK",
+                    title="🔴 Severe DR noted → review",
+                    message=f"{patient.name} manually marked as {report_in.prediction}.",
+                )
+            )
+        elif report_in.prediction == "Moderate":
+            db.add(
+                Notification(
+                    user_id=current_user.id,
+                    patient_id=patient.id,
+                    report_id=new_report.id,
+                    type="FOLLOW_UP",
+                    title="🟡 Moderate DR noted → follow-up",
+                    message=f"{patient.name} marked as Moderate DR.",
+                )
+            )
+
+    db.commit()
+    
+    return new_report
+
 @router.get("/", response_model=list[ReportResponse])
 def get_all_reports(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all reports for the authenticated doctor's patients"""
-    if getattr(current_user, "role", "doctor") == "admin":
-        reports = db.query(Report).all()
-    else:
-        reports = db.query(Report).join(Patient).filter(
-            Patient.doctor_id == current_user.id
-        ).all()
-    return reports
+    query = db.query(Report, Patient.name).join(Patient)
+    if getattr(current_user, "role", "doctor") != "admin":
+        query = query.filter(Patient.doctor_id == current_user.id)
+    reports_with_patient = query.all()
+    
+    result = []
+    for report, patient_name in reports_with_patient:
+        r_dict = {
+            "id": report.id,
+            "patient_id": report.patient_id,
+            "image_url": report.image_url,
+            "heatmap_url": report.heatmap_url,
+            "prediction": report.prediction,
+            "confidence": report.confidence,
+            "description": getattr(report, "description", None),
+            "created_at": report.created_at,
+            "patient_name": patient_name
+        }
+        result.append(r_dict)
+    return result
 
 @router.get("/{report_id}", response_model=ReportResponse)
 def get_report(
@@ -211,7 +378,22 @@ def get_patient_reports(
         )
     
     reports = db.query(Report).filter(Report.patient_id == patient_id).all()
-    return reports
+    
+    result = []
+    for report in reports:
+        r_dict = {
+            "id": report.id,
+            "patient_id": report.patient_id,
+            "image_url": report.image_url,
+            "heatmap_url": report.heatmap_url,
+            "prediction": report.prediction,
+            "confidence": report.confidence,
+            "description": getattr(report, "description", None),
+            "created_at": report.created_at,
+            "patient_name": patient.name
+        }
+        result.append(r_dict)
+    return result
 
 @router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_report(

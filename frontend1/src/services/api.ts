@@ -18,6 +18,19 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      import("./authStorage").then(({ clearAuthToken }) => {
+        clearAuthToken();
+        window.location.href = "/login";
+      });
+    }
+    return Promise.reject(error);
+  }
+);
+
 /** Upload a retinal image for AI analysis */
 export async function uploadImage(file: File) {
   const formData = new FormData();
@@ -36,13 +49,13 @@ export async function getPredictions() {
 
 /** Retrieve patient records with optional filters */
 export async function getRecords(params?: { search?: string; severity?: string; page?: number }) {
-  const { data } = await api.get("/records", { params });
+  const { data } = await api.get("/patients", { params });
   return data;
 }
 
 /** Retrieve triage cases */
 export async function getTriageCases() {
-  const { data } = await api.get("/triage");
+  const { data } = await api.get("/reports");
   return data;
 }
 

@@ -7,8 +7,9 @@ class Report(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"))
-    image_url = Column(String)
-    heatmap_url = Column(String)
+    image_url = Column(String, nullable=True)
+    heatmap_url = Column(String, nullable=True)
     prediction = Column(String)
     confidence = Column(Float)
+    description = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

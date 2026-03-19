@@ -1,24 +1,29 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 class ReportCreate(BaseModel):
     patient_id: int
-    image_url: str
-    heatmap_url: str
+    image_url: Optional[str] = None
+    heatmap_url: Optional[str] = None
     prediction: str
     confidence: float
+    description: Optional[str] = None
 
 class ReportUpdate(BaseModel):
     prediction: str
     confidence: float
+    description: Optional[str] = None
 
 class ReportResponse(BaseModel):
     id: int
     patient_id: int
-    image_url: str
-    heatmap_url: str
+    patient_name: Optional[str] = None
+    image_url: Optional[str] = None
+    heatmap_url: Optional[str] = None
     prediction: str
     confidence: float
+    description: Optional[str] = None
     created_at: datetime
 
     class Config:
