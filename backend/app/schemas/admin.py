@@ -54,8 +54,8 @@ class AdminPatientResponse(BaseModel):
 class AdminReportResponse(BaseModel):
     id: int
     patient_id: int
-    image_url: str
-    heatmap_url: str
+    image_url: str | None = None
+    heatmap_url: str | None = None
     prediction: str
     confidence: float
     created_at: datetime
