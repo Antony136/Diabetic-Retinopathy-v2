@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.log
+
+# Virtual environment
+.venv-ml/
+venv/
+env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# PyTorch / TensorFlow models & outputs
+ml_outputs/
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+*.h5
+
+# Data
+data/
+*.csv
+*.zip
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Huggingface cache (optional, can be huge)
+C:\Users\<username>\.cache\huggingface\

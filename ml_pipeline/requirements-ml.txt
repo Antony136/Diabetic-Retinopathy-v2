@@ -1,0 +1,11 @@
+# Install PyTorch separately (CUDA-enabled) using the official selector:
+# https://pytorch.org/get-started/locally/
+#
+# Example (CUDA 12.1 on Windows):
+#   pip install --index-url https://download.pytorch.org/whl/cu121 torch torchvision
+timm
+pandas
+scikit-learn
+matplotlib
+pillow
+tqdm
