@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
 import { loginUser } from "../../services/auth";
 import { getAuthToken, setAuthToken } from "../../services/authStorage";
+import AuthLayout from "./AuthLayout";
 
 type LocationState = { from?: { pathname?: string } } | null;
 
@@ -48,65 +48,11 @@ export default function Login() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6 py-12">
-      <Card className="w-full max-w-md p-8 shadow-2xl">
-        <div className="mb-8">
-          <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface">
-            Welcome back
-          </h1>
-          <p className="mt-2 text-on-surface-variant">
-            Login to continue to your dashboard.
-          </p>
-        </div>
-
-        <form onSubmit={onSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-label text-on-surface-variant mb-2">
-              Email
-            </label>
-            <input
-              className="block w-full px-4 py-3 bg-surface-container-lowest border border-outline/10 rounded-xl font-body text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-transparent transition-all outline-none"
-              placeholder="you@domain.com"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-label text-on-surface-variant mb-2">
-              Password
-            </label>
-            <input
-              className="block w-full px-4 py-3 bg-surface-container-lowest border border-outline/10 rounded-xl font-body text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-transparent transition-all outline-none"
-              placeholder="••••••••"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
-
-          {error && (
-            <div className="rounded-xl bg-error-container/30 text-error px-4 py-3 text-sm">
-              {error}
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full"
-            icon={isSubmitting ? "progress_activity" : "login"}
-          >
-            {isSubmitting ? "Signing in..." : "Login"}
-          </Button>
-        </form>
-
-        <div className="mt-8 text-sm text-on-surface-variant">
+    <AuthLayout
+      title="Welcome back"
+      subtitle="Login to continue to your dashboard."
+      footer={
+        <>
           Don&apos;t have an account?{" "}
           <button
             type="button"
@@ -115,9 +61,55 @@ export default function Login() {
           >
             Register
           </button>
+        </>
+      }
+    >
+      <form onSubmit={onSubmit} className="space-y-5">
+        <div>
+          <label className="block text-sm font-label text-on-surface-variant mb-2">
+            Email
+          </label>
+          <input
+            className="block w-full px-4 py-3 bg-surface-container-lowest border border-outline/10 rounded-xl font-body text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-transparent transition-all outline-none"
+            placeholder="you@domain.com"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+          />
         </div>
-      </Card>
-    </main>
+
+        <div>
+          <label className="block text-sm font-label text-on-surface-variant mb-2">
+            Password
+          </label>
+          <input
+            className="block w-full px-4 py-3 bg-surface-container-lowest border border-outline/10 rounded-xl font-body text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-transparent transition-all outline-none"
+            placeholder="••••••••"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
+        </div>
+
+        {error && (
+          <div className="rounded-xl bg-error-container/30 text-error px-4 py-3 text-sm animate-[pulse_1.2s_ease-in-out_1]">
+            {error}
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full"
+          icon={isSubmitting ? "progress_activity" : "login"}
+        >
+          {isSubmitting ? "Signing in..." : "Login"}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }
-
