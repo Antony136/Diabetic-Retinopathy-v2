@@ -5,18 +5,15 @@ from app.api import health, auth, patients, reports, notifications, preferences,
 from app.db.database import engine, Base
 from app.db.migrate import run_migrations
 from pathlib import Path
-
-app = FastAPI()
-
-# Create uploads directory
-uploads_dir = Path("uploads")
 import os
 
-app = FastAPI()
+app = FastAPI(title="Retina Max Backend", version="2.0.0")
 
-# Create uploads directory
+# Create uploads directory (ensure it exist)
 uploads_dir = Path("uploads")
-uploads_dir.mkdir(exist_ok=True)
+uploads_dir.mkdir(parents=True, exist_ok=True)
+
+print(f"Server starting - Environment: PORT={os.getenv('PORT')}")
 
 # Mount uploads directory as static files
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
