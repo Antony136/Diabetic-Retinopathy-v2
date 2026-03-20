@@ -19,6 +19,7 @@ from app.services.storage_service import storage_service
 
 # Optimization for single-core Render Free tier
 torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
 
 # =========================
 # JET COLORMAP (Pure Numpy/Pillow)
@@ -42,6 +43,7 @@ def overlay_heatmap_on_image(image_rgb: Image.Image, heatmap: np.ndarray, alpha:
     colored_arr = apply_jet_colormap(hm_arr)
     colored_img = Image.fromarray(np.uint8(colored_arr * 255.0)).convert("RGB")
     
+    del hm, hm_arr, colored_arr
     return Image.blend(image_rgb, colored_img, alpha=alpha)
 
 # =========================
@@ -57,7 +59,7 @@ DR_STAGES = [
     "Proliferative DR"
 ]
 
-def get_val_transforms(img_size: int = 300) -> transforms.Compose:
+def get_transforms(img_size: int = 300) -> transforms.Compose:
     return transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
@@ -96,27 +98,27 @@ class GradCAM:
         return cam
 
     def __call__(self, x: torch.Tensor, class_idx: int) -> np.ndarray:
-        # GradCAM requires grad tracking, but we manage it manually
-        self.model.zero_grad(set_to_none=True)
-        logits = self.model(x)
-        score = logits[:, class_idx].sum()
-
-        self.model.zero_grad(set_to_none=True)
-        score.backward(retain_graph=False)
+        # Enable grads just for this manual pass
+        with torch.set_grad_enabled(True):
+            self.model.zero_grad(set_to_none=True)
+            logits = self.model(x)
+            score = logits[:, class_idx].sum()
+            score.backward(retain_graph=False)
 
         if self._activations is None or self._gradients is None:
-            raise RuntimeError("Grad-CAM hooks did not capture activations/gradients.")
+            raise RuntimeError("Grad-CAM hooks failed.")
 
         grads = self._gradients
         acts = self._activations
         weights = grads.mean(dim=(2, 3), keepdim=True)
-        cam = (weights * acts).sum(dim=1)
-        cam = torch.relu(cam)
+        cam = torch.relu((weights * acts).sum(dim=1))
         cam = self._normalize_cam(cam)
         res = cam[0].detach().cpu().numpy().astype(np.float32)
         
         # Cleanup
+        self.model.zero_grad(set_to_none=True)
         del grads, acts, weights, cam, logits, score
+        gc.collect()
         return res
 
 # =========================
@@ -136,19 +138,18 @@ class AIPredictor:
         if cls._model is None:
             cls._device = torch.device("cpu") # Force CPU for memory/Render
             if not os.path.exists(cls.MODEL_PATH):
-                raise FileNotFoundError(f"Model file not found at {cls.MODEL_PATH}")
+                raise FileNotFoundError(f"Model at {cls.MODEL_PATH} not found.")
             
             # Load checkpoint and immediately extract what we need
             ckpt = torch.load(cls.MODEL_PATH, map_location=cls._device, weights_only=True)
-            num_classes = int(ckpt.get("num_classes", 5))
-            cls._img_size = int(ckpt.get("img_size", 300))
+            num_classes = ckpt.get("num_classes", 5)
+            cls._img_size = ckpt.get("img_size", 300)
             
             # Reconstruct model architecture
             cls._model = timm.create_model(
                 "efficientnet_b3",
                 pretrained=False,
                 num_classes=num_classes,
-                in_chans=3,
             ).to(cls._device)
             
             cls._model.load_state_dict(ckpt["state_dict"])
@@ -157,7 +158,7 @@ class AIPredictor:
             # CRITICAL: Clean up weights dictionary to save 2x RAM spike
             del ckpt
             gc.collect() 
-            print(f"Model loaded successfully on {cls._device}")
+            print("Model loaded. RAM optimized.")
 
     @classmethod
     def predict(cls, image_path: str) -> Tuple[str, float, str]:
@@ -169,43 +170,42 @@ class AIPredictor:
             
             # 1. Load and Preprocess Image
             image = Image.open(image_path).convert("RGB")
-            transform = get_val_transforms(cls._img_size)
-            x = transform(image).unsqueeze(0).to(cls._device)
+            transform = get_transforms(cls._img_size)
+            input_tensor = transform(image).unsqueeze(0).to(cls._device)
             
-            # 2. Model Inference
+            # 1. Classification (No Grads)
             with torch.no_grad():
-                logits = cls._model(x)
-                probs = torch.softmax(logits, dim=1)[0]
-                pred_idx = int(torch.argmax(probs).item())
-                confidence = float(probs[pred_idx].item())
+                outputs = cls._model(input_tensor)
+                probs = torch.softmax(outputs, dim=1)
+                confidence, class_idx = torch.max(probs, dim=1)
+                prediction = DR_STAGES[class_idx.item()]
+                conf_val = float(confidence.item())
             
-            # 3. Generate Grad-CAM Heatmap
-            target_layer = getattr(cls._model, "conv_head", None)
-            if target_layer is None:
-                target_layer = list(cls._model.modules())[-1]
-                
+            # 2. Grad-CAM (Only if needed)
+            target_layer = cls._model.conv_head # B3 head
             cam = GradCAM(cls._model, target_layer=target_layer)
             try:
-                heatmap = cam(x, class_idx=pred_idx)
+                heatmap = cam(input_tensor, class_idx.item())
             finally:
                 cam.close()
                 
+            # 3. Heatmap Overlay
             heatmap_overlay = overlay_heatmap_on_image(image, heatmap)
+            local_heatmap_path = f"{image_path}_heatmap.jpg"
+            heatmap_overlay.save(local_heatmap_path, quality=90)
             
-            # 4. Save and Upload Heatmap
-            local_heatmap_path = image_path.replace('.jpg', '_heatmap.jpg').replace('.png', '_heatmap.png').replace('.jpeg', '_heatmap.jpeg')
-            heatmap_overlay.save(local_heatmap_path, quality=95)
+            # 4. Storage & Cleanup
+            remote_fn = os.path.basename(local_heatmap_path)
+            heatmap_url = storage_service.upload_file(local_heatmap_path, remote_fn)
             
-            # Use StorageService to upload to Supabase
-            remote_filename = os.path.basename(local_heatmap_path)
-            heatmap_url = storage_service.upload_file(local_heatmap_path, remote_filename)
-            
-            # Clean up local folder only if cloud upload was successful
-            if os.path.exists(local_heatmap_path) and heatmap_url.startswith('http'):
+            # Final Cleanup
+            if os.path.exists(local_heatmap_path):
                 os.remove(local_heatmap_path)
             
-            prediction = DR_STAGES[pred_idx]
-            return prediction, confidence, heatmap_url
+            del input_tensor, outputs, probs, heatmap, heatmap_overlay
+            gc.collect()
+
+            return prediction, conf_val, heatmap_url
         except Exception as e:
             print(f"Prediction error: {str(e)}")
             raise Exception(f"Prediction failed: {str(e)}")
@@ -214,5 +214,3 @@ class AIPredictor:
 # Convenience function for API calls
 def predict_dr_stage(image_path: str) -> Tuple[str, float, str]:
     return AIPredictor.predict(image_path)
-
-

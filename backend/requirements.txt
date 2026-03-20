@@ -16,7 +16,7 @@ numpy
 torch
 torchvision
 timm
-matplotlib
+# matplotlib (removed to save RAM on Render Free tier)
 httpx
 anyio==4.12.1
 starlette==0.52.1
