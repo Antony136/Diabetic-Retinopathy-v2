@@ -1,1 +1,1 @@
-web: gunicorn -w 1 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT --timeout 120 --forwarded-allow-ips='*' app.main:app
+web: gunicorn -w 1 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT --timeout 300 --worker-tmp-dir /dev/shm --forwarded-allow-ips='*' app.main:app

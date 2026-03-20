@@ -19,6 +19,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from app.services.storage_service import storage_service
 
+# Optimization for single-core Render Free tier
+torch.set_num_threads(1)
+
 # =========================
 # CONSTANTS & TRANSFORMS
 # =========================
