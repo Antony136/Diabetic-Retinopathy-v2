@@ -14,13 +14,35 @@ from torchvision import transforms
 from PIL import Image
 import numpy as np
 import timm
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import gc
 from app.services.storage_service import storage_service
 
 # Optimization for single-core Render Free tier
 torch.set_num_threads(1)
+
+# =========================
+# JET COLORMAP (Pure Numpy/Pillow)
+# =========================
+def apply_jet_colormap(heatmap: np.ndarray) -> np.ndarray:
+    """Manual JET colormap implementation to avoid heavy Matplotlib."""
+    # Heatmap is 0..1 Float32
+    # JET Colormap logic:
+    # Blue: 0.0 -> Red: 1.0
+    r = np.clip(1.5 - np.abs(4 * heatmap - 3), 0, 1)
+    g = np.clip(1.5 - np.abs(4 * heatmap - 2), 0, 1)
+    b = np.clip(1.5 - np.abs(4 * heatmap - 1), 0, 1)
+    return np.stack([r, g, b], axis=-1)
+
+def overlay_heatmap_on_image(image_rgb: Image.Image, heatmap: np.ndarray, alpha: float = 0.45) -> Image.Image:
+    w, h = image_rgb.size
+    hm = Image.fromarray(np.uint8(heatmap * 255.0)).resize((w, h), resample=Image.BILINEAR)
+    hm_arr = np.asarray(hm, dtype=np.float32) / 255.0
+    
+    # Apply JET manually
+    colored_arr = apply_jet_colormap(hm_arr)
+    colored_img = Image.fromarray(np.uint8(colored_arr * 255.0)).convert("RGB")
+    
+    return Image.blend(image_rgb, colored_img, alpha=alpha)
 
 # =========================
 # CONSTANTS & TRANSFORMS
@@ -67,7 +89,6 @@ class GradCAM:
     def _backward_hook(self, _module, _grad_input, grad_output) -> None:
         self._gradients = grad_output[0].detach()
 
-    @torch.no_grad()
     def _normalize_cam(self, cam: torch.Tensor) -> torch.Tensor:
         cam = cam - cam.min()
         denom = cam.max().clamp(min=1e-6)
@@ -75,6 +96,7 @@ class GradCAM:
         return cam
 
     def __call__(self, x: torch.Tensor, class_idx: int) -> np.ndarray:
+        # GradCAM requires grad tracking, but we manage it manually
         self.model.zero_grad(set_to_none=True)
         logits = self.model(x)
         score = logits[:, class_idx].sum()
@@ -91,18 +113,11 @@ class GradCAM:
         cam = (weights * acts).sum(dim=1)
         cam = torch.relu(cam)
         cam = self._normalize_cam(cam)
-        return cam[0].detach().cpu().numpy().astype(np.float32)
-
-def overlay_heatmap_on_image(image_rgb: Image.Image, heatmap: np.ndarray, alpha: float = 0.45) -> Image.Image:
-    w, h = image_rgb.size
-    hm = Image.fromarray(np.uint8(heatmap * 255.0)).resize((w, h), resample=Image.BILINEAR)
-    hm_arr = np.asarray(hm, dtype=np.float32) / 255.0
-
-    cmap = plt.get_cmap("jet")
-    colored = cmap(hm_arr)[:, :, :3]
-    colored_img = Image.fromarray(np.uint8(colored * 255.0)).convert("RGB")
-
-    return Image.blend(image_rgb, colored_img, alpha=alpha)
+        res = cam[0].detach().cpu().numpy().astype(np.float32)
+        
+        # Cleanup
+        del grads, acts, weights, cam, logits, score
+        return res
 
 # =========================
 # AI PREDICTOR SERVICE
@@ -119,11 +134,11 @@ class AIPredictor:
     @classmethod
     def load_model(cls):
         if cls._model is None:
-            cls._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            cls._device = torch.device("cpu") # Force CPU for memory/Render
             if not os.path.exists(cls.MODEL_PATH):
                 raise FileNotFoundError(f"Model file not found at {cls.MODEL_PATH}")
             
-            # Load checkpoint
+            # Load checkpoint and immediately extract what we need
             ckpt = torch.load(cls.MODEL_PATH, map_location=cls._device, weights_only=True)
             num_classes = int(ckpt.get("num_classes", 5))
             cls._img_size = int(ckpt.get("img_size", 300))
@@ -138,6 +153,10 @@ class AIPredictor:
             
             cls._model.load_state_dict(ckpt["state_dict"])
             cls._model.eval()
+            
+            # CRITICAL: Clean up weights dictionary to save 2x RAM spike
+            del ckpt
+            gc.collect() 
             print(f"Model loaded successfully on {cls._device}")
 
     @classmethod

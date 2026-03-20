@@ -163,8 +163,6 @@ async def create_report(
     # Run AI prediction (using local path)
     try:
         from app.services.ai_service import predict_dr_stage
-        import time
-        time.sleep(1) # Stabilization delay
         prediction, confidence, heatmap_url = predict_dr_stage(local_image_path)
     except Exception as e:
         # Clean up local image if prediction fails
