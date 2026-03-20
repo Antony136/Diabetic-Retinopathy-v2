@@ -2,7 +2,13 @@
 
 Retina Max 2.0 is a production-grade, visually stunning Medical AI platform designed to help ophthalmologists screen and prioritize Diabetic Retinopathy (DR) cases using fundus images. It features real-time AI classification, Grad-CAM heatmap visualization, and comprehensive patient history management.
 
-![Hero Screenshot](https://raw.githubusercontent.com/Antony136/Diabetic-Retinopathy-v2/main/frontend1/public/auth-hero.png)
+## 📺 Demo Videos
+
+### 1. ML Model Analysis
+![ML Model Demo](./assests/videos/ML%20model.mp4)
+
+### 2. Admin Dashboard & Login
+![Admin Login Demo](./assests/videos/Admin%20login.mp4)
 
 ## 🌟 Key Features
 
