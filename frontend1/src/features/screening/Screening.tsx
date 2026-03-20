@@ -238,13 +238,13 @@ export default function Screening() {
   <div class="grid">
     <div class="card">
       <div style="font-weight:700; margin-bottom:6px;">Input Image</div>
-      <img src="${imageUrl}" />
+      <img src="${imageUrl}" crossorigin="anonymous" />
     </div>
     ${
       pdfSettings.pdfIncludeHeatmap
         ? `<div class="card">
       <div style="font-weight:700; margin-bottom:6px;">Heatmap</div>
-      <img src="${heatmapUrl}" />
+      <img src="${heatmapUrl}" crossorigin="anonymous" />
     </div>`
         : ""
     }
@@ -276,7 +276,10 @@ export default function Screening() {
         ),
       );
       win.focus();
-      win.print();
+      // Final layout settle delay
+      setTimeout(() => {
+        win.print();
+      }, 500);
     };
 
     frame.srcdoc = html;

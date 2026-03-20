@@ -192,3 +192,11 @@ class AIPredictor:
 def predict_dr_stage(image_path: str) -> Tuple[str, float, str]:
     return AIPredictor.predict(image_path)
 
+# Pre-load model on module import to save time during requests
+# This might take some RAM, but it's better than timing out the first user request.
+try:
+    AIPredictor.load_model()
+except Exception as e:
+    print(f"Warning: Early model load failed: {str(e)}")
+
+

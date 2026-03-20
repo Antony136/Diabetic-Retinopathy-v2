@@ -3,7 +3,7 @@ services:
     name: diabetic-retinopathy-backend
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -w 1 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT app.main:app
+    startCommand: gunicorn -w 1 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT --timeout 120 --forwarded-allow-ips='*' app.main:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.12

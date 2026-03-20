@@ -14,7 +14,7 @@ export async function createReport(params: { patientId: number; file: File }) {
   const formData = new FormData();
   formData.append("file", params.file);
 
-  const { data } = await api.post<ReportResponse>("/reports", formData, {
+  const { data } = await api.post<ReportResponse>("/reports/", formData, {
     params: { patient_id: params.patientId },
     headers: { "Content-Type": "multipart/form-data" },
   });
@@ -22,7 +22,7 @@ export async function createReport(params: { patientId: number; file: File }) {
 }
 
 export async function listReports() {
-  const { data } = await api.get<ReportResponse[]>("/reports");
+  const { data } = await api.get<ReportResponse[]>("/reports/");
   return data;
 }
 

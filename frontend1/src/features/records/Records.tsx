@@ -170,13 +170,13 @@ export default function Records() {
   <div class="grid">
     <div class="card">
       <div style="font-weight:700; margin-bottom:6px;">Input Image</div>
-      <img src="${imageUrl}" />
+      <img src="${imageUrl}" crossorigin="anonymous" />
     </div>
     ${
       pdfSettings.pdfIncludeHeatmap
         ? `<div class="card">
       <div style="font-weight:700; margin-bottom:6px;">Heatmap</div>
-      <img src="${heatmapUrl}" />
+      <img src="${heatmapUrl}" crossorigin="anonymous" />
     </div>`
         : ""
     }
@@ -212,8 +212,11 @@ export default function Records() {
           ),
         );
         win.focus();
-        win.print();
-        setDownloadingId(null);
+        // Final layout settle delay
+        setTimeout(() => {
+          win.print();
+          setDownloadingId(null);
+        }, 500);
       };
 
       frame.srcdoc = html;
