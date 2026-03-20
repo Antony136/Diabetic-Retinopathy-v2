@@ -17,6 +17,7 @@ import timm
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from app.services.storage_service import storage_service
 
 # =========================
 # CONSTANTS & TRANSFORMS
@@ -169,13 +170,20 @@ class AIPredictor:
                 
             heatmap_overlay = overlay_heatmap_on_image(image, heatmap)
             
-            # 4. Save Heatmap
-            heatmap_path = image_path.replace('.jpg', '_heatmap.jpg').replace('.png', '_heatmap.png').replace('.jpeg', '_heatmap.jpeg')
-            heatmap_overlay.save(heatmap_path, quality=95)
+            # 4. Save and Upload Heatmap
+            local_heatmap_path = image_path.replace('.jpg', '_heatmap.jpg').replace('.png', '_heatmap.png').replace('.jpeg', '_heatmap.jpeg')
+            heatmap_overlay.save(local_heatmap_path, quality=95)
+            
+            # Use StorageService to upload to Supabase
+            remote_filename = os.path.basename(local_heatmap_path)
+            heatmap_url = storage_service.upload_file(local_heatmap_path, remote_filename)
+            
+            # Clean up local folder only if cloud upload was successful
+            if os.path.exists(local_heatmap_path) and heatmap_url.startswith('http'):
+                os.remove(local_heatmap_path)
             
             prediction = DR_STAGES[pred_idx]
-            return prediction, confidence, heatmap_path
-            
+            return prediction, confidence, heatmap_url
         except Exception as e:
             print(f"Prediction error: {str(e)}")
             raise Exception(f"Prediction failed: {str(e)}")

@@ -10,15 +10,23 @@ app = FastAPI()
 
 # Create uploads directory
 uploads_dir = Path("uploads")
+import os
+
+app = FastAPI()
+
+# Create uploads directory
+uploads_dir = Path("uploads")
 uploads_dir.mkdir(exist_ok=True)
 
 # Mount uploads directory as static files
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # CORS middleware
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

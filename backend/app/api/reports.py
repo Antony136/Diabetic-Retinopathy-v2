@@ -11,6 +11,7 @@ from app.api.auth import get_current_user
 import os
 import shutil
 from pathlib import Path
+from app.services.storage_service import storage_service
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
@@ -151,24 +152,38 @@ async def create_report(
             detail="Patient not found or access denied"
         )
     
-    # Save uploaded image
-    image_path = save_upload_file(file)
+    # Save uploaded image locally (temporary for AI)
+    await file.seek(0)
+    local_image_path = save_upload_file(file)
     
-    # Run AI prediction
+    # Upload original image to Supabase
+    remote_filename = os.path.basename(local_image_path)
+    supabase_image_url = storage_service.upload_file(local_image_path, remote_filename)
+    
+    # Run AI prediction (using local path)
     try:
         from app.services.ai_service import predict_dr_stage
-        prediction, confidence, heatmap_path = predict_dr_stage(image_path)
+        import time
+        time.sleep(1) # Stabilization delay
+        prediction, confidence, heatmap_url = predict_dr_stage(local_image_path)
     except Exception as e:
+        # Clean up local image if prediction fails
+        if os.path.exists(local_image_path):
+            os.remove(local_image_path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"AI prediction failed: {str(e)}"
         )
     
+    # Clean up local folder only if cloud upload was successful
+    if os.path.exists(local_image_path) and supabase_image_url.startswith('http'):
+        os.remove(local_image_path)
+        
     # Create report record
     new_report = Report(
         patient_id=patient_id,
-        image_url=image_path,
-        heatmap_url=heatmap_path,
+        image_url=supabase_image_url,
+        heatmap_url=heatmap_url,
         prediction=prediction,
         confidence=confidence
     )
