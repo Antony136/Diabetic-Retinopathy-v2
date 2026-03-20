@@ -2,8 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.api import health, auth, patients, reports, notifications, preferences, profile, admin
-from app.db.database import engine, Base
-from app.db.migrate import run_migrations
 from pathlib import Path
 import os
 
@@ -44,6 +42,3 @@ app.include_router(notifications.router)
 app.include_router(preferences.router)
 app.include_router(profile.router)
 app.include_router(admin.router)
-
-Base.metadata.create_all(bind=engine)
-run_migrations(engine)
