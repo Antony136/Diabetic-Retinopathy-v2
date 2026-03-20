@@ -4,6 +4,8 @@ import { getRecords, getTriageCases } from "../../services/api";
 import { API_BASE_URL } from "../../utils/constants";
 import { getAppSettings } from "../../services/appSettings";
 import { severityFromStage, stageDescription } from "../screening/mockAnalysis";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
+
 
 interface PatientRecord {
   id: number;
@@ -201,6 +203,118 @@ export default function Records() {
     }
   };
 
+  // 1. STATS CALCULATION
+  const severityCounts = [
+    { name: 'No DR', value: patients.filter(p => p.latest_prediction === 'No DR').length, color: '#3b82f6' },
+    { name: 'Mild', value: patients.filter(p => p.latest_prediction === 'Mild').length, color: '#0ea5e9' },
+    { name: 'Moderate', value: patients.filter(p => p.latest_prediction === 'Moderate').length, color: '#8b5cf6' },
+    { name: 'Severe', value: patients.filter(p => p.latest_prediction === 'Severe').length, color: '#f43f5e' },
+    { name: 'Proliferative DR', value: patients.filter(p => p.latest_prediction === 'Proliferative DR').length, color: '#e11d48' },
+  ].filter(s => s.value > 0);
+
+  // 2. CSV EXPORT
+  const handleExportCSV = () => {
+    if (patients.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+    const headers = "ID,Patient Name,Screening Date,Prediction,Confidence,Created At\n";
+    const rows = patients.map(p => {
+      const idStr = `RET-${p.id.toString().padStart(4, '0')}`;
+      const name = `"${p.name.replace(/"/g, '""')}"`;
+      const date = new Date(p.created_at).toLocaleDateString();
+      const pred = p.latest_prediction || 'Pending';
+      const conf = p.latest_confidence ? (p.latest_confidence * 100).toFixed(1) + '%' : 'N/A';
+      return `${idStr},${name},${date},${pred},${conf},${p.created_at}`;
+    }).join("\n");
+
+    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `RetinaMax_Records_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // 3. BATCH PDF GENERATION (Summary Report)
+  const handleGenerateSummaryPDF = () => {
+    if (patients.length === 0) {
+      alert("No data available to generate report.");
+      return;
+    }
+    const frame = printFrameRef.current;
+    if (!frame) return;
+
+    const rowsHtml = patients.map((p, idx) => `
+      <tr style="background: ${idx % 2 === 0 ? '#f9fafb' : '#ffffff'}; border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 10px; font-size: 11px;">RET-${p.id.toString().padStart(4, '0')}</td>
+        <td style="padding: 10px; font-size: 11px;">${p.name}</td>
+        <td style="padding: 10px; font-size: 11px;">${new Date(p.created_at).toLocaleDateString()}</td>
+        <td style="padding: 10px; font-size: 11px; font-weight:700;">${p.latest_prediction || 'N/A'}</td>
+        <td style="padding: 10px; font-size: 11px;">${p.latest_confidence ? (p.latest_confidence * 100).toFixed(1) + '%' : 'N/A'}</td>
+      </tr>
+    `).join("");
+
+    const statsSummary = severityCounts.map(s => `
+      <div style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px; text-align:center;">
+        <div style="font-size: 10px; color:#6b7280; text-transform:uppercase;">${s.name}</div>
+        <div style="font-size: 16px; font-weight:700; color:${s.color};">${s.value}</div>
+      </div>
+    `).join("");
+
+    const html = `<!doctype html>
+<html>
+<head>
+  <style>
+    body { font-family: sans-serif; padding: 20px; color: #111827; }
+    h1 { font-size: 24px; margin-bottom: 4px; }
+    .header { border-bottom: 2px solid #ef4444; padding-bottom: 12px; margin-bottom: 20px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; background: #f3f4f6; padding: 10px; font-size: 12px; color: #4b5563; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Retina Max - Records Summary Report</h1>
+    <div style="color: #6b7280; font-size: 12px;">Generated on: ${new Date().toLocaleString()}</div>
+  </div>
+  
+  <div style="font-size: 14px; font-weight:700; margin-bottom: 8px;">Severity Distribution</div>
+  <div class="stats-grid">${statsSummary}</div>
+
+  <div style="font-size: 14px; font-weight:700; margin-bottom: 8px;">Patient Screening Logs</div>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Patient Name</th>
+        <th>Screen Date</th>
+        <th>Result</th>
+        <th>Confidence</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+  <div style="margin-top: 24px; font-size: 10px; color:#9ca3af; text-align:center;">
+    This is an automated report generated by the Retina Max AI Screening System.
+  </div>
+</body>
+</html>`;
+
+    frame.srcdoc = html;
+    frame.onload = () => {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+    };
+  };
+
+
   return (
     <main className="pt-24 pb-32 px-8 max-w-7xl mx-auto">
       <iframe ref={printFrameRef} title="print" className="absolute w-0 h-0 opacity-0 pointer-events-none" />
@@ -368,49 +482,93 @@ export default function Records() {
 
       {/* Bottom Section */}
       <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Historical Trends */}
-        <div className="lg:col-span-2 bg-surface-container-low rounded-xl p-8">
-          <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">insights</span>
-            Historical Trends
-          </h3>
-          <div className="aspect-video w-full relative">
-            <img
-              className="w-full h-full object-cover rounded-xl opacity-40 mix-blend-screen"
-              alt="Data visualization"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdgXisNdZBUc3-pXO3xx7mmbB5JnWU_uPPSr6x0m8hXUC2XQSIYQ8SjClSAnA8uN_UWao6wb03_QchsK7zUN0-k08twIlAdzEFnQiXip69Xc7trE3RWnPiB5AIM4Chxzn14wIUYHWgpoNLdHQKc-S-_RT70sYtJmgfPyI_cUw99T6zKxNW5GEmozMKuhPzhn0s3ZcbTrkrL4zs8_kaO6nDNTwiwwUtMP80avSqJZ2VxYdRhA5vwYKHoMvoxDFNcdWyLupMOqF6HKfn"
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-4xl font-headline font-extrabold text-primary mb-2">+12.4%</div>
-                <div className="text-on-surface-variant font-body">Diagnostic Accuracy Growth</div>
+        {/* Data Insights replacing Historical Trends */}
+        <div className="lg:col-span-2 bg-surface-container-low rounded-2xl p-8 border border-outline-variant/10 shadow-sm">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="font-headline text-xl font-bold flex items-center gap-2 text-on-surface">
+              <span className="material-symbols-outlined text-primary">analytics</span>
+              Severity Analysis
+            </h3>
+            <div className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full uppercase tracking-wider">
+              Real-time Insights
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            {/* Recharts Pie */}
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={severityCounts}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {severityCounts.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  />
+                  <Legend verticalAlign="bottom" height={36}/>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Stats Summary Card */}
+            <div className="space-y-4">
+              <div className="p-4 bg-surface-container-high rounded-xl border border-outline/5">
+                <div className="text-on-surface-variant text-sm font-label mb-1">Total Screenings</div>
+                <div className="text-3xl font-headline font-extrabold text-primary">{patients.length}</div>
+              </div>
+              <div className="p-4 bg-error-container/10 rounded-xl border border-error/5">
+                <div className="text-error/80 text-sm font-label mb-1">Critical Cases (High Risk)</div>
+                <div className="text-3xl font-headline font-extrabold text-error">
+                  {patients.filter(p => ["Severe", "Proliferative DR"].includes(p.latest_prediction || '')).length}
+                </div>
+              </div>
+              <div className="p-4 bg-primary-container/10 rounded-xl border border-primary/5">
+                <div className="text-primary/80 text-sm font-label mb-1">Stable / Clear</div>
+                <div className="text-3xl font-headline font-extrabold text-primary">
+                  {patients.filter(p => !p.latest_prediction || p.latest_prediction === 'No DR' || p.latest_prediction === 'Mild').length}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Export */}
-        <div className="bg-gradient-to-br from-primary-container/10 to-transparent border border-primary/10 rounded-xl p-8">
-          <h3 className="font-headline text-xl font-bold mb-4">Export Batch</h3>
-          <p className="font-body text-on-surface-variant mb-6 text-sm">
-            Generate comprehensive reports for the selected time range (Oct 1 - Oct 31).
-          </p>
+        {/* Export Controls */}
+        <div className="bg-gradient-to-br from-surface-container-high to-surface-container border border-outline-variant/10 rounded-2xl p-8 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
+              <span className="material-symbols-outlined text-primary">ios_share</span>
+            </div>
+            <h3 className="font-headline text-2xl font-black mb-3 text-on-surface">Export Center</h3>
+            <p className="font-body text-on-surface-variant mb-8 text-sm leading-relaxed">
+              Generate legal documentation and portable data formats for medical compliance or further research.
+            </p>
+          </div>
+          
           <div className="space-y-4">
             <button 
-              onClick={() => alert("Batch PDF Export functionality is under development.")}
-              className="w-full py-3 bg-primary text-on-primary font-bold rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-95">
-              <span className="material-symbols-outlined">picture_as_pdf</span>
-              Generate PDF Report
+              onClick={handleGenerateSummaryPDF}
+              className="w-full py-4 bg-primary text-on-primary font-headline font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98]">
+              <span className="material-symbols-outlined text-[20px]">print</span>
+              Full Summary (PDF)
             </button>
             <button 
-              onClick={() => alert("CSV Export functionality is under development.")}
-              className="w-full py-3 bg-surface-container-highest text-on-surface font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-surface-container transition-colors">
-              <span className="material-symbols-outlined">csv</span>
-              Export to CSV
+              onClick={handleExportCSV}
+              className="w-full py-4 bg-surface-container-highest text-on-surface font-headline font-bold border border-outline/10 rounded-xl flex items-center justify-center gap-2 hover:bg-surface-container transition-all active:scale-[0.98]">
+              <span className="material-symbols-outlined text-[20px]">csv</span>
+              Dataset Export (CSV)
             </button>
           </div>
         </div>
       </div>
+
     </main>
   );
 }
