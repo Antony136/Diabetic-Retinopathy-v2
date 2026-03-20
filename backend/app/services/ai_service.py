@@ -108,8 +108,9 @@ class AIPredictor:
     _device = None
     _img_size = 300
     
-    # Update this path to the absolute path where the model is stored
-    MODEL_PATH = r"d:\Github\Diabetic Retinopathy v2\ml_pipeline\ml_outputs\model_b3.pth"
+    # Path relative to this file: ../checkpoints/model_b3.pth
+    _base_dir = Path(__file__).parent.parent
+    MODEL_PATH = _base_dir / "checkpoints" / "model_b3.pth"
 
     @classmethod
     def load_model(cls):

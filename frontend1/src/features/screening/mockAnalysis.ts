@@ -62,6 +62,39 @@ export function stageDescription(stage: string) {
   }
 }
 
+export function getTreatmentWindow(stage: string) {
+  switch (stage) {
+    case "No DR":
+      return "Annual screening (12 months)";
+    case "Mild":
+      return "Follow-up within 6-12 months";
+    case "Moderate":
+      return "Specialist review within 3-6 months";
+    case "Severe":
+      return "Urgent referral within 2-4 weeks";
+    case "Proliferative DR":
+      return "Immediate referral (within 1 week)";
+    default:
+      return "Consult a specialist for timing.";
+  }
+}
+
+export function getLesionRegion(stage: string) {
+  if (stage === "No DR") return "No lesions detected";
+  
+  const regions = [
+    "Superior-Temporal quadrant",
+    "Inferior-Nasal quadrant",
+    "Macular area (Central Retina)",
+    "Peripapillary region",
+    "Mid-peripheral retina"
+  ];
+  
+  // Seed-based selection for consistency if needed, but for now just variety
+  const index = stage.length % regions.length;
+  return regions[index];
+}
+
 export function mockHeatmapDataUrl() {
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="720" height="720" viewBox="0 0 720 720">
