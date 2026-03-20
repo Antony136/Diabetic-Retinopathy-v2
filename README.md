@@ -5,10 +5,10 @@ Retina Max 2.0 is a production-grade, visually stunning Medical AI platform desi
 ## 📺 Demo Videos
 
 ### 1. ML Model Analysis
-![ML Model Demo](./assests/videos/ML%20model.mp4)
+![ML Model Demo](./assets/videos/ML%20model.mp4)
 
 ### 2. Admin Dashboard & Login
-![Admin Login Demo](./assests/videos/Admin%20login.mp4)
+![Admin Login Demo](./assets/videos/Admin%20login.mp4)
 
 ## 🌟 Key Features
 
