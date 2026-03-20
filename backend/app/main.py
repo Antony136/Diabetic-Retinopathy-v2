@@ -19,7 +19,12 @@ print(f"Server starting - Environment: PORT={os.getenv('PORT')}")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # CORS middleware
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+origins_env = os.getenv("ALLOWED_ORIGINS")
+
+if origins_env:
+    allowed_origins = origins_env.split(",")
+else:
+    allowed_origins = []
 
 app.add_middleware(
     CORSMiddleware,
