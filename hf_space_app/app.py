@@ -7,10 +7,11 @@ import numpy as np
 import timm
 import os
 import gc
+import json
 from typing import Tuple, Optional
 
 # =========================
-# JET COLORMAP (Lightweight)
+# JET COLORMAP
 # =========================
 def apply_jet_colormap(heatmap: np.ndarray) -> np.ndarray:
     """Pure Numpy JET colormap."""
@@ -88,7 +89,7 @@ def load_predictor():
     global _model, _img_size
     if _model is None:
         if not os.path.exists(MODEL_FILENAME):
-            print(f"ERROR: {MODEL_FILENAME} not found. Ensure it is in the same folder as app.py")
+            print(f"ERROR: {MODEL_FILENAME} not found.")
             return None
             
         ckpt = torch.load(MODEL_FILENAME, map_location="cpu", weights_only=True)
@@ -108,13 +109,12 @@ def load_predictor():
 # =========================
 def predict(image):
     if image is None:
-        return "No image provided", 0.0, None
+        return json.dumps({"error": "No image"}), None
         
     model = load_predictor()
     if model is None:
-        return "Model not found", 0.0, None
+        return json.dumps({"error": "Model not found"}), None
 
-    # Preprocessing
     transform = transforms.Compose([
         transforms.Resize((_img_size, _img_size)),
         transforms.ToTensor(),
@@ -142,23 +142,27 @@ def predict(image):
     # 3. Overlay
     heatmap_overlay = overlay_heatmap_on_image(img_rgb, heatmap)
     
-    # Final Cleanup
+    # Final Result
+    result = {
+        "prediction": res_label,
+        "confidence": res_conf
+    }
+    
     gc.collect()
-    return res_label, res_conf, heatmap_overlay
+    return json.dumps(result), heatmap_overlay
 
 # =========================
-# GRADIO INTERFACE
+# GRADIO INTERFACE (API OPTIMIZED)
 # =========================
 demo = gr.Interface(
     fn=predict,
     inputs=gr.Image(type="pil"),
     outputs=[
-        gr.Label(label="Detection Results"),
-        gr.Number(label="Confidence Score"),
-        gr.Image(label="Explainable AI (Heatmap)")
+        gr.Textbox(label="Result JSON"),
+        gr.Image(label="Heatmap Output")
     ],
-    title="Diabetic Retinopathy Detection - EfficientNet-B3",
-    description="Upload a fundus image (retina) to get an automated DR severity diagnosis and visual heatmap."
+    title="DR Detection API",
+    api_name="predict"
 )
 
 if __name__ == "__main__":

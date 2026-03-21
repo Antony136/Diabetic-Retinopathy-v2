@@ -67,7 +67,6 @@ export default function Login() {
       {/* GDSC Hackathon Notice */}
       <div className="mb-8 p-5 rounded-2xl bg-primary-container/10 border border-primary/10 space-y-3">
         <div className="flex items-center gap-2 text-primary">
-          <span className="material-symbols-rounded text-lg">info</span>
           <span className="font-label font-bold text-sm tracking-wide uppercase">GDSC Notice</span>
         </div>
         
