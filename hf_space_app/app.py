@@ -14,7 +14,6 @@ from typing import Tuple, Optional
 # JET COLORMAP
 # =========================
 def apply_jet_colormap(heatmap: np.ndarray) -> np.ndarray:
-    """Pure Numpy JET colormap."""
     r = np.clip(1.5 - np.abs(4 * heatmap - 3), 0, 1)
     g = np.clip(1.5 - np.abs(4 * heatmap - 2), 0, 1)
     b = np.clip(1.5 - np.abs(4 * heatmap - 1), 0, 1)
@@ -26,7 +25,6 @@ def overlay_heatmap_on_image(image_rgb: Image.Image, heatmap: np.ndarray, alpha:
     hm_arr = np.asarray(hm, dtype=np.float32) / 255.0
     colored_arr = apply_jet_colormap(hm_arr)
     colored_img = Image.fromarray(np.uint8(colored_arr * 255.0)).convert("RGB")
-    del hm, hm_arr, colored_arr
     return Image.blend(image_rgb, colored_img, alpha=alpha)
 
 # =========================
@@ -45,7 +43,6 @@ class GradCAM:
     def close(self) -> None:
         for h in self._handles:
             h.remove()
-        self._handles.clear()
 
     def _forward_hook(self, _module, _inputs, output) -> None:
         self._activations = output.detach()
@@ -71,9 +68,7 @@ class GradCAM:
         cam = torch.relu((weights * acts).sum(dim=1))
         cam = self._normalize_cam(cam)
         res = cam[0].detach().cpu().numpy().astype(np.float32)
-        
         self.model.zero_grad(set_to_none=True)
-        del grads, acts, weights, cam, logits, score
         gc.collect()
         return res
 
@@ -89,31 +84,27 @@ def load_predictor():
     global _model, _img_size
     if _model is None:
         if not os.path.exists(MODEL_FILENAME):
-            print(f"ERROR: {MODEL_FILENAME} not found.")
             return None
-            
         ckpt = torch.load(MODEL_FILENAME, map_location="cpu", weights_only=True)
         num_classes = ckpt.get("num_classes", 5)
         _img_size = ckpt.get("img_size", 300)
-        
         _model = timm.create_model("efficientnet_b3", pretrained=False, num_classes=num_classes)
         _model.load_state_dict(ckpt["state_dict"])
         _model.eval()
         del ckpt
         gc.collect()
-        print("Model loaded successfully.")
     return _model
 
 # =========================
-# MAIN PREDICTION
+# PREDICTION LOGIC
 # =========================
-def predict(image):
+def predict_api(image):
     if image is None:
-        return json.dumps({"prediction": "Error", "confidence": 0.0}), None
+        return json.dumps({"error": "No image"}), None
         
     model = load_predictor()
     if model is None:
-        return json.dumps({"prediction": "Model Error", "confidence": 0.0}), None
+        return json.dumps({"error": "Model missing"}), None
 
     transform = transforms.Compose([
         transforms.Resize((_img_size, _img_size)),
@@ -124,45 +115,51 @@ def predict(image):
     img_rgb = image.convert("RGB")
     input_tensor = transform(img_rgb).unsqueeze(0)
 
-    # 1. Classification
-    with torch.no_grad():
-        outputs = model(input_tensor)
-        probs = torch.softmax(outputs, dim=1)
-        confidence, class_idx = torch.max(probs, dim=1)
-        res_label = DR_STAGES[class_idx.item()]
-        res_conf = float(confidence.item())
-
-    # 2. Grad-CAM
-    cam = GradCAM(model, model.conv_head)
     try:
-        heatmap = cam(input_tensor, class_idx.item())
-    finally:
-        cam.close()
+        # Classification
+        with torch.no_grad():
+            outputs = model(input_tensor)
+            probs = torch.softmax(outputs, dim=1)
+            confidence, class_idx = torch.max(probs, dim=1)
+            res_label = DR_STAGES[class_idx.item()]
+            res_conf = float(confidence.item())
+
+        # Grad-CAM
+        cam = GradCAM(model, model.conv_head)
+        try:
+            heatmap = cam(input_tensor, class_idx.item())
+        finally:
+            cam.close()
+            
+        heatmap_overlay = overlay_heatmap_on_image(img_rgb, heatmap)
         
-    # 3. Overlay
-    heatmap_overlay = overlay_heatmap_on_image(img_rgb, heatmap)
-    
-    # 4. Result (as stable JSON string)
-    result = {
-        "prediction": res_label,
-        "confidence": res_conf
-    }
-    
-    gc.collect()
-    return json.dumps(result), heatmap_overlay
+        result_json = {"prediction": res_label, "confidence": res_conf}
+        return json.dumps(result_json), heatmap_overlay
+    finally:
+        del input_tensor
+        gc.collect()
 
 # =========================
-# GRADIO INTERFACE (API FRIENDLY)
+# GUARANTEED API INTERFACE
 # =========================
-demo = gr.Interface(
-    fn=predict,
-    inputs=gr.Image(type="pil"),
-    outputs=[
-        gr.Textbox(label="Result JSON (API)"),
-        gr.Image(label="Heatmap Output")
-    ],
-    api_name="predict"
-)
+with gr.Blocks(title="Diabetic Retinopathy API") as demo:
+    gr.Markdown("# DR Screening ML Engine (v2)")
+    
+    input_img = gr.Image(type="pil", label="Retinal Image")
+    
+    with gr.Row():
+        out_json = gr.Textbox(label="Result JSON")
+        out_heatmap = gr.Image(label="Grad-CAM Heatmap")
+        
+    btn = gr.Button("Analyze", visible=False) # Internal use only
+    
+    # This EXPLICITLY defines the /api/predict/ endpoint
+    btn.click(
+        fn=predict_api,
+        inputs=input_img,
+        outputs=[out_json, out_heatmap],
+        api_name="predict"
+    )
 
 if __name__ == "__main__":
     demo.launch()

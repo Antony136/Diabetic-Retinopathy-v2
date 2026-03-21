@@ -10,15 +10,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # =========================
-# AI PREDICTOR SERVICE (BASE64 REST CLIENT)
+# AI PREDICTOR SERVICE (IRONCLAD REST)
 # =========================
 class AIPredictor:
     """
-    HEAVY DUTY FIX: Bypasses the buggy 'gradio_client' library entirely.
+    Final Guaranteed Fix: Bypasses the buggy 'gradio_client' entirely.
     Directly calls the Hugging Face REST API using Base64 encoding.
-    This is 100% stable regardless of Python version or Render RAM.
+    This is the most stable and reliable way to connect to Hugging Face from Render.
     """
-    _hf_base_url = "https://jczdgyo-diabetic-retinopathy.hf.space"
+    _hf_base_url = os.getenv("HF_SPACE_URL_OVERRIDE", "https://jczdgyo-diabetic-retinopathy.hf.space")
     _hf_token = os.getenv("HF_TOKEN")
 
     @classmethod
@@ -30,44 +30,45 @@ class AIPredictor:
             with open(image_path, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
             
-            # Format as a Data URI which Gradio's Image component accepts directly
+            # Data URI format
             base64_data = f"data:image/jpeg;base64,{encoded_string}"
 
             with httpx.Client(timeout=300.0) as client:
                 # 2. Trigger Prediction API
-                # This matches the 'predict' function index 0 in app.py
+                # payload format for Gradio 4.0+
                 payload = {
                     "data": [base64_data],
                     "fn_index": 0
                 }
                 
+                # Try the primary endpoint /api/predict/
+                endpoint = f"{cls._hf_base_url}/api/predict/"
+                print(f"DEBUG: Calling endpoint {endpoint}...")
+                
                 predict_resp = client.post(
-                    f"{cls._hf_base_url}/api/predict/",
+                    endpoint,
                     json=payload,
                     headers={"Authorization": f"Bearer {cls._hf_token}"} if cls._hf_token else {}
                 )
                 
-                if predict_resp.status_code != 200:
-                    print(f"ERROR: HF API Status {predict_resp.status_code}: {predict_resp.text}")
-                    # If /api/predict/ 404s, try without the trailing slash
-                    if predict_resp.status_code == 404:
-                         predict_resp = client.post(
-                            f"{cls._hf_base_url}/api/predict",
-                            json=payload,
-                            headers={"Authorization": f"Bearer {cls._hf_token}"} if cls._hf_token else {}
-                        )
+                # Check for 404 and try fallback without trailing slash
+                if predict_resp.status_code == 404:
+                    print("DEBUG: 404 Not Found. Trying fallback endpoint without slash...")
+                    endpoint = f"{cls._hf_base_url}/api/predict"
+                    predict_resp = client.post(
+                        endpoint,
+                        json=payload,
+                        headers={"Authorization": f"Bearer {cls._hf_token}"} if cls._hf_token else {}
+                    )
 
                 if predict_resp.status_code != 200:
+                    print(f"ERROR: HF API failed with status {predict_resp.status_code}: {predict_resp.text}")
                     raise Exception(f"HF Space Prediction API failed: {predict_resp.text}")
 
                 # 3. Parse result
-                # Output 0: JSON result (prediction info)
-                # Output 1: Heatmap image info
-                resp_json = predict_resp.json()
-                data = resp_json["data"]
+                data = predict_resp.json()["data"]
                 
-                # Unwrap the first output (prediction data)
-                # If we used gr.JSON, it's a dict. If we used gr.Textbox(json.dumps), it's a string.
+                # Output 0: JSON result string
                 prediction_data = data[0]
                 if isinstance(prediction_data, str):
                     prediction_data = json.loads(prediction_data)
@@ -80,24 +81,25 @@ class AIPredictor:
                 heatmap_url = ""
                 
                 if heatmap_info and isinstance(heatmap_info, dict) and "path" in heatmap_info:
-                    # Download heatmap using the file server endpoint
-                    # URL format: {base_url}/file={temp_path}
                     hf_heatmap_path = heatmap_info["path"]
+                    # URL for files: {base_url}/file={path}
                     hf_download_url = f"{cls._hf_base_url}/file={hf_heatmap_path}"
+                    print(f"DEBUG: Downloading heatmap from {hf_download_url}...")
                     
-                    local_heatmap_path = f"{image_path}_heatmap.jpg"
                     heatmap_resp = client.get(hf_download_url)
-                    
                     if heatmap_resp.status_code == 200:
+                        local_heatmap_path = f"{image_path}_heatmap.jpg"
                         with open(local_heatmap_path, "wb") as f:
                             f.write(heatmap_resp.content)
 
                         remote_fn = f"heatmap_{os.path.basename(image_path)}"
                         heatmap_url = storage_service.upload_file(local_heatmap_path, remote_fn)
                         
-                        # Cleanup
+                        # Cleanup temp file
                         if os.path.exists(local_heatmap_path):
                             os.remove(local_heatmap_path)
+                    else:
+                        print(f"WARNING: Failed to download heatmap: {heatmap_resp.status_code}")
 
                 return prediction, confidence, heatmap_url
 
