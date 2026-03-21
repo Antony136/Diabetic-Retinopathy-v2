@@ -1,6 +1,5 @@
 import gradio as gr
 import torch
-import torch.nn as nn
 from torchvision import transforms
 from PIL import Image
 import numpy as np
@@ -8,13 +7,12 @@ import timm
 import os
 import gc
 import json
-from typing import Tuple, Optional
+from typing import Optional
 
 # =========================
 # JET COLORMAP
 # =========================
 def apply_jet_colormap(heatmap: np.ndarray) -> np.ndarray:
-    """Pure Numpy JET colormap."""
     r = np.clip(1.5 - np.abs(4 * heatmap - 3), 0, 1)
     g = np.clip(1.5 - np.abs(4 * heatmap - 2), 0, 1)
     b = np.clip(1.5 - np.abs(4 * heatmap - 1), 0, 1)
@@ -30,7 +28,7 @@ def overlay_heatmap_on_image(image_rgb: Image.Image, heatmap: np.ndarray, alpha:
     return Image.blend(image_rgb, colored_img, alpha=alpha)
 
 # =========================
-# GRAD-CAM IMPLEMENTATION
+# GRAD-CAM
 # =========================
 class GradCAM:
     def __init__(self, model: torch.nn.Module, target_layer: torch.nn.Module) -> None:
@@ -38,47 +36,46 @@ class GradCAM:
         self.target_layer = target_layer
         self._activations: Optional[torch.Tensor] = None
         self._gradients: Optional[torch.Tensor] = None
-        self._handles: list[torch.utils.hooks.RemovableHandle] = []
-        self._handles.append(target_layer.register_forward_hook(self._forward_hook))
-        self._handles.append(target_layer.register_full_backward_hook(self._backward_hook))
+        self._handles = [
+            target_layer.register_forward_hook(self._forward_hook),
+            target_layer.register_full_backward_hook(self._backward_hook)
+        ]
 
-    def close(self) -> None:
+    def close(self):
         for h in self._handles:
             h.remove()
         self._handles.clear()
 
-    def _forward_hook(self, _module, _inputs, output) -> None:
+    def _forward_hook(self, _module, _inputs, output):
         self._activations = output.detach()
 
-    def _backward_hook(self, _module, _grad_input, grad_output) -> None:
+    def _backward_hook(self, _module, _grad_input, grad_output):
         self._gradients = grad_output[0].detach()
 
     def _normalize_cam(self, cam: torch.Tensor) -> torch.Tensor:
         cam = cam - cam.min()
         denom = cam.max().clamp(min=1e-6)
-        cam = cam / denom
-        return cam
+        return cam / denom
 
     def __call__(self, x: torch.Tensor, class_idx: int) -> np.ndarray:
-        with torch.set_grad_enabled(True):
-            self.model.zero_grad(set_to_none=True)
-            logits = self.model(x)
-            score = logits[:, class_idx].sum()
-            score.backward(retain_graph=False)
+        self.model.zero_grad(set_to_none=True)
+        logits = self.model(x)
+        score = logits[:, class_idx].sum()
+        score.backward(retain_graph=False)
 
         grads, acts = self._gradients, self._activations
         weights = grads.mean(dim=(2, 3), keepdim=True)
         cam = torch.relu((weights * acts).sum(dim=1))
         cam = self._normalize_cam(cam)
         res = cam[0].detach().cpu().numpy().astype(np.float32)
-        
+
         self.model.zero_grad(set_to_none=True)
         del grads, acts, weights, cam, logits, score
         gc.collect()
         return res
 
 # =========================
-# MODEL LOADING
+# MODEL
 # =========================
 DR_STAGES = ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"]
 MODEL_FILENAME = "model_b3.pth"
@@ -89,8 +86,9 @@ def load_predictor():
     global _model, _img_size
     if _model is None:
         if not os.path.exists(MODEL_FILENAME):
-            print(f"ERROR: {MODEL_FILENAME} not found.")
+            print(f"ERROR: {MODEL_FILENAME} not found!")
             return None
+        print("Loading model...")
         ckpt = torch.load(MODEL_FILENAME, map_location="cpu", weights_only=True)
         num_classes = ckpt.get("num_classes", 5)
         _img_size = ckpt.get("img_size", 300)
@@ -103,12 +101,12 @@ def load_predictor():
     return _model
 
 # =========================
-# MAIN PREDICTION FUNCTION
+# PREDICTION FUNCTION
 # =========================
 def predict(image):
     if image is None:
         return json.dumps({"prediction": "Error", "confidence": 0.0}), None
-        
+
     model = load_predictor()
     if model is None:
         return json.dumps({"prediction": "Model Error", "confidence": 0.0}), None
@@ -116,9 +114,9 @@ def predict(image):
     transform = transforms.Compose([
         transforms.Resize((_img_size, _img_size)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
     ])
-    
+
     img_rgb = image.convert("RGB")
     input_tensor = transform(img_rgb).unsqueeze(0)
 
@@ -136,33 +134,28 @@ def predict(image):
         heatmap = cam(input_tensor, class_idx.item())
     finally:
         cam.close()
-        
+
     heatmap_overlay = overlay_heatmap_on_image(img_rgb, heatmap)
-    
-    result = {
-        "prediction": res_label,
-        "confidence": res_conf
-    }
-    
+
+    result = {"prediction": res_label, "confidence": res_conf}
     gc.collect()
     return json.dumps(result), heatmap_overlay
 
 # =========================
-# EXPERT API DEFINITION (gr.Blocks)
+# GRADIO APP
 # =========================
 with gr.Blocks(title="Diabetic Retinopathy API") as demo:
     gr.Markdown("# Diabetic Retinopathy Screening Engine")
-    
+
     with gr.Row():
         with gr.Column():
             img_input = gr.Image(type="pil", label="Upload Retina Image")
             predict_btn = gr.Button("Analyze Image", variant="primary")
-        
+
         with gr.Column():
             api_json_out = gr.Textbox(label="Prediction JSON")
             heatmap_out = gr.Image(label="Grad-CAM Analysis")
-    
-    # This EXPLICITLY registers the /api/predict/ REST endpoint
+
     predict_btn.click(
         fn=predict,
         inputs=[img_input],
@@ -171,4 +164,5 @@ with gr.Blocks(title="Diabetic Retinopathy API") as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch()
+    # 🔥 Enable verbose errors for Hugging Face debugging
+    demo.launch(show_error=True)
