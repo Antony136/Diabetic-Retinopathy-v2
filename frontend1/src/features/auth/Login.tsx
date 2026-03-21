@@ -90,8 +90,18 @@ export default function Login() {
 
         <div className="pt-2 border-t border-outline/5">
           <p className="text-[11px] leading-normal text-on-surface-variant italic">
-            Note: We recently migrated the ML inference engine to <strong>Hugging Face Spaces</strong> (jczdgyo/diabetic-retinopathy) to leverage dedicated RAM, after Render's 512MB limit caused frequent stability issues.
+            Note: We recently migrated the ML inference engine to <strong>Hugging Face Spaces</strong> to leverage dedicated RAM, after Render's 512MB limit caused frequent stability issues.
           </p>
+          
+          <a 
+            href="https://huggingface.co/spaces/jczdgyo/diabetic-retinopathy" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/20 transition-colors uppercase tracking-wider"
+          >
+            <span className="material-symbols-rounded text-xs">explore</span>
+            View Model on Hugging Face
+          </a>
         </div>
       </div>
 
