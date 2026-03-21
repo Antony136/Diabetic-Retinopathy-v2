@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
@@ -64,6 +64,38 @@ export default function Login() {
         </>
       }
     >
+      {/* GDSC Hackathon Notice */}
+      <div className="mb-8 p-5 rounded-2xl bg-primary-container/10 border border-primary/10 space-y-3">
+        <div className="flex items-center gap-2 text-primary">
+          <span className="material-symbols-rounded text-lg">info</span>
+          <span className="font-label font-bold text-sm tracking-wide uppercase">GDSC Notice</span>
+        </div>
+        
+        <div className="space-y-2">
+          <p className="text-sm font-label text-on-surface/80 leading-relaxed">
+            Welcome GDSC Reviewers! Use these credentials for a quick preview:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-3 bg-surface-container-low rounded-xl border border-outline/5">
+              <p className="text-[10px] font-bold text-primary uppercase mb-1">Admin Access</p>
+              <p className="text-xs font-mono text-on-surface">icebox1306@gmail.com</p>
+              <p className="text-xs font-mono text-on-surface-variant">Pass: 123456</p>
+            </div>
+            <div className="p-3 bg-surface-container-low rounded-xl border border-outline/5">
+              <p className="text-[10px] font-bold text-secondary uppercase mb-1">Doctor Access</p>
+              <p className="text-xs font-mono text-on-surface">doc@gmail.com</p>
+              <p className="text-xs font-mono text-on-surface-variant">Pass: 123456</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-outline/5">
+          <p className="text-[11px] leading-normal text-on-surface-variant italic">
+            Note: We recently migrated the ML inference engine to <strong>Hugging Face Spaces</strong> (jczdgyo/diabetic-retinopathy) to leverage dedicated RAM, after Render's 512MB limit caused frequent stability issues.
+          </p>
+        </div>
+      </div>
+
       <form onSubmit={onSubmit} className="space-y-5">
         <div>
           <label className="block text-sm font-label text-on-surface-variant mb-2">

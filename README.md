@@ -124,8 +124,5 @@ Running a Torch-based AI model on a 512MB RAM limit is challenging. This project
 - **Gradient Purging**: `model.zero_grad(set_to_none=True)` is called immediately after heatmap generation.
 - **Weight Deletion**: Checkpoint dictionaries are deleted immediately after loading into the model architecture.
 
-## 📄 License
-MIT License - See [LICENSE](LICENSE) for details.
-
 ---
 
