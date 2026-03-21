@@ -1,23 +1,17 @@
-fastapi==0.135.1
-uvicorn==0.42.0
-gunicorn==25.1.0
-pydantic==2.12.5
-SQLAlchemy==2.0.48
-psycopg2-binary==2.9.11
-python-dotenv==1.2.2
-python-multipart==0.0.22
-PyJWT==2.12.1
-bcrypt==4.0.1
-passlib==1.7.4
-pillow==12.1.1
-numpy
-# Optimized for CPU-only environment
---extra-index-url https://download.pytorch.org/whl/cpu
-gradio_client==1.7.0
-# Remote Inference (Torch dependencies no longer needed on Render)
-# torch
-# torchvision
-# timm
+fastapi
+uvicorn
+python-multipart
+python-dotenv
 httpx
-anyio==4.12.1
-starlette==0.52.1
+pydantic
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+supabase
+pillow
+numpy
+# Local AI model requirements
+torch
+torchvision
+timm
+# gradio_client # (Removed because we are switching back to local model)
