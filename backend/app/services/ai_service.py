@@ -1,164 +1,91 @@
-import os
 import json
-import httpx
-import base64
-import time
-from pathlib import Path
-from typing import Tuple, Optional
+import os
+from typing import Tuple
+from gradio_client import Client, handle_file
 from app.services.storage_service import storage_service
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # =========================
-# AI PREDICTOR SERVICE (IRONCLAD GRADIO EVENT POLLING)
+# AI PREDICTOR SERVICE (GRADIO CLIENT SYNCED)
 # =========================
 class AIPredictor:
     """
-    Final Guaranteed Fix: Bypasses ALL protocol issues by using 
-    the official Gradio 4/5/6 event-based (polling) flow.
-    Matches the exact browser interaction for Hugging Face Spaces.
+    Hugging Face connector using gradio_client.
+    Synced with the working test script logic.
     """
-    _raw_url = os.getenv("HF_SPACE_URL", "https://jczdgyo-diabetic-retinopathy.hf.space")
-    
-    # Resolve full URL if Space ID is provided
-    if not _raw_url.startswith("http"):
-        parts = _raw_url.split("/")
-        if len(parts) == 2:
-            user, space = parts
-            _hf_base_url = f"https://{user.lower()}-{space.lower().replace('_', '-')}.hf.space"
-        else:
-            _hf_base_url = f"https://{_raw_url.replace('/', '-').replace('_', '-')}.hf.space"
-    else:
-        _hf_base_url = _raw_url.rstrip("/")
 
-    _hf_token = os.getenv("HF_TOKEN")
+    # Use your HF Space ID
+    _hf_space_id = os.getenv("HF_SPACE_ID", "jczdgyo/diabetic-retinopathy")
+    
+    # Initialize client
+    _client = None
+
+    @classmethod
+    def get_client(cls):
+        if cls._client is None:
+            print(f"DEBUG: Initializing Gradio Client for {cls._hf_space_id}...")
+            cls._client = Client(cls._hf_space_id)
+        return cls._client
 
     @classmethod
     def predict(cls, image_path: str) -> Tuple[str, float, str]:
         try:
-            print(f"DEBUG: Starting Ironclad REST prediction for {image_path}...")
-            
-            # 1. Encode Image to Base64
-            with open(image_path, "rb") as image_file:
-                encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-            
-            base64_data = f"data:image/jpeg;base64,{encoded_string}"
+            print(f"DEBUG: Starting AI prediction for {image_path}...")
+            client = cls.get_client()
 
-            # Browser-like headers for HF Proxy persistence
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Content-Type": "application/json",
-            }
-            if cls._hf_token:
-                headers["Authorization"] = f"Bearer {cls._hf_token}"
+            # 1. Prepare file handle (Official Gradio way)
+            image_input = handle_file(image_path)
 
-            with httpx.Client(timeout=300.0, follow_redirects=True) as client:
-                # STEP 1: Call Gradio API (Trigger Prediction)
-                # Modern Gradio 4/5/6 route
-                call_endpoint = f"{cls._hf_base_url}/gradio_api/call/predict"
-                print(f"DEBUG: Calling endpoint {call_endpoint}...")
-                
-                payload = {
-                    "data": [base64_data]
-                }
-                
-                predict_resp = client.post(call_endpoint, json=payload, headers=headers)
-                
-                if predict_resp.status_code != 200:
-                    print(f"ERROR: Initial call failed {predict_resp.status_code}: {predict_resp.text}")
-                    raise Exception(f"HF Space Call failed: {predict_resp.text}")
+            # 2. Call Gradio API
+            # Matches test script: client.predict(image=..., api_name="/predict")
+            result = client.predict(
+                image=image_input,
+                api_name="/predict"
+            )
 
-                event_id = predict_resp.json().get("event_id")
-                if not event_id:
-                    raise Exception("No event_id returned from HF API")
+            print(f"DEBUG: Prediction successful. Raw result type: {type(result)}")
 
-                print(f"DEBUG: event_id = {event_id}. Starting polling...")
+            # 3. Parse outputs [prediction_json, heatmap_info]
+            if not isinstance(result, (list, tuple)) or len(result) < 2:
+                raise Exception(f"Unexpected response format from HF Space: {result}")
 
-                # STEP 2: Poll result (Correct SSID format)
-                # Poll endpoint: /gradio_api/queue/data?event_id=xyz
-                result_url = f"{cls._hf_base_url}/gradio_api/queue/data?event_id={event_id}"
-                result_data = None
+            # Parse prediction JSON
+            prediction_json = result[0]
+            if isinstance(prediction_json, str):
+                prediction_data = json.loads(prediction_json)
+            else:
+                prediction_data = prediction_json
 
-                for i in range(30):  # Poll for up to 30 seconds
-                    res = client.get(result_url, headers=headers)
-                    if res.status_code != 200:
-                        raise Exception(f"Polling failed: {res.text}")
-                    
-                    # Gradio 6 returns SSE-like strings or JSON depending on the proxy
-                    # We handle both raw SSE and JSON
-                    try:
-                        content = res.text
-                        if "event: complete" in content or '"status": "complete"' in content:
-                            # Extract JSON from SSE data if needed
-                            if "data: " in content:
-                                data_str = content.split("data: ")[1].split("\n")[0]
-                                full_resp = json.loads(data_str)
-                            else:
-                                full_resp = res.json()
-                            
-                            result_data = full_resp.get("data")
-                            print(f"DEBUG: Status complete on attempt {i+1}")
-                            break
-                        elif "event: error" in content:
-                            raise Exception(f"Gradio Remote Error: {content}")
-                    except Exception as parse_err:
-                        print(f"DEBUG: Polling parsing warning: {parse_err}")
+            prediction = prediction_data.get("prediction", "Unknown")
+            confidence = float(prediction_data.get("confidence", 0.0))
 
-                    time.sleep(1)
+            # Handle heatmap (could be path or dict)
+            heatmap_info = result[1]
+            heatmap_url = ""
 
-                if result_data is None:
-                    raise Exception("Timeout waiting for prediction result from Hugging Face")
+            if heatmap_info:
+                heatmap_local_path = ""
+                if isinstance(heatmap_info, dict):
+                    heatmap_local_path = heatmap_info.get("path") or heatmap_info.get("url")
+                else:
+                    heatmap_local_path = heatmap_info
 
-                # STEP 3: Parse result
-                prediction_info = result_data[0]
-                if isinstance(prediction_info, str):
-                    prediction_info = json.loads(prediction_info)
-                
-                prediction = prediction_info.get("prediction", "Unknown")
-                confidence = float(prediction_info.get("confidence", 0.0))
-                
-                # 4. Handle Heatmap
-                heatmap_info = result_data[1]
-                heatmap_url = ""
-                
-                if heatmap_info and isinstance(heatmap_info, dict) and "path" in heatmap_info:
-                    hf_heatmap_path = heatmap_info["path"]
-                    # Try both file endpoints (V4 and V3 compat)
-                    download_urls = [
-                        f"{cls._hf_base_url}/gradio_api/file={hf_heatmap_path}",
-                        f"{cls._hf_base_url}/file={hf_heatmap_path}"
-                    ]
-                    
-                    found = False
-                    for dl_url in download_urls:
-                        print(f"DEBUG: Attempting heatmap download from {dl_url}...")
-                        h_res = client.get(dl_url, headers=headers)
-                        if h_res.status_code == 200:
-                            local_heatmap_p = f"{image_path}_heatmap.jpg"
-                            with open(local_heatmap_p, "wb") as f:
-                                f.write(h_res.content)
-                            
-                            remote_fn = f"heatmap_{os.path.basename(image_path)}"
-                            heatmap_url = storage_service.upload_file(local_heatmap_p, remote_fn)
-                            
-                            if os.path.exists(local_heatmap_p):
-                                os.remove(local_heatmap_p)
-                            found = True
-                            break
-                    
-                    if not found:
-                        print(f"WARNING: Heatmap download failed on all routes.")
+                if heatmap_local_path and os.path.exists(heatmap_local_path):
+                    remote_name = f"heatmap_{os.path.basename(image_path)}"
+                    print(f"DEBUG: Uploading heatmap {heatmap_local_path} to Supabase...")
+                    heatmap_url = storage_service.upload_file(heatmap_local_path, remote_name)
 
-                return prediction, confidence, heatmap_url
+            return prediction, confidence, heatmap_url
 
         except Exception as e:
-            print(f"REST Prediction error: {str(e)}")
+            print(f"ERROR in AI prediction: {e}")
             import traceback
             traceback.print_exc()
-            raise Exception(f"AI Service (REST) failed: {str(e)}")
+            raise Exception(f"AI Service failed: {str(e)}")
 
 
-# Convenience function for API calls
+# Convenience wrapper
 def predict_dr_stage(image_path: str) -> Tuple[str, float, str]:
     return AIPredictor.predict(image_path)
