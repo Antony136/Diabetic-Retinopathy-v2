@@ -13,10 +13,11 @@ pillow==12.1.1
 numpy
 # Optimized for CPU-only environment
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch
-torchvision
-timm
-# matplotlib (removed to save RAM on Render Free tier)
+gradio_client==1.7.0
+# Remote Inference (Torch dependencies no longer needed on Render)
+# torch
+# torchvision
+# timm
 httpx
 anyio==4.12.1
 starlette==0.52.1
