@@ -7,6 +7,7 @@ import numpy as np
 import timm
 import os
 import gc
+import json
 from typing import Tuple, Optional
 
 # =========================
@@ -108,11 +109,11 @@ def load_predictor():
 # =========================
 def predict(image):
     if image is None:
-        return {"prediction": "Error", "confidence": 0.0}, None
+        return json.dumps({"prediction": "Error", "confidence": 0.0}), None
         
     model = load_predictor()
     if model is None:
-        return {"prediction": "Model Error", "confidence": 0.0}, None
+        return json.dumps({"prediction": "Model Error", "confidence": 0.0}), None
 
     transform = transforms.Compose([
         transforms.Resize((_img_size, _img_size)),
@@ -141,26 +142,25 @@ def predict(image):
     # 3. Overlay
     heatmap_overlay = overlay_heatmap_on_image(img_rgb, heatmap)
     
-    # Pack result per user request
-    prediction_data = {
+    # 4. Result (as stable JSON string)
+    result = {
         "prediction": res_label,
         "confidence": res_conf
     }
     
     gc.collect()
-    return prediction_data, heatmap_overlay
+    return json.dumps(result), heatmap_overlay
 
 # =========================
-# GRADIO INTERFACE
+# GRADIO INTERFACE (API FRIENDLY)
 # =========================
 demo = gr.Interface(
     fn=predict,
     inputs=gr.Image(type="pil"),
     outputs=[
-        gr.JSON(label="Prediction Data"),
+        gr.Textbox(label="Result JSON (API)"),
         gr.Image(label="Heatmap Output")
     ],
-    title="Diabetic Retinopathy Detection",
     api_name="predict"
 )
 
