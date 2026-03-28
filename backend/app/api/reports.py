@@ -43,6 +43,35 @@ def _write_temp_image(image_bytes: bytes, suffix: str) -> str:
     return str(tmp_path)
 
 
+def _clean_filename(name: str | None, default_ext: str) -> str:
+    cleaned = Path(name or "").name.strip()
+    if not cleaned:
+        cleaned = f"retina{default_ext}"
+    if "." not in cleaned:
+        cleaned = f"{cleaned}{default_ext}"
+    return cleaned
+
+
+def _unique_report_filename(db: Session, patient_id: int, desired: str) -> str:
+    desired = desired.strip()
+    if not desired:
+        desired = "retina.png"
+
+    stem = Path(desired).stem
+    ext = Path(desired).suffix
+
+    candidate = f"{stem}{ext}"
+    if not db.query(Report.id).filter(Report.patient_id == patient_id, Report.filename == candidate).first():
+        return candidate
+
+    n = 2
+    while True:
+        candidate = f"{stem} ({n}){ext}"
+        if not db.query(Report.id).filter(Report.patient_id == patient_id, Report.filename == candidate).first():
+            return candidate
+        n += 1
+
+
 def get_or_create_preferences(db: Session, user_id: int) -> UserPreference:
     pref = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
     if pref:
@@ -98,6 +127,8 @@ async def create_report(
         )
 
     suffix = _safe_suffix(getattr(file, "filename", None))
+    original_filename = _clean_filename(getattr(file, "filename", None), suffix)
+    report_filename = _unique_report_filename(db, patient_id, original_filename)
     local_image_path = _write_temp_image(image_bytes, suffix)
 
     try:
@@ -115,7 +146,7 @@ async def create_report(
         if os.path.exists(local_image_path):
             os.remove(local_image_path)
 
-    image_remote_name = f"retina_{uuid.uuid4().hex}{suffix}"
+    image_remote_name = f"{uuid.uuid4().hex}_{report_filename}"
     image_content_type = getattr(file, "content_type", None) or (
         "image/jpeg" if suffix in [".jpg", ".jpeg"] else "image/png"
     )
@@ -133,7 +164,7 @@ async def create_report(
     heatmap_url = ""
     if heatmap_bytes:
         hm_ext = heatmap_ext if heatmap_ext in [".png", ".jpg", ".jpeg"] else ".png"
-        hm_name = f"heatmap_{uuid.uuid4().hex}{hm_ext}"
+        hm_name = f"{uuid.uuid4().hex}_heatmap_{Path(report_filename).stem}{hm_ext}"
         heatmap_url = storage_service.upload_bytes(
             data=heatmap_bytes,
             remote_filename=hm_name,
@@ -147,7 +178,7 @@ async def create_report(
 
     new_report = Report(
         patient_id=patient_id,
-        filename=getattr(file, "filename", None),
+        filename=report_filename,
         image_url=image_url,
         heatmap_url=heatmap_url,
         prediction=prediction,
@@ -233,7 +264,7 @@ async def create_manual_report(
 
     new_report = Report(
         patient_id=report_in.patient_id,
-        filename=report_in.filename,
+        filename=_unique_report_filename(db, report_in.patient_id, (report_in.filename or "manual-report").strip()),
         image_url=report_in.image_url,
         heatmap_url=report_in.heatmap_url,
         prediction=report_in.prediction,
