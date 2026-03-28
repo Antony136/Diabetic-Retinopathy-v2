@@ -7,6 +7,8 @@ import timm
 import os
 import gc
 import json
+import io
+import requests as req
 from typing import Optional
 
 # =========================
@@ -101,9 +103,10 @@ def load_predictor():
     return _model
 
 # =========================
-# PREDICTION FUNCTION
+# PREDICTION LOGIC
 # =========================
-def predict(image):
+def predict_from_pil(image):
+    """Core logic — accepts a PIL image, returns (json_str, heatmap_pil)."""
     if image is None:
         return json.dumps({"prediction": "Error", "confidence": 0.0}), None
 
@@ -136,10 +139,28 @@ def predict(image):
         cam.close()
 
     heatmap_overlay = overlay_heatmap_on_image(img_rgb, heatmap)
-
     result = {"prediction": res_label, "confidence": res_conf}
     gc.collect()
     return json.dumps(result), heatmap_overlay
+
+def predict(image):
+    """UI-facing predict: receives PIL from gr.Image upload."""
+    return predict_from_pil(image)
+
+def predict_from_url(image_url: str):
+    """
+    API-facing predict: receives a URL string, downloads it, runs inference.
+    Exposed as api_name='predict_url' for your backend to call.
+    """
+    if not image_url or not image_url.startswith("http"):
+        return json.dumps({"prediction": "Error: invalid URL", "confidence": 0.0}), None
+    try:
+        response = req.get(image_url, timeout=30)
+        response.raise_for_status()
+        image = Image.open(io.BytesIO(response.content))
+    except Exception as e:
+        return json.dumps({"prediction": f"Download error: {e}", "confidence": 0.0}), None
+    return predict_from_pil(image)
 
 # =========================
 # GRADIO APP
@@ -156,6 +177,7 @@ with gr.Blocks(title="Diabetic Retinopathy API") as demo:
             api_json_out = gr.Textbox(label="Prediction JSON")
             heatmap_out = gr.Image(label="Grad-CAM Analysis")
 
+    # This handles the UI interaction
     predict_btn.click(
         fn=predict,
         inputs=[img_input],
@@ -163,6 +185,20 @@ with gr.Blocks(title="Diabetic Retinopathy API") as demo:
         api_name="predict"
     )
 
+    # Hidden API-only row for URL-based calls from your backend (Bypasses gr.Image validation)
+    with gr.Row(visible=False):
+        url_input = gr.Textbox(label="Image URL")
+        url_json_out = gr.Textbox(label="URL Prediction JSON")
+        url_heatmap_out = gr.Image(label="URL Heatmap")
+
+    # Note: We use change() or define it directly as an API
+    # so the backend can call it with api_name="predict_url"
+    url_input.submit(
+        fn=predict_from_url,
+        inputs=[url_input],
+        outputs=[url_json_out, url_heatmap_out],
+        api_name="predict_url"
+    )
+
 if __name__ == "__main__":
-    # 🔥 Enable verbose errors for Hugging Face debugging
     demo.launch(show_error=True)

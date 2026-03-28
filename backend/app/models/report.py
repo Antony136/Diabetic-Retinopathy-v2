@@ -7,6 +7,7 @@ class Report(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"))
+    filename = Column(String, nullable=True)
     image_url = Column(String, nullable=True)
     heatmap_url = Column(String, nullable=True)
     prediction = Column(String)

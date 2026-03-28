@@ -1,9 +1,10 @@
 import json
 import os
-from typing import Tuple
+from typing import Tuple, Optional
 from gradio_client import Client, handle_file
-from app.services.storage_service import storage_service
 from dotenv import load_dotenv
+from pathlib import Path
+import httpx
 
 load_dotenv()
 
@@ -17,7 +18,8 @@ class AIPredictor:
     """
 
     # Use your HF Space ID
-    _hf_space_id = os.getenv("HF_SPACE_ID", "jczdgyo/diabetic-retinopathy")
+    _hf_space_id = os.getenv("HF_SPACE_ID") or os.getenv("HF_SPACE_URL") or "jczdgyo/diabetic-retinopathy"
+    _hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN") or os.getenv("HF_API_TOKEN")
     
     # Initialize client
     _client = None
@@ -26,11 +28,87 @@ class AIPredictor:
     def get_client(cls):
         if cls._client is None:
             print(f"DEBUG: Initializing Gradio Client for {cls._hf_space_id}...")
-            cls._client = Client(cls._hf_space_id)
+            if cls._hf_token:
+                cls._client = Client(cls._hf_space_id, hf_token=cls._hf_token)
+            else:
+                cls._client = Client(cls._hf_space_id)
         return cls._client
 
     @classmethod
-    def predict(cls, image_path: str) -> Tuple[str, float, str]:
+    def _parse_prediction(cls, prediction_json: object) -> Tuple[str, float]:
+        if isinstance(prediction_json, dict):
+            prediction = prediction_json.get("prediction", "Unknown")
+            confidence_raw = prediction_json.get("confidence", 0.0)
+        elif isinstance(prediction_json, str):
+            try:
+                data = json.loads(prediction_json)
+                prediction = data.get("prediction", prediction_json)
+                confidence_raw = data.get("confidence", 0.0)
+            except Exception:
+                prediction = prediction_json
+                confidence_raw = 0.0
+        else:
+            prediction = str(prediction_json)
+            confidence_raw = 0.0
+
+        try:
+            confidence = float(confidence_raw)
+        except Exception:
+            confidence = 0.0
+        return str(prediction), confidence
+
+    @classmethod
+    def _extract_file_bytes(cls, file_info: object) -> tuple[Optional[bytes], Optional[str], Optional[str]]:
+        """
+        Returns (bytes, content_type, extension) when possible.
+        Gradio file outputs may be a local path, a dict with path/url, or a URL string.
+        """
+        if not file_info:
+            return None, None, None
+
+        local_path: Optional[str] = None
+        url: Optional[str] = None
+
+        if isinstance(file_info, dict):
+            local_path = file_info.get("path")
+            url = file_info.get("url")
+        elif isinstance(file_info, str):
+            if file_info.startswith("http://") or file_info.startswith("https://"):
+                url = file_info
+            else:
+                local_path = file_info
+        else:
+            local_path = str(file_info)
+
+        if local_path and os.path.exists(local_path):
+            try:
+                b = Path(local_path).read_bytes()
+                ext = Path(local_path).suffix.lower() or None
+                content_type = "image/png" if ext == ".png" else "image/jpeg" if ext in [".jpg", ".jpeg"] else "application/octet-stream"
+                return b, content_type, ext
+            except Exception as e:
+                print(f"ERROR: Failed to read heatmap file from disk: {e}")
+
+        if url:
+            try:
+                with httpx.Client(timeout=60.0, follow_redirects=True) as client:
+                    resp = client.get(url)
+                    resp.raise_for_status()
+                    content_type = resp.headers.get("content-type")
+                    ext = None
+                    if content_type:
+                        if "png" in content_type:
+                            ext = ".png"
+                        elif "jpeg" in content_type or "jpg" in content_type:
+                            ext = ".jpg"
+                    return resp.content, content_type, ext
+            except Exception as e:
+                print(f"ERROR: Failed to download heatmap from url {url}: {e}")
+
+        return None, None, None
+
+    @classmethod
+    def predict(cls, image_path: str) -> Tuple[str, float, Optional[bytes], Optional[str], Optional[str]]:
         try:
             print(f"DEBUG: Starting AI prediction for {image_path}...")
             client = cls.get_client()
@@ -51,33 +129,10 @@ class AIPredictor:
             if not isinstance(result, (list, tuple)) or len(result) < 2:
                 raise Exception(f"Unexpected response format from HF Space: {result}")
 
-            # Parse prediction JSON
-            prediction_json = result[0]
-            if isinstance(prediction_json, str):
-                prediction_data = json.loads(prediction_json)
-            else:
-                prediction_data = prediction_json
+            prediction, confidence = cls._parse_prediction(result[0])
 
-            prediction = prediction_data.get("prediction", "Unknown")
-            confidence = float(prediction_data.get("confidence", 0.0))
-
-            # Handle heatmap (could be path or dict)
-            heatmap_info = result[1]
-            heatmap_url = ""
-
-            if heatmap_info:
-                heatmap_local_path = ""
-                if isinstance(heatmap_info, dict):
-                    heatmap_local_path = heatmap_info.get("path") or heatmap_info.get("url")
-                else:
-                    heatmap_local_path = heatmap_info
-
-                if heatmap_local_path and os.path.exists(heatmap_local_path):
-                    remote_name = f"heatmap_{os.path.basename(image_path)}"
-                    print(f"DEBUG: Uploading heatmap {heatmap_local_path} to Supabase...")
-                    heatmap_url = storage_service.upload_file(heatmap_local_path, remote_name)
-
-            return prediction, confidence, heatmap_url
+            heatmap_bytes, heatmap_content_type, heatmap_ext = cls._extract_file_bytes(result[1])
+            return prediction, confidence, heatmap_bytes, heatmap_content_type, heatmap_ext
 
         except Exception as e:
             print(f"ERROR in AI prediction: {e}")
@@ -87,5 +142,5 @@ class AIPredictor:
 
 
 # Convenience wrapper
-def predict_dr_stage(image_path: str) -> Tuple[str, float, str]:
+def predict_dr_stage(image_path: str) -> Tuple[str, float, Optional[bytes], Optional[str], Optional[str]]:
     return AIPredictor.predict(image_path)

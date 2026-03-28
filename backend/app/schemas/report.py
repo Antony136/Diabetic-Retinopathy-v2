@@ -4,6 +4,7 @@ from typing import Optional
 
 class ReportCreate(BaseModel):
     patient_id: int
+    filename: Optional[str] = None
     image_url: Optional[str] = None
     heatmap_url: Optional[str] = None
     prediction: str
@@ -19,6 +20,7 @@ class ReportResponse(BaseModel):
     id: int
     patient_id: int
     patient_name: Optional[str] = None
+    filename: Optional[str] = None
     image_url: Optional[str] = None
     heatmap_url: Optional[str] = None
     prediction: str

@@ -80,3 +80,14 @@ def run_migrations(engine: Engine):
                     if dialect != "postgresql":
                         ddl = ddl.replace(" IF NOT EXISTS", "")
                     conn.execute(text(ddl))
+
+    # reports.filename was added to store original upload name
+    if _has_column(engine, "reports", "id") and not _has_column(engine, "reports", "filename"):
+        if dialect == "postgresql":
+            ddl = "ALTER TABLE reports ADD COLUMN IF NOT EXISTS filename VARCHAR NULL"
+        else:
+            ddl = "ALTER TABLE reports ADD COLUMN filename VARCHAR"
+        with engine.begin() as conn:
+            if dialect == "postgresql":
+                conn.execute(text("SET statement_timeout TO 0"))
+            conn.execute(text(ddl))
