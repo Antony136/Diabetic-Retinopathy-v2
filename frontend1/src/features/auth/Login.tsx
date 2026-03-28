@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
 import Button from "../../components/ui/Button";
 import { loginUser } from "../../services/auth";
 import { getAuthToken, setAuthToken } from "../../services/authStorage";
@@ -37,6 +38,18 @@ export default function Login() {
       setAuthToken(token.access_token);
       navigate(redirectTo, { replace: true });
     } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const detail = (err.response?.data as { detail?: unknown } | undefined)?.detail;
+        if (typeof detail === "string" && detail.trim()) {
+          setError(detail);
+        } else if (err.code === "ECONNABORTED") {
+          setError("Login timed out. If the server was idle, it may be waking up - please try again.");
+        } else {
+          setError(err.message || "Login failed");
+        }
+        return;
+      }
+
       const message =
         err && typeof err === "object" && "message" in err
           ? String((err as { message: unknown }).message)
@@ -127,7 +140,7 @@ export default function Login() {
           </label>
           <input
             className="block w-full px-4 py-3 bg-surface-container-lowest border border-outline/10 rounded-xl font-body text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-transparent transition-all outline-none"
-            placeholder="••••••••"
+            placeholder="********"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

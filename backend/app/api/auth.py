@@ -1,5 +1,8 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import OperationalError
 from app.db.database import SessionLocal
 from app.models.users import User
 from app.models.user_preference import UserPreference
@@ -7,6 +10,7 @@ from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserR
 from app.core.security import hash_password, verify_password, create_access_token, decode_token
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 def get_db():
     db = SessionLocal()
@@ -65,19 +69,26 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     """Login user and get JWT token"""
-    # Find user by email
-    user = db.query(User).filter(User.email == request.email).first()
-    if not user:
+    try:
+        # Find user by email
+        user = db.query(User).filter(User.email == request.email).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+
+        # Verify password
+        if not verify_password(request.password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+    except OperationalError as e:
+        logger.warning("Login failed due to DB connectivity issue for email=%s: %s", request.email, e)
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
-    
-    # Verify password
-    if not verify_password(request.password, user.password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database unavailable. Please try again in a few seconds.",
         )
 
     # Active check

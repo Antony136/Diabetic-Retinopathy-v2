@@ -5,6 +5,8 @@ import { getAuthToken } from "./authStorage";
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
+  // Prevent "infinite loading" when the backend/DB is slow or waking up.
+  timeout: 20000,
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -37,6 +39,8 @@ export async function uploadImage(file: File) {
   formData.append("image", file);
   const { data } = await api.post("/screening/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" },
+    // Upload + inference can legitimately take longer than normal API calls.
+    timeout: 120000,
   });
   return data;
 }

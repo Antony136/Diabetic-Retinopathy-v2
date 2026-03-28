@@ -9,8 +9,11 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(
     DATABASE_URL,
+    # Avoid long hangs during cold starts / transient DB issues.
+    connect_args={"connect_timeout": 10},
     pool_pre_ping=True,
     pool_recycle=300,
+    pool_timeout=10,
 )
 
 
