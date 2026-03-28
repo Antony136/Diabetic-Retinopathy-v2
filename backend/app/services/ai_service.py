@@ -118,10 +118,11 @@ class AIPredictor:
 
             # 2. Call Gradio API
             # Matches test script: client.predict(image=..., api_name="/predict")
-            result = client.predict(
-                image=image_input,
-                api_name="/predict"
-            )
+            try:
+                result = client.predict(image=image_input, api_name="/predict")
+            except Exception:
+                # Some Spaces register api_name without a leading slash
+                result = client.predict(image=image_input, api_name="predict")
 
             print(f"DEBUG: Prediction successful. Raw result type: {type(result)}")
 

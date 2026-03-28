@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: diabetic-retinopathy-backend
+    env: python
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && gunicorn -w 1 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT --timeout 300 --worker-tmp-dir /dev/shm --forwarded-allow-ips='*' app.main:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: HF_SPACE_ID
+        value: jczdgyo/diabetic-retinopathy
+      - key: HF_TOKEN
+        sync: false
