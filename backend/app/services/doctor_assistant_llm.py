@@ -52,7 +52,7 @@ class LLMConfig:
     ollama_model: str
     timeout_seconds: float
     temperature: float
-    max_tokens: int
+    max_completion_tokens: int
     cache_enable: bool
     cache_ttl_seconds: int
     cache_max_items: int
@@ -72,7 +72,8 @@ class LLMConfig:
             ollama_model=(os.getenv("OLLAMA_MODEL") or "phi3:mini").strip(),
             timeout_seconds=_env_float("LLM_TIMEOUT_SECONDS", 20.0),
             temperature=_env_float("LLM_TEMPERATURE", 0.2),
-            max_tokens=_env_int("LLM_MAX_TOKENS", 700),
+            # Groq docs prefer max_completion_tokens; keep env name stable for now.
+            max_completion_tokens=_env_int("LLM_MAX_TOKENS", 700),
             cache_enable=_env_bool("DOCTOR_ASSISTANT_CACHE_ENABLE", True),
             cache_ttl_seconds=_env_int("DOCTOR_ASSISTANT_CACHE_TTL_SECONDS", 900),
             cache_max_items=_env_int("DOCTOR_ASSISTANT_CACHE_MAX_ITEMS", 256),
@@ -160,13 +161,19 @@ async def _call_groq(system: str, user: str, cfg: LLMConfig) -> str:
             {"role": "user", "content": user},
         ],
         "temperature": cfg.temperature,
-        "max_tokens": cfg.max_tokens,
+        # Groq API supports `max_completion_tokens` and marks `max_tokens` as deprecated.
+        "max_completion_tokens": cfg.max_completion_tokens,
     }
     timeout = httpx.Timeout(cfg.timeout_seconds)
     headers = {"Authorization": f"Bearer {cfg.groq_api_key}", "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=timeout) as client:
         r = await client.post(cfg.groq_url, headers=headers, json=payload)
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            # Include body to make 400s debuggable (without leaking API key).
+            body = (r.text or "")[:4000]
+            raise RuntimeError(f"Groq HTTP {r.status_code}: {body}") from e
         data = r.json()
         try:
             return str(data["choices"][0]["message"]["content"]).strip()
@@ -214,4 +221,3 @@ async def generate_with_fallback(
             logger.exception("DoctorAssistant LLM call failed (%s).", provider)
 
     return None, None, "; ".join(errors) if errors else "LLM call failed"
-
