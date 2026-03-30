@@ -152,13 +152,15 @@ export default function DoctorAssistant() {
         <Card className="mt-6 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span
-                className={`px-2.5 py-1 rounded-full text-xs font-semibold ${priorityClasses(
-                  result.priority
-                )}`}
-              >
-                Priority: {result.priority || "n/a"}
-              </span>
+              {result.priority && (
+                <span
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold ${priorityClasses(
+                    result.priority
+                  )}`}
+                >
+                  Priority: {result.priority}
+                </span>
+              )}
               {result.worsening_detected && (
                 <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-fuchsia-500/15 text-fuchsia-200 border border-fuchsia-500/30">
                   Worsening detected
@@ -197,4 +199,3 @@ export default function DoctorAssistant() {
     </div>
   );
 }
-

@@ -54,6 +54,7 @@ def safe_rule_based_answer(
     patient: Optional[Patient],
     reports: Iterable[Report],
     doctor_query: str,
+    today_rows: Optional[list[dict]] = None,
 ) -> tuple[str, str]:
     reports = list(reports)
     latest = reports[0] if reports else None
@@ -62,24 +63,55 @@ def safe_rule_based_answer(
 
     if context_type == "general":
         answer = (
-            "I can help, but the LLM is unavailable. For general guidance: diabetic retinopathy is retinal microvascular damage "
-            "from diabetes. Screening uses dilated exam and/or retinal imaging. Treatment depends on severity and may include "
-            "glycemic/BP/lipid control, intravitreal anti-VEGF, laser, and vitrectomy (specialist-guided)."
+            "LLM is unavailable, so here’s a rule-based overview.\n\n"
+            "Diabetic retinopathy (DR) is retinal microvascular damage from diabetes. Screening is typically with a dilated fundus exam "
+            "and/or retinal imaging; OCT is commonly used when macular edema is suspected. Treatment depends on severity and may include "
+            "systemic risk-factor control (glucose/BP/lipids) and ophthalmic interventions such as intravitreal anti-VEGF, laser, or vitrectomy "
+            "(specialist-guided).\n\n"
+            "Urgent referral red flags: sudden vision loss, new floaters/flashes, severe NPDR/PDR, suspected macular edema."
         )
         return answer, "Rule-based general guidance (LLM unavailable)."
 
     if context_type == "today_reports":
+        items = today_rows or []
         severe = []
-        for r in reports:
-            if dr_stage_score(r.prediction) >= 3:
-                severe.append(f"Patient #{r.patient_id} ({r.prediction})")
-        answer = (
-            "LLM is unavailable. Today’s report summary is generated using rule-based rules.\n\n"
-            f"- Total reports today: {len(reports)}\n"
-            f"- Severe/proliferative flags: {len(severe)}\n"
-            + (("- Severe cases: " + "; ".join(severe)) if severe else "- Severe cases: none detected")
-        )
-        return answer, "Rule-based daily summary (LLM unavailable)."
+        for it in items:
+            if dr_stage_score(str(it.get("prediction") or "")) >= 3:
+                severe.append(f"{it.get('name') or 'Patient'} (#{it.get('patient_id')}) - {it.get('prediction')}")
+
+        lines = [
+            "Assessment:",
+            "- LLM is unavailable; providing rule-based daily summary.",
+            f"- Total reports today: {len(items) or len(reports)}",
+            f"- Severe/proliferative flags: {len(severe)}",
+            "",
+            "Risk level:",
+            "- High priority for severe/proliferative DR and low-confidence predictions.",
+            "",
+            "Suggested next steps:",
+            "- Review severe/proliferative cases first and arrange urgent retina referral per protocol.",
+            "- For moderate cases: ensure timely follow-up and optimize systemic risk factors.",
+            "",
+            "Red flags:",
+            "- Severe NPDR/PDR labels, very low confidence, symptomatic patients.",
+            "",
+            "Patients (today):",
+        ]
+        if items:
+            for i, it in enumerate(items[:50], start=1):
+                lines.extend(
+                    [
+                        f"--- Patient {i} ---",
+                        f"ID: {it.get('patient_id')} | Name: {it.get('name')} | Age: {it.get('age')} | Gender: {it.get('gender')}",
+                        f"Stage: {it.get('prediction')} | Confidence: {it.get('confidence')} | Report: {it.get('created_at')}",
+                        f"Notes: {it.get('description') or ''}".rstrip(),
+                        "",
+                    ]
+                )
+        else:
+            lines.append("- No reports found for today.")
+
+        return "\n".join(lines).strip(), "Rule-based daily summary (LLM unavailable)."
 
     # patient
     p = patient
@@ -111,9 +143,26 @@ def build_prompts(
     patient: Optional[Patient] = None,
     reports: Optional[list[Report]] = None,
     today: Optional[date] = None,
+    today_rows: Optional[list[dict]] = None,
 ) -> DoctorAssistantPrompts:
     reports = reports or []
     today = today or datetime.now(timezone.utc).date()
+
+    if context_type == "general":
+        system = (
+            "You are a medical assistant chatbot helping a clinician with diabetic retinopathy (DR) questions. "
+            "Answer naturally in a helpful, readable way (short paragraphs and bullet points are fine). "
+            "Do NOT output the patient-report template sections unless explicitly asked. "
+            "Do NOT claim to replace clinical judgement. "
+            "If the question is ambiguous, ask 1–3 clarifying questions. "
+            "Avoid hallucinating specific patient details.\n"
+        )
+        user = (
+            "Context: general medical question (not patient-specific).\n"
+            f"Doctor question: {doctor_query}\n\n"
+            "Formatting: answer like a normal medical assistant response, not a patient report."
+        )
+        return DoctorAssistantPrompts(system=system, user=user)
 
     system = (
         "You are a Doctor Assistant for diabetic retinopathy (DR). "
@@ -121,36 +170,60 @@ def build_prompts(
         "Do NOT claim to replace clinical judgement. "
         "If information is missing, ask clarifying questions. "
         "Prefer bullet points.\n\n"
-        "Output format (plain text):\n"
+        "Always respond in this exact section order (plain text):\n"
         "Assessment:\n"
-        "- ...\n"
         "Risk level:\n"
-        "- low/medium/high + short rationale\n"
         "Suggested next steps:\n"
-        "- ...\n"
         "Red flags:\n"
-        "- ...\n"
     )
 
-    if context_type == "general":
-        user = f"Doctor question: {doctor_query}"
-        return DoctorAssistantPrompts(system=system, user=user)
-
     if context_type == "today_reports":
-        lines = [f"Today (UTC date): {today.isoformat()}"]
-        if not reports:
+        items = today_rows or []
+        lines = [
+            f"Today (UTC date): {today.isoformat()}",
+            "Task: Summarize today’s caseload, highlight severe/proliferative and low-confidence predictions, and suggest triage priorities.",
+            "",
+            "Patients (leave a blank line between each patient block):",
+        ]
+
+        if not items and not reports:
             lines.append("No reports found for today.")
         else:
-            lines.append(f"Total reports today: {len(reports)}")
-            for r in reports[:50]:
-                lines.append(
-                    f"- report_id={r.id}, patient_id={r.patient_id}, stage={r.prediction}, confidence={r.confidence:.3f}, created_at={_dt(r.created_at)}"
-                )
-        lines.append("")
+            lines.append(f"Total reports today: {len(items) or len(reports)}")
+            if items:
+                for i, it in enumerate(items[:60], start=1):
+                    lines.extend(
+                        [
+                            f"--- Patient {i} ---",
+                            f"patient_id: {it.get('patient_id')}",
+                            f"name: {it.get('name')}",
+                            f"age: {it.get('age')}",
+                            f"gender: {it.get('gender')}",
+                            f"report_id: {it.get('report_id')}",
+                            f"stage: {it.get('prediction')}",
+                            f"confidence: {it.get('confidence')}",
+                            f"created_at: {_dt(it.get('created_at')) if isinstance(it.get('created_at'), datetime) else it.get('created_at')}",
+                            f"description: {it.get('description') or ''}".rstrip(),
+                            "",
+                            "",
+                        ]
+                    )
+            else:
+                for r in reports[:50]:
+                    lines.extend(
+                        [
+                            "--- Patient ---",
+                            f"patient_id: {r.patient_id}",
+                            f"stage: {r.prediction}",
+                            f"confidence: {r.confidence:.3f}",
+                            f"created_at: {_dt(r.created_at)}",
+                            "",
+                            "",
+                        ]
+                    )
+
         lines.append(f"Doctor question: {doctor_query}")
-        lines.append(
-            "Task: Summarize today’s caseload, highlight severe/proliferative and low-confidence predictions, and suggest triage priorities."
-        )
+        lines.append("In the Assessment section, include a concise per-patient triage list (high/medium/low).")
         return DoctorAssistantPrompts(system=system, user="\n".join(lines))
 
     # patient
@@ -181,4 +254,3 @@ def build_prompts(
         "Task: Explain the patient’s DR status, detect worsening vs prior report if possible, estimate risk level, and propose next steps."
     )
     return DoctorAssistantPrompts(system=system, user="\n".join(lines))
-

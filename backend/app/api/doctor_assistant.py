@@ -68,6 +68,36 @@ def _get_today_reports_for_user(db: Session, user: User) -> list[Report]:
         q = q.filter(Patient.doctor_id == user.id)
     return q.order_by(Report.created_at.desc(), Report.id.desc()).all()
 
+def _get_today_rows_for_user(db: Session, user: User) -> list[dict]:
+    today = datetime.utcnow().date()
+    start = datetime(today.year, today.month, today.day)
+    end = start.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    q = (
+        db.query(Report, Patient)
+        .join(Patient, Patient.id == Report.patient_id)
+        .filter(Report.created_at >= start, Report.created_at <= end)
+    )
+    if getattr(user, "role", "doctor") != "admin":
+        q = q.filter(Patient.doctor_id == user.id)
+
+    rows: list[dict] = []
+    for report, patient in q.order_by(Report.created_at.desc(), Report.id.desc()).all():
+        rows.append(
+            {
+                "patient_id": patient.id,
+                "name": patient.name,
+                "age": patient.age,
+                "gender": patient.gender,
+                "report_id": report.id,
+                "prediction": report.prediction,
+                "confidence": report.confidence,
+                "created_at": report.created_at,
+                "description": report.description,
+            }
+        )
+    return rows
+
 
 @router.post("/doctor-assistant/explain", response_model=DoctorAssistantExplainResponse)
 @router.post("/api/doctor-assistant/explain", response_model=DoctorAssistantExplainResponse)
@@ -84,6 +114,7 @@ async def doctor_assistant_explain(
 
     patient: Optional[Patient] = None
     reports: list[Report] = []
+    today_rows: list[dict] = []
 
     if context_type == "patient":
         patient = _get_patient_for_user(db, int(payload.patient_id), current_user)
@@ -92,6 +123,8 @@ async def doctor_assistant_explain(
         reports = _get_reports_for_patient(db, patient.id, limit=20)
 
     if context_type == "today_reports":
+        today_rows = _get_today_rows_for_user(db, current_user)
+        # Keep a reports list for severity aggregation.
         reports = _get_today_reports_for_user(db, current_user)
 
     prompts = build_prompts(
@@ -99,14 +132,30 @@ async def doctor_assistant_explain(
         doctor_query=doctor_query,
         patient=patient,
         reports=reports,
+        today_rows=today_rows if context_type == "today_reports" else None,
     )
 
-    latest = reports[0] if reports else None
-    prev = reports[1] if len(reports) >= 2 else None
-    latest_score = dr_stage_score(latest.prediction) if latest else 2
-    prev_score = dr_stage_score(prev.prediction) if prev else latest_score
-    worsening = bool(latest and prev and latest_score > prev_score)
-    priority, priority_reason = priority_from_score(latest_score, worsening)
+    worsening: Optional[bool] = None
+    priority: Optional[str] = None
+    priority_reason: Optional[str] = None
+
+    if context_type == "patient":
+        latest = reports[0] if reports else None
+        prev = reports[1] if len(reports) >= 2 else None
+        latest_score = dr_stage_score(latest.prediction) if latest else 2
+        prev_score = dr_stage_score(prev.prediction) if prev else latest_score
+        worsening = bool(latest and prev and latest_score > prev_score)
+        priority, priority_reason = priority_from_score(latest_score, bool(worsening))
+    elif context_type == "today_reports":
+        # Priority reflects the worst case present today.
+        scores = [dr_stage_score(r.prediction) for r in reports] if reports else []
+        worst = max(scores) if scores else 2
+        priority, priority_reason = priority_from_score(worst, False)
+    else:
+        # general: don't return priority
+        worsening = None
+        priority = None
+        priority_reason = None
 
     cache_key = None
     if context_type == "general":
@@ -130,6 +179,7 @@ async def doctor_assistant_explain(
             patient=patient,
             reports=reports,
             doctor_query=doctor_query,
+            today_rows=today_rows if context_type == "today_reports" else None,
         )
         logger.error("DoctorAssistant: both providers failed: %s", err)
         return DoctorAssistantExplainResponse(
@@ -138,7 +188,7 @@ async def doctor_assistant_explain(
             fallback="rule-based response",
             answer=rule_answer,
             summary=rule_summary,
-            priority=priority,  # still useful for UI triage
+            priority=priority,
             priority_reason=priority_reason,
             worsening_detected=worsening,
         )
