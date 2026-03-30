@@ -5,6 +5,7 @@ export const DOCTOR_NAV_ITEMS = [
   { label: "Screening", icon: "visibility", path: "/screening" },
   { label: "Records", icon: "folder_shared", path: "/records" },
   { label: "Triage", icon: "medical_services", path: "/triage" },
+  { label: "Assistant", icon: "chat", path: "/assistant" },
   { label: "Settings", icon: "settings", path: "/settings" },
 ] as const;
 

@@ -16,6 +16,7 @@ const Triage = lazy(() => import("../features/triage/Triage"));
 const Settings = lazy(() => import("../features/settings/Settings"));
 const Profile = lazy(() => import("../features/profile/Profile"));
 const Notifications = lazy(() => import("../features/notifications/Notifications"));
+const DoctorAssistant = lazy(() => import("../features/assistant/DoctorAssistant"));
 const AdminDashboard = lazy(() => import("../features/admin/AdminDashboard"));
 const AdminNotifications = lazy(() => import("../features/admin/AdminNotifications"));
 
@@ -109,6 +110,14 @@ export default function AppRoutes() {
           element={
             <RequireDoctor>
               <Triage />
+            </RequireDoctor>
+          }
+        />
+        <Route
+          path="/assistant"
+          element={
+            <RequireDoctor>
+              <DoctorAssistant />
             </RequireDoctor>
           }
         />

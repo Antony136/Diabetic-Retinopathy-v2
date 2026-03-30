@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.api import health, auth, patients, reports, notifications, preferences, profile, admin
+from app.api import health, auth, patients, reports, notifications, preferences, profile, admin, doctor_assistant
 from pathlib import Path
 from app.db.database import engine
 from app.db.migrate import run_migrations
@@ -57,4 +57,5 @@ app.include_router(notifications.router)
 app.include_router(preferences.router)
 app.include_router(profile.router)
 app.include_router(admin.router)
+app.include_router(doctor_assistant.router)
 
