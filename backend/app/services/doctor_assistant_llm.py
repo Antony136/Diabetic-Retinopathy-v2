@@ -48,6 +48,7 @@ class LLMConfig:
     groq_api_key: str
     groq_url: str
     groq_model: str
+    groq_fallback_model: str
     ollama_url: str
     ollama_model: str
     timeout_seconds: float
@@ -67,7 +68,9 @@ class LLMConfig:
             provider=provider,  # type: ignore[assignment]
             groq_api_key=(os.getenv("GROQ_API_KEY") or "").strip(),
             groq_url=(os.getenv("GROQ_URL") or "https://api.groq.com/openai/v1/chat/completions").strip(),
-            groq_model=(os.getenv("GROQ_MODEL") or "llama3-8b-8192").strip(),
+            # NOTE: Groq decommissioned `llama3-8b-8192`; prefer `llama-3.1-8b-instant`.
+            groq_model=(os.getenv("GROQ_MODEL") or "llama-3.1-8b-instant").strip(),
+            groq_fallback_model=(os.getenv("GROQ_FALLBACK_MODEL") or "llama-3.1-8b-instant").strip(),
             ollama_url=(os.getenv("OLLAMA_URL") or "http://localhost:11434").strip().rstrip("/"),
             ollama_model=(os.getenv("OLLAMA_MODEL") or "phi3:mini").strip(),
             timeout_seconds=_env_float("LLM_TIMEOUT_SECONDS", 20.0),
@@ -154,31 +157,50 @@ async def _call_ollama(prompt: str, cfg: LLMConfig) -> str:
 async def _call_groq(system: str, user: str, cfg: LLMConfig) -> str:
     if not cfg.groq_api_key:
         raise RuntimeError("GROQ_API_KEY is not set")
-    payload = {
-        "model": cfg.groq_model,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        "temperature": cfg.temperature,
-        # Groq API supports `max_completion_tokens` and marks `max_tokens` as deprecated.
-        "max_completion_tokens": cfg.max_completion_tokens,
-    }
+    def _payload(model: str) -> dict:
+        return {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "temperature": cfg.temperature,
+            # Groq API supports `max_completion_tokens` and marks `max_tokens` as deprecated.
+            "max_completion_tokens": cfg.max_completion_tokens,
+        }
     timeout = httpx.Timeout(cfg.timeout_seconds)
     headers = {"Authorization": f"Bearer {cfg.groq_api_key}", "Content-Type": "application/json"}
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        r = await client.post(cfg.groq_url, headers=headers, json=payload)
-        try:
-            r.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            # Include body to make 400s debuggable (without leaking API key).
-            body = (r.text or "")[:4000]
-            raise RuntimeError(f"Groq HTTP {r.status_code}: {body}") from e
-        data = r.json()
-        try:
-            return str(data["choices"][0]["message"]["content"]).strip()
-        except Exception:
-            raise RuntimeError(f"Groq unexpected response: {_short_json(data)}")
+
+    async def _post(model: str) -> httpx.Response:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            return await client.post(cfg.groq_url, headers=headers, json=_payload(model))
+
+    r = await _post(cfg.groq_model)
+    try:
+        r.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        body = (r.text or "")[:4000]
+        # Automatic recovery when the configured model is decommissioned.
+        if "model_decommissioned" in body or "decommissioned" in body:
+            fb = (cfg.groq_fallback_model or "").strip()
+            if fb and fb != cfg.groq_model:
+                r2 = await _post(fb)
+                try:
+                    r2.raise_for_status()
+                    data2 = r2.json()
+                    try:
+                        return str(data2["choices"][0]["message"]["content"]).strip()
+                    except Exception:
+                        raise RuntimeError(f"Groq unexpected response: {_short_json(data2)}")
+                except httpx.HTTPStatusError as e2:
+                    body2 = (r2.text or "")[:4000]
+                    raise RuntimeError(f"Groq HTTP {r2.status_code}: {body2}") from e2
+        raise RuntimeError(f"Groq HTTP {r.status_code}: {body}") from e
+    data = r.json()
+    try:
+        return str(data["choices"][0]["message"]["content"]).strip()
+    except Exception:
+        raise RuntimeError(f"Groq unexpected response: {_short_json(data)}")
 
 
 async def generate_with_fallback(
