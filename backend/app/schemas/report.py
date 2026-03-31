@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 class ReportCreate(BaseModel):
+    client_uuid: Optional[str] = None
     patient_id: int
     filename: Optional[str] = None
     image_url: Optional[str] = None
@@ -18,6 +19,7 @@ class ReportUpdate(BaseModel):
 
 class ReportResponse(BaseModel):
     id: int
+    client_uuid: Optional[str] = None
     patient_id: int
     patient_name: Optional[str] = None
     filename: Optional[str] = None
@@ -27,6 +29,8 @@ class ReportResponse(BaseModel):
     confidence: float
     description: Optional[str] = None
     created_at: datetime
+    updated_at: Optional[datetime] = None
+    source: Optional[str] = None
 
     class Config:
         from_attributes = True

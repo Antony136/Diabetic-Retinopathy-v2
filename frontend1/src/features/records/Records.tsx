@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Card from "../../components/ui/Card";
 import { getRecords, getTriageCases } from "../../services/api";
 import PatientDetailsModal from "../../components/patients/PatientDetailsModal";
-import { API_BASE_URL } from "../../utils/constants";
+import { getActiveBackendOrigin } from "../../services/apiBase";
 import { getAppSettings } from "../../services/appSettings";
 import { severityFromStage, stageDescription, getTreatmentWindow, getLesionRegion } from "../screening/mockAnalysis";
 
@@ -21,7 +21,7 @@ interface PatientRecord {
   latest_confidence?: number;
 }
 
-const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+const BACKEND_ORIGIN = getActiveBackendOrigin();
 
 function resolveBackendUrl(pathOrUrl: string) {
   if (!pathOrUrl) return "";

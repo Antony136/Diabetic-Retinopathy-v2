@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query, Form
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.report import Report
@@ -88,6 +88,7 @@ def get_or_create_preferences(db: Session, user_id: int) -> UserPreference:
 async def create_report(
     patient_id: int = Query(...),
     file: UploadFile = File(...),
+    client_uuid: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -156,11 +157,8 @@ async def create_report(
         remote_filename=image_remote_name,
         content_type=image_content_type,
     )
-    if not str(image_url).startswith("http"):
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Supabase Storage upload failed (check SUPABASE_URL/SUPABASE_KEY and bucket permissions).",
-        )
+    if not image_url:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Image storage failed")
 
     heatmap_url = ""
     if heatmap_bytes:
@@ -171,19 +169,18 @@ async def create_report(
             remote_filename=hm_name,
             content_type=heatmap_content_type or ("image/png" if hm_ext == ".png" else "image/jpeg"),
         )
-        if heatmap_url and not str(heatmap_url).startswith("http"):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Supabase Storage heatmap upload failed (check SUPABASE_URL/SUPABASE_KEY and bucket permissions).",
-            )
+        if not heatmap_url:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Heatmap storage failed")
 
     new_report = Report(
         patient_id=patient_id,
+        client_uuid=(client_uuid or "").strip() or None,
         filename=report_filename,
         image_url=image_url,
         heatmap_url=heatmap_url,
         prediction=prediction,
         confidence=confidence,
+        source="sync_local",
     )
 
     db.add(new_report)
@@ -243,6 +240,109 @@ async def create_report(
     return new_report
 
 
+@router.post("/import", response_model=ReportResponse)
+async def import_report(
+    patient_id: int | None = Query(None),
+    patient_client_uuid: str | None = Query(None),
+    client_uuid: str = Form(...),
+    prediction: str = Form(...),
+    confidence: float = Form(...),
+    description: str | None = Form(None),
+    created_at: str | None = Form(None),
+    updated_at: str | None = Form(None),
+    file: UploadFile | None = File(None),
+    heatmap: UploadFile | None = File(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Import a report created offline (sync).
+
+    Idempotent on (doctor_id, report.client_uuid).
+    """
+    c_uuid = (client_uuid or "").strip()
+    if not c_uuid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="client_uuid is required")
+
+    existing = (
+        db.query(Report)
+        .join(Patient, Patient.id == Report.patient_id)
+        .filter(Patient.doctor_id == current_user.id, Report.client_uuid == c_uuid)
+        .first()
+    )
+    if existing:
+        return existing
+
+    resolved_patient: Patient | None = None
+    if patient_id is not None:
+        resolved_patient = db.query(Patient).filter(Patient.id == patient_id, Patient.doctor_id == current_user.id).first()
+    if resolved_patient is None and patient_client_uuid:
+        resolved_patient = db.query(Patient).filter(Patient.doctor_id == current_user.id, Patient.client_uuid == patient_client_uuid).first()
+    if resolved_patient is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found for import")
+
+    filename = "offline-report.png"
+    image_url: str | None = None
+    if file is not None:
+        await file.seek(0)
+        image_bytes = await file.read()
+        if not image_bytes:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Imported report image is empty")
+
+        suffix = _safe_suffix(getattr(file, "filename", None))
+        original_filename = _clean_filename(getattr(file, "filename", None), suffix)
+        filename = _unique_report_filename(db, resolved_patient.id, original_filename)
+
+        image_remote_name = f"{uuid.uuid4().hex}_{filename}"
+        image_url = storage_service.upload_bytes(
+            data=image_bytes,
+            remote_filename=image_remote_name,
+            content_type=getattr(file, "content_type", None),
+        )
+
+    heatmap_url = ""
+    if heatmap is not None:
+        await heatmap.seek(0)
+        heatmap_bytes = await heatmap.read()
+        if heatmap_bytes:
+            hm_suffix = _safe_suffix(getattr(heatmap, "filename", None))
+            hm_name = f"{uuid.uuid4().hex}_heatmap_{Path(filename).stem}{hm_suffix}"
+            heatmap_url = storage_service.upload_bytes(
+                data=heatmap_bytes,
+                remote_filename=hm_name,
+                content_type=getattr(heatmap, "content_type", None),
+            )
+
+    def _parse_dt(value: str | None) -> datetime | None:
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+        except Exception:
+            return None
+
+    created_dt = _parse_dt(created_at) or datetime.utcnow()
+    updated_dt = _parse_dt(updated_at) or created_dt
+
+    new_report = Report(
+        patient_id=resolved_patient.id,
+        client_uuid=c_uuid,
+        filename=filename,
+        image_url=image_url,
+        heatmap_url=heatmap_url,
+        prediction=prediction,
+        confidence=float(confidence),
+        description=description,
+        created_at=created_dt,
+        updated_at=updated_dt,
+        source="sync_import",
+    )
+    db.add(new_report)
+    db.commit()
+    db.refresh(new_report)
+    return new_report
+
+
 @router.post("/manual", response_model=ReportResponse)
 async def create_manual_report(
     report_in: ReportCreate,
@@ -265,12 +365,14 @@ async def create_manual_report(
 
     new_report = Report(
         patient_id=report_in.patient_id,
+        client_uuid=(report_in.client_uuid or "").strip() or None,
         filename=_unique_report_filename(db, report_in.patient_id, (report_in.filename or "manual-report").strip()),
         image_url=report_in.image_url,
         heatmap_url=report_in.heatmap_url,
         prediction=report_in.prediction,
         confidence=report_in.confidence,
         description=report_in.description,
+        source="manual",
     )
 
     db.add(new_report)

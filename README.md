@@ -126,3 +126,8 @@ Running a Torch-based AI model on a 512MB RAM limit is challenging. This project
 
 ---
 
+## Desktop (Offline-Capable)
+
+An Electron wrapper with a bundled local FastAPI backend (SQLite + local ML inference) lives in `desktop/`.
+See `desktop/README.md` for build + packaging instructions.
+

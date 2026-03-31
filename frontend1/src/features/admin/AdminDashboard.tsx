@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import api from "../../services/api";
-import { API_BASE_URL } from "../../utils/constants";
+import { getActiveBackendOrigin } from "../../services/apiBase";
 import { severityFromStage, stageDescription } from "../screening/mockAnalysis";
 
 type AdminUser = { id: number; name: string; email: string; role: string; is_active?: boolean; created_at?: string };
@@ -27,7 +27,7 @@ type AdminReport = {
   created_at: string;
 };
 
-const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+const BACKEND_ORIGIN = getActiveBackendOrigin();
 
 function resolveBackendUrl(pathOrUrl: string) {
   if (!pathOrUrl) return "";

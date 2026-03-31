@@ -1,15 +1,18 @@
 import axios, { AxiosHeaders, type InternalAxiosRequestConfig } from "axios";
-import { API_BASE_URL } from "../utils/constants";
+import { getActiveApiBaseUrl } from "./apiBase";
 import { getAuthToken } from "./authStorage";
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
   // Prevent "infinite loading" when the backend/DB is slow or waking up.
   timeout: 20000,
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const baseURL = getActiveApiBaseUrl();
+  config.baseURL = baseURL;
+  console.debug("API request", config.method, baseURL, config.url);
+
   const token = getAuthToken();
   if (!token) return config;
 

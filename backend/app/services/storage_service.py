@@ -24,12 +24,20 @@ class StorageService:
         Returns the public object URL (requires a public bucket).
         """
         if not SUPABASE_URL or not SUPABASE_KEY:
-            print("ERROR: SUPABASE_URL or SUPABASE_KEY missing in environment.")
-            return f"/uploads/{remote_filename}"
+            # Offline/local fallback: persist to disk and serve via /uploads static mount.
+            try:
+                uploads_dir = Path("uploads")
+                uploads_dir.mkdir(parents=True, exist_ok=True)
+                local_path = uploads_dir / Path(remote_filename).name
+                local_path.write_bytes(data or b"")
+                return f"/uploads/{local_path.name}"
+            except Exception as e:
+                print(f"ERROR: Failed to write local upload fallback: {e}")
+                return f"/uploads/{Path(remote_filename).name}"
 
         if not data:
             print("ERROR: No data provided for upload (0 bytes).")
-            return f"/uploads/{remote_filename}"
+            return ""
 
         safe_filename = quote(remote_filename)
         endpoint = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{safe_filename}"
@@ -81,17 +89,24 @@ class StorageService:
         Uploads a file to Supabase Storage with retry logic.
         """
         if not SUPABASE_URL or not SUPABASE_KEY:
-            print("ERROR: SUPABASE_URL or SUPABASE_KEY missing in environment.")
-            return f"/uploads/{remote_filename}"
+            try:
+                uploads_dir = Path("uploads")
+                uploads_dir.mkdir(parents=True, exist_ok=True)
+                local_dest = uploads_dir / Path(remote_filename).name
+                local_dest.write_bytes(Path(local_path).read_bytes())
+                return f"/uploads/{local_dest.name}"
+            except Exception as e:
+                print(f"ERROR: Failed to write local upload fallback: {e}")
+                return f"/uploads/{Path(remote_filename).name}"
 
         if not os.path.exists(local_path):
             print(f"ERROR: Local file not found: {local_path}")
-            return f"/uploads/{remote_filename}"
+            return ""
 
         file_size = os.path.getsize(local_path)
         if file_size == 0:
             print(f"ERROR: File is empty (0 bytes): {local_path}")
-            return f"/uploads/{remote_filename}"
+            return ""
 
         file_ext = Path(local_path).suffix.lower()
         if file_ext in [".jpg", ".jpeg"]:
@@ -106,7 +121,7 @@ class StorageService:
                 file_data = f.read()
         except Exception as e:
             print(f"ERROR: Failed to read local file {local_path}: {e}")
-            return f"/uploads/{remote_filename}"
+            return ""
 
         return StorageService.upload_bytes(
             data=file_data,

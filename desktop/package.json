@@ -1,0 +1,68 @@
+{
+  "name": "retina-max-desktop",
+  "version": "2.0.0",
+  "private": true,
+  "main": "src/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:frontend\" \"npm:dev:electron\"",
+    "dev:frontend": "npm --prefix ../frontend1 run dev",
+    "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "build:frontend": "npm --prefix ../frontend1 run build",
+    "build:backend:pyinstaller": "powershell -NoProfile -ExecutionPolicy Bypass -File ../backend/scripts/build_desktop_backend.ps1",
+    "build": "npm run build:frontend && npm run build:backend:pyinstaller && electron-builder",
+    "dist": "npm run build",
+    "lint": "node -e \"console.log('No desktop lint configured')\""
+  },
+  "dependencies": {
+    "electron-log": "^5.3.0",
+    "get-port": "^7.1.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "electron": "^32.2.0",
+    "electron-builder": "^25.1.8",
+    "wait-on": "^8.0.5"
+  },
+  "build": {
+    "appId": "com.retinamax.desktop",
+    "productName": "Retina Max Desktop",
+    "files": [
+      "src/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../frontend1/dist",
+        "to": "frontend"
+      },
+      {
+        "from": "../backend/dist",
+        "to": "backend"
+      },
+      {
+        "from": "../backend/app/checkpoints/model_b3.pth",
+        "to": "backend/model_b3.pth"
+      }
+    ],
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    }
+  }
+}
+

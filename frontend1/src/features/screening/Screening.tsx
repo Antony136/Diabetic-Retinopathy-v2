@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-import { API_BASE_URL } from "../../utils/constants";
+import { getActiveBackendOrigin } from "../../services/apiBase";
 import {
   createPatient,
   listPatients,
@@ -18,7 +18,7 @@ import { getAppSettings } from "../../services/appSettings";
 
 type ReportRow = ReportResponse & { priority_score: 1 | 2 | 3 | 4 | 5 };
 
-const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+const BACKEND_ORIGIN = getActiveBackendOrigin();
 
 function resolveBackendUrl(pathOrUrl: string) {
   if (!pathOrUrl) return "";
@@ -159,8 +159,19 @@ export default function Screening() {
     try {
       const created = await createReport({ patientId: selectedPatientId, file });
       setReport(toReportRow(created));
-    } catch {
-      setAnalysisError("Failed to run analysis");
+    } catch (error: unknown) {
+      console.error("Analysis request failed", error);
+      let message = "Failed to run analysis";
+      if (error && typeof error === "object") {
+        if ("response" in error) {
+          const resp = (error as any).response;
+          if (resp?.data?.detail) message = String(resp.data.detail);
+          else if (resp?.data?.error) message = String(resp.data.error);
+          else if (resp?.statusText) message = `${resp.statusText} (${resp.status})`;
+        }
+        if ((error as any).message) message = String((error as any).message);
+      }
+      setAnalysisError(message);
     } finally {
       setIsAnalyzing(false);
     }

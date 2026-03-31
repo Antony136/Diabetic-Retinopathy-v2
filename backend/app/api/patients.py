@@ -26,6 +26,13 @@ def create_patient(
     db: Session = Depends(get_db)
 ):
     """Create a new patient for the authenticated doctor"""
+    # Sync-friendly idempotency key (preferred over heuristic de-dup).
+    client_uuid = (request.client_uuid or "").strip() or None
+    if client_uuid:
+        existing_by_uuid = db.query(Patient).filter(Patient.doctor_id == current_user.id, Patient.client_uuid == client_uuid).first()
+        if existing_by_uuid:
+            return existing_by_uuid
+
     # De-duplicate: if the same patient is re-entered, reuse existing row.
     phone = (request.phone or "").strip()
     if phone:
@@ -44,6 +51,7 @@ def create_patient(
             return existing
 
     new_patient = Patient(
+        client_uuid=client_uuid,
         name=request.name,
         age=request.age,
         gender=request.gender,
@@ -176,6 +184,13 @@ def update_patient(
     patient.gender = request.gender
     patient.phone = request.phone
     patient.address = request.address
+    # Ensure updated_at changes even on SQLite where onupdate isn't always triggered.
+    try:
+        from datetime import datetime
+
+        patient.updated_at = datetime.utcnow()
+    except Exception:
+        pass
     
     db.commit()
     db.refresh(patient)

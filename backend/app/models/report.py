@@ -6,6 +6,10 @@ class Report(Base):
     __tablename__ = "reports"
 
     id = Column(Integer, primary_key=True, index=True)
+
+    # Stable identifier for offline-first sync across devices/instances.
+    client_uuid = Column(String, nullable=True, index=True)
+
     patient_id = Column(Integer, ForeignKey("patients.id"))
     filename = Column(String, nullable=True)
     image_url = Column(String, nullable=True)
@@ -14,3 +18,5 @@ class Report(Base):
     confidence = Column(Float)
     description = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    source = Column(String, nullable=True)

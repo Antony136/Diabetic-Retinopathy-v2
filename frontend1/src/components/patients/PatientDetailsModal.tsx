@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import Card from "../ui/Card";
 import Button from "../ui/Button";
-import { API_BASE_URL } from "../../utils/constants";
 import { getPatient, type PatientResponse } from "../../services/patients";
 import { listPatientReports, type ReportResponse } from "../../services/reports";
-
-const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+import { getActiveBackendOrigin } from "../../services/apiBase";
 
 function resolveBackendUrl(pathOrUrl: string) {
   if (!pathOrUrl) return "";
   if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://") || pathOrUrl.startsWith("data:")) return pathOrUrl;
   const normalized = pathOrUrl.replace(/\\/g, "/").replace(/^\/+/, "");
-  return `${BACKEND_ORIGIN}/${normalized}`;
+  return `${getActiveBackendOrigin()}/${normalized}`;
 }
 
 function formatPercent(confidence: number) {

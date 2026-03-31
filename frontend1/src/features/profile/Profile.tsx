@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { API_BASE_URL } from "../../utils/constants";
+import { getActiveBackendOrigin } from "../../services/apiBase";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import { getProfile, updateProfile, uploadAvatar, changePassword, type ProfileResponse } from "../../services/profile";
 
-const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+const BACKEND_ORIGIN = getActiveBackendOrigin();
 
 function resolveBackendUrl(pathOrUrl: string) {
   if (!pathOrUrl) return "";

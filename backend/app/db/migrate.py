@@ -91,3 +91,38 @@ def run_migrations(engine: Engine):
             if dialect == "postgresql":
                 conn.execute(text("SET statement_timeout TO 0"))
             conn.execute(text(ddl))
+
+    # Offline-first sync support: client_uuid + updated_at/source columns
+    if _has_column(engine, "patients", "id"):
+        ddl_list: list[str] = []
+        if not _has_column(engine, "patients", "client_uuid"):
+            ddl_list.append("ALTER TABLE patients ADD COLUMN IF NOT EXISTS client_uuid VARCHAR NULL")
+        if not _has_column(engine, "patients", "updated_at"):
+            ddl_list.append("ALTER TABLE patients ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+        if ddl_list:
+            with engine.begin() as conn:
+                if dialect == "postgresql":
+                    conn.execute(text("SET statement_timeout TO 0"))
+                for ddl in ddl_list:
+                    if dialect != "postgresql":
+                        ddl = ddl.replace(" IF NOT EXISTS", "")
+                        ddl = ddl.replace("TIMESTAMP", "DATETIME")
+                    conn.execute(text(ddl))
+
+    if _has_column(engine, "reports", "id"):
+        ddl_list2: list[str] = []
+        if not _has_column(engine, "reports", "client_uuid"):
+            ddl_list2.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS client_uuid VARCHAR NULL")
+        if not _has_column(engine, "reports", "updated_at"):
+            ddl_list2.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+        if not _has_column(engine, "reports", "source"):
+            ddl_list2.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS source VARCHAR NULL")
+        if ddl_list2:
+            with engine.begin() as conn:
+                if dialect == "postgresql":
+                    conn.execute(text("SET statement_timeout TO 0"))
+                for ddl in ddl_list2:
+                    if dialect != "postgresql":
+                        ddl = ddl.replace(" IF NOT EXISTS", "")
+                        ddl = ddl.replace("TIMESTAMP", "DATETIME")
+                    conn.execute(text(ddl))

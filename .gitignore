@@ -1,0 +1,63 @@
+# =========================
+# OS & General
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Python (Backend)
+# =========================
+backend/venv/
+backend/__pycache__/
+backend/**/*.pyc
+backend/*.spec
+backend/build/
+backend/dist/
+
+# PyInstaller
+*.spec
+*.exe
+
+# =========================
+# ML / Models (IMPORTANT)
+# =========================
+backend/app/checkpoints/
+*.pth
+*.pt
+
+# =========================
+# Node / Frontend / Electron
+# =========================
+node_modules/
+frontend1/node_modules/
+desktop/node_modules/
+
+# Build outputs
+frontend1/dist/
+desktop/dist/
+desktop/release/
+desktop/out/
+
+# Electron cache
+desktop/.cache/
+
+# =========================
+# Logs
+# =========================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# Environment files
+# =========================
+.env
+.env.*
+backend/.env
+
+# ====================
+
+dist
+build
+.vscode/

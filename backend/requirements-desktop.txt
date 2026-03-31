@@ -1,0 +1,16 @@
+#
+# Desktop/offline requirements (bundled in Electron).
+#
+# The deployed Render backend intentionally avoids heavy Torch deps and uses HF Space inference.
+#
+-r requirements.txt
+
+# Local inference
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+timm
+
+# PyInstaller build (optional, for packaging)
+pyinstaller
+

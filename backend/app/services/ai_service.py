@@ -141,7 +141,47 @@ class AIPredictor:
             traceback.print_exc()
             raise Exception(f"AI Service failed: {str(e)}")
 
+    @classmethod
+    def predict_url(cls, image_url: str) -> Tuple[str, float, Optional[bytes], Optional[str], Optional[str]]:
+        try:
+            image_url = (image_url or "").strip()
+            if not image_url.startswith("http"):
+                raise ValueError("Invalid image URL")
+
+            print(f"DEBUG: Starting AI prediction for URL {image_url}...")
+            client = cls.get_client()
+
+            try:
+                result = client.predict(image_url=image_url, api_name="predict_url")
+            except Exception:
+                # Some Spaces register api_name with a leading slash
+                result = client.predict(image_url=image_url, api_name="/predict_url")
+
+            if not isinstance(result, (list, tuple)) or len(result) < 2:
+                raise Exception(f"Unexpected response format from HF Space: {result}")
+
+            prediction, confidence = cls._parse_prediction(result[0])
+            heatmap_bytes, heatmap_content_type, heatmap_ext = cls._extract_file_bytes(result[1])
+            return prediction, confidence, heatmap_bytes, heatmap_content_type, heatmap_ext
+        except Exception as e:
+            print(f"ERROR in AI prediction (URL): {e}")
+            raise Exception(f"AI Service failed: {str(e)}")
+
 
 # Convenience wrapper
 def predict_dr_stage(image_path: str) -> Tuple[str, float, Optional[bytes], Optional[str], Optional[str]]:
+    provider = (os.getenv("AI_PROVIDER") or "").strip().lower()
+    if provider in ("local", "offline", "desktop"):
+        from app.services import local_ai_service
+
+        return local_ai_service.predict(image_path)
     return AIPredictor.predict(image_path)
+
+
+def predict_dr_stage_from_url(image_url: str) -> Tuple[str, float, Optional[bytes], Optional[str], Optional[str]]:
+    provider = (os.getenv("AI_PROVIDER") or "").strip().lower()
+    if provider in ("local", "offline", "desktop"):
+        from app.services import local_ai_service
+
+        return local_ai_service.predict_from_url(image_url)
+    return AIPredictor.predict_url(image_url)
