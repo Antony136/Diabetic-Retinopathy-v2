@@ -26,6 +26,11 @@ export async function listReports() {
   return data;
 }
 
+export async function listPatientReports(patientId: number) {
+  const { data } = await api.get<ReportResponse[]>(`/reports/patient/${patientId}`);
+  return data;
+}
+
 export async function createManualReport(params: {
   patient_id: number;
   prediction: string;

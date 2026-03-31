@@ -2,6 +2,8 @@ import { useState, useEffect, type FormEvent } from "react";
 import { getTriageCases } from "../../services/api";
 import { listPatients, createPatient, type PatientResponse } from "../../services/patients";
 import { createManualReport } from "../../services/reports";
+import PatientDetailsModal from "../../components/patients/PatientDetailsModal";
+import Card from "../../components/ui/Card";
 
 type ReportData = {
   id: number;
@@ -35,6 +37,12 @@ function getCategory(prediction: string) {
 export default function Triage() {
   const [reports, setReports] = useState<ReportData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [patientModalId, setPatientModalId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [timeframe, setTimeframe] = useState<"1d" | "7d" | "30d" | "custom" | "all">("7d");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [search, setSearch] = useState("");
 
   // Manual Entry Modal States
   const [showModal, setShowModal] = useState(false);
@@ -71,14 +79,34 @@ export default function Triage() {
 
   const fetchTriageCases = async () => {
     try {
-      const data = await getTriageCases();
-      setReports(data || []);
+      const params: any = { latest_per_patient: true, timeframe };
+      if (timeframe === "custom") {
+        params.start_date = startDate;
+        params.end_date = endDate;
+      }
+      const data = await getTriageCases(params);
+      const items: ReportData[] = (data || []).filter((r: ReportData) => {
+        const q = search.trim().toLowerCase();
+        if (!q) return true;
+        const hay = `${r.patient_name ?? ""} ${r.prediction ?? ""} #${r.patient_id} #${r.id}`.toLowerCase();
+        return hay.includes(q);
+      });
+      setReports(items);
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setLoading(true);
+    const id = window.setTimeout(() => {
+      fetchTriageCases();
+    }, 250);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeframe, startDate, endDate, search]);
 
   const mapSeverityToPrediction = (sev: string) => {
     if (sev === "Critical") return "Severe";
@@ -152,6 +180,7 @@ export default function Triage() {
       badgeClass: "bg-error-container text-on-error-container",
       cards: categorizedData.Critical.map(r => ({
         id: r.id, // Using report ID as unique key
+        patientId: r.patient_id,
         label: "Imminent Threat",
         labelColor: "text-error",
         name: r.patient_name || 'Unknown',
@@ -175,6 +204,7 @@ export default function Triage() {
       badgeClass: "bg-tertiary-container text-on-tertiary-container",
       cards: categorizedData["High Risk"].map(r => ({
         id: r.id,
+        patientId: r.patient_id,
         label: "Monitoring Needed",
         labelColor: "text-tertiary",
         name: r.patient_name || 'Unknown',
@@ -196,6 +226,7 @@ export default function Triage() {
       badgeClass: "bg-primary-container text-on-primary-container",
       cards: categorizedData.Moderate.map(r => ({
         id: r.id,
+        patientId: r.patient_id,
         label: "Follow-Up",
         labelColor: "text-primary",
         name: r.patient_name || 'Unknown',
@@ -217,6 +248,7 @@ export default function Triage() {
       badgeClass: "bg-surface-container-high text-on-surface-variant",
       cards: categorizedData.Stable.map(r => ({
         id: r.id,
+        patientId: r.patient_id,
         label: "Routine Clear",
         labelColor: "text-on-surface-variant",
         name: r.patient_name || 'Unknown',
@@ -246,66 +278,241 @@ export default function Triage() {
             Real-time patient prioritization based on AI-detected retinal pathologies.
           </p>
         </div>
-        <div className="flex gap-3">
-          <button 
-            onClick={() => setShowModal(true)}
-            className="bg-gradient-to-r from-primary to-primary-container px-6 py-2.5 rounded-xl text-on-primary-container font-bold font-label flex items-center gap-2 shadow-lg shadow-primary/10 hover:opacity-90 transition-opacity">
-            <span className="material-symbols-outlined text-xl">add</span>
-            Manual Entry
-          </button>
+        <div className="overflow-x-auto no-scrollbar">
+          <div className="flex flex-nowrap items-center gap-2 min-w-max">
+            <div className="flex items-center gap-2 bg-surface-container-lowest border border-outline/10 rounded-xl px-2 py-1.5">
+              <span className="material-symbols-outlined text-outline text-[16px]">search</span>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search…"
+                className="bg-transparent outline-none text-xs text-on-surface w-[180px]"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-surface-container-lowest border border-outline/10 rounded-xl px-1.5 py-1.5">
+            {(["1d", "7d", "30d", "all"] as const).map((tf) => (
+              <button
+                key={tf}
+                type="button"
+                onClick={() => {
+                  setTimeframe(tf);
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                  timeframe === tf
+                    ? "border-primary/40 text-primary bg-primary/10"
+                    : "border-outline/10 text-on-surface-variant hover:text-primary hover:border-primary/30"
+                }`}
+              >
+                {tf.toUpperCase()}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setTimeframe("custom")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                timeframe === "custom"
+                  ? "border-primary/40 text-primary bg-primary/10"
+                  : "border-outline/10 text-on-surface-variant hover:text-primary hover:border-primary/30"
+              }`}
+            >
+              CUSTOM
+            </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-surface-container-lowest border border-outline/10 rounded-xl px-1.5 py-1.5">
+            <button
+              type="button"
+              onClick={() => setViewMode("kanban")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                viewMode === "kanban"
+                  ? "border-primary/40 text-primary bg-primary/10"
+                  : "border-outline/10 text-on-surface-variant hover:text-primary hover:border-primary/30"
+              }`}
+            >
+              Kanban
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                viewMode === "list"
+                  ? "border-primary/40 text-primary bg-primary/10"
+                  : "border-outline/10 text-on-surface-variant hover:text-primary hover:border-primary/30"
+              }`}
+            >
+              List
+            </button>
+            </div>
+
+            <button 
+              onClick={() => setShowModal(true)}
+              className="shrink-0 bg-gradient-to-r from-primary to-primary-container px-4 py-2 rounded-xl text-on-primary-container font-bold font-label flex items-center gap-2 shadow-lg shadow-primary/10 hover:opacity-90 transition-opacity text-sm">
+              <span className="material-symbols-outlined text-[18px]">add</span>
+              Manual Entry
+            </button>
+          </div>
         </div>
       </div>
+
+      {timeframe === "custom" && (
+        <div className="mb-8 bg-surface-container-lowest border border-outline/10 rounded-2xl p-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <label className="flex flex-col gap-2">
+              <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Start date</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary"
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">End date</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => fetchTriageCases()}
+              disabled={!startDate || !endDate}
+              className="bg-primary text-on-primary px-6 py-3 rounded-xl font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              Apply
+            </button>
+          </div>
+          <div className="text-xs text-on-surface-variant mt-3">Filtering uses backend UTC timestamps.</div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20 font-body text-on-surface-variant">
           <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin mr-3" />
           Loading triage queue...
         </div>
+      ) : viewMode === "list" ? (
+        <Card className="p-5 overflow-hidden">
+          <div className="flex items-center justify-between mb-3">
+            <div className="font-headline font-bold text-lg">Ranked patients</div>
+            <div className="text-xs text-on-surface-variant">{reports.length} patients</div>
+          </div>
+          <div className="overflow-x-auto no-scrollbar">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="text-xs uppercase tracking-wider text-on-surface-variant">
+                  <th className="py-3 pr-4">Patient</th>
+                  <th className="py-3 pr-4">Prediction</th>
+                  <th className="py-3 pr-4 text-center">Confidence</th>
+                  <th className="py-3 pr-4 text-right">Time</th>
+                  <th className="py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/10">
+                {[...reports]
+                  .sort((a, b) => {
+                    const sa = getCategory(a.prediction);
+                    const sb = getCategory(b.prediction);
+                    const rank = (c: string) => (c === "Critical" ? 3 : c === "High Risk" ? 2 : c === "Moderate" ? 1 : 0);
+                    return rank(sb) - rank(sa) || +new Date(b.created_at) - +new Date(a.created_at);
+                  })
+                  .slice(0, 250)
+                  .map((r) => (
+                    <tr key={r.id} className="text-sm hover:bg-surface-container-high transition-colors">
+                      <td className="py-4 pr-4 font-semibold">
+                        <button
+                          type="button"
+                          onClick={() => setPatientModalId(r.patient_id)}
+                          className="hover:text-primary transition-colors text-left"
+                          title="View patient details"
+                        >
+                          {r.patient_name || `Patient #${r.patient_id}`}
+                        </button>
+                        <div className="text-xs text-on-surface-variant">#{r.patient_id}</div>
+                      </td>
+                      <td className="py-4 pr-4 text-on-surface-variant">{r.prediction}</td>
+                      <td className="py-4 pr-4 text-center text-on-surface-variant">{(r.confidence * 100).toFixed(1)}%</td>
+                      <td className="py-4 pr-4 text-right text-on-surface-variant">{new Date(r.created_at).toLocaleString()}</td>
+                      <td className="py-4 text-right">
+                        <button
+                          type="button"
+                          className="px-3 py-1 rounded-lg bg-surface-container-high text-on-surface-variant text-xs font-bold hover:text-primary transition-colors"
+                          onClick={() => setPatientModalId(r.patient_id)}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       ) : (
         /* Kanban Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
-        {triageColumns.map((col) => (
-          <div key={col.title} className="flex flex-col gap-4">
-            {/* Column header */}
-            <div className="flex items-center justify-between px-2 mb-2">
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-6 ${col.barColor} rounded-full`} />
-                <h2 className="font-headline text-lg font-bold text-on-surface">{col.title}</h2>
+          {triageColumns.map((col) => (
+            <div key={col.title} className="flex flex-col gap-4">
+              {/* Column header */}
+              <div className="flex items-center justify-between px-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-6 ${col.barColor} rounded-full`} />
+                  <h2 className="font-headline text-lg font-bold text-on-surface">{col.title}</h2>
+                </div>
+                <span className={`${col.badgeClass} px-2 py-0.5 rounded-md text-xs font-bold`}>{col.count}</span>
               </div>
-              <span className={`${col.badgeClass} px-2 py-0.5 rounded-md text-xs font-bold`}>
-                {col.count}
-              </span>
-            </div>
 
-            {/* Cards */}
-            <div className={`space-y-4 ${col.title === "Stable" ? "opacity-70" : ""}`}>
-              {col.cards.map((card) => (
-                <div
-                  key={card.id}
-                  className="bg-surface-container-low p-5 rounded-xl hover:bg-surface-container-high transition-all duration-300 group"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className={`text-xs font-label ${card.labelColor} uppercase tracking-widest font-bold`}>
-                      {card.label}
+              {/* Cards */}
+              <div className={`space-y-4 ${col.title === "Stable" ? "opacity-70" : ""}`}>
+                {col.cards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="bg-surface-container-low p-5 rounded-xl hover:bg-surface-container-high transition-all duration-300 group"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className={`text-xs font-label ${card.labelColor} uppercase tracking-widest font-bold`}>
+                        {card.label}
+                      </div>
+                    </div>
+                    <h3 className="font-headline text-xl font-semibold mb-1">
+                      <button
+                        type="button"
+                        onClick={() => setPatientModalId(card.patientId)}
+                        className="hover:text-primary transition-colors text-left"
+                        title="View patient details"
+                      >
+                        {card.name}
+                      </button>
+                    </h3>
+                    <p className="text-xs text-on-surface-variant font-label mb-4">ID: {card.pid}</p>
+                    <div className="bg-surface-container-lowest p-3 rounded-lg mb-4 outline outline-1 outline-outline/10">
+                      {card.label !== "Routine Clear" && <p className="text-xs text-on-surface-variant mb-1">AI INSIGHT</p>}
+                      <p className="text-sm font-body">{card.insight}</p>
+                    </div>
+                    <div className="flex items-center justify-between mt-6 pt-4">
+                      {card.footer}
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setPatientModalId(card.patientId)}
+                          className="px-3 py-1 rounded-lg bg-surface-container-high text-on-surface-variant text-xs font-bold hover:text-primary transition-colors"
+                          title="View"
+                        >
+                          View
+                        </button>
+                        <span className="text-xs text-on-surface-variant font-label">{card.timeAgo}</span>
+                      </div>
                     </div>
                   </div>
-                  <h3 className="font-headline text-xl font-semibold mb-1">{card.name}</h3>
-                  <p className="text-xs text-on-surface-variant font-label mb-4">ID: {card.pid}</p>
-                  <div className="bg-surface-container-lowest p-3 rounded-lg mb-4 outline outline-1 outline-outline/10">
-                    {card.label !== "Routine Clear" && (
-                      <p className="text-xs text-on-surface-variant mb-1">AI INSIGHT</p>
-                    )}
-                    <p className="text-sm font-body">{card.insight}</p>
-                  </div>
-                  <div className="flex items-center justify-between mt-6 pt-4">
-                    {card.footer}
-                    <span className="text-xs text-on-surface-variant font-label">{card.timeAgo}</span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
         </div>
       )}
 
@@ -480,6 +687,8 @@ export default function Triage() {
           </div>
         </div>
       )}
+
+      <PatientDetailsModal patientId={patientModalId} onClose={() => setPatientModalId(null)} />
 
     </main>
   );

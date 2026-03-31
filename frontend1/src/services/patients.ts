@@ -29,3 +29,7 @@ export async function createPatient(request: PatientCreateRequest) {
   return data;
 }
 
+export async function getPatient(patientId: number) {
+  const { data } = await api.get<PatientResponse>(`/patients/${patientId}`);
+  return data;
+}

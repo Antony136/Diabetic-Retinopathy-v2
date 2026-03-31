@@ -58,8 +58,13 @@ export async function getRecords(params?: { search?: string; severity?: string; 
 }
 
 /** Retrieve triage cases */
-export async function getTriageCases() {
-  const { data } = await api.get("/reports");
+export async function getTriageCases(params?: {
+  timeframe?: "today" | "1d" | "7d" | "30d" | "custom" | "all";
+  start_date?: string;
+  end_date?: string;
+  latest_per_patient?: boolean;
+}) {
+  const { data } = await api.get("/reports", { params });
   return data;
 }
 

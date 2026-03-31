@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Card from "../../components/ui/Card";
 import { getRecords, getTriageCases } from "../../services/api";
+import PatientDetailsModal from "../../components/patients/PatientDetailsModal";
 import { API_BASE_URL } from "../../utils/constants";
 import { getAppSettings } from "../../services/appSettings";
 import { severityFromStage, stageDescription, getTreatmentWindow, getLesionRegion } from "../screening/mockAnalysis";
@@ -55,6 +56,7 @@ function getSeverityStyles(prediction?: string) {
 export default function Records() {
   const printFrameRef = useRef<HTMLIFrameElement | null>(null);
   const [patients, setPatients] = useState<PatientRecord[]>([]);
+  const [patientModalId, setPatientModalId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState("All Severities");
   const [loading, setLoading] = useState(true);
@@ -423,7 +425,14 @@ export default function Records() {
                         {getInitials(p.name)}
                       </div>
                       <div>
-                        <div className="font-body font-semibold text-on-surface">{p.name}</div>
+                        <button
+                          type="button"
+                          onClick={() => setPatientModalId(p.id)}
+                          className="font-body font-semibold text-on-surface hover:text-primary transition-colors text-left"
+                          title="View patient details"
+                        >
+                          {p.name}
+                        </button>
                         <div className="text-xs text-on-surface-variant">ID: #RET-{(p.id).toString().padStart(4, '0')}</div>
                       </div>
                     </div>
@@ -450,6 +459,15 @@ export default function Records() {
                   </td>
                   <td className="px-6 py-6 text-right">
                     <div className="flex justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPatientModalId(p.id)}
+                        className="p-2 text-on-surface-variant hover:text-primary transition-colors"
+                        title="View"
+                        aria-label="View"
+                      >
+                        <span className="material-symbols-outlined">visibility</span>
+                      </button>
                       <button 
                         onClick={() => handleDownloadReport(p)}
                         disabled={downloadingId === p.id}
@@ -593,6 +611,8 @@ export default function Records() {
           </div>
         </div>
       </div>
+
+      <PatientDetailsModal patientId={patientModalId} onClose={() => setPatientModalId(null)} />
 
     </main>
   );

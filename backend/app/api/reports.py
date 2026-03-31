@@ -13,6 +13,7 @@ from pathlib import Path
 import os
 import tempfile
 import uuid
+from datetime import datetime, timedelta
 
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -321,11 +322,53 @@ async def create_manual_report(
 def get_all_reports(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    timeframe: str | None = Query(default=None, description="today|1d|7d|30d|custom|all"),
+    start_date: str | None = Query(default=None, description="YYYY-MM-DD (required if timeframe=custom)"),
+    end_date: str | None = Query(default=None, description="YYYY-MM-DD (required if timeframe=custom)"),
+    latest_per_patient: bool = Query(default=False, description="Return only the latest report per patient (after filters)"),
 ):
     query = db.query(Report, Patient.name).join(Patient)
     if getattr(current_user, "role", "doctor") != "admin":
         query = query.filter(Patient.doctor_id == current_user.id)
-    reports_with_patient = query.all()
+
+    # Time filtering (created_at stored as naive UTC by default)
+    tf = (timeframe or "").strip().lower()
+    if tf and tf != "all":
+        now = datetime.utcnow()
+        if tf == "today":
+            start = datetime(now.year, now.month, now.day)
+            end = start.replace(hour=23, minute=59, second=59, microsecond=999999)
+        elif tf in ["1d", "7d", "30d"]:
+            days = int(tf.replace("d", ""))
+            start = now - timedelta(days=days)
+            end = now
+        elif tf == "custom":
+            if not start_date or not end_date:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="start_date and end_date are required for timeframe=custom")
+            try:
+                sd = datetime.strptime(start_date, "%Y-%m-%d").date()
+                ed = datetime.strptime(end_date, "%Y-%m-%d").date()
+            except Exception:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date format. Use YYYY-MM-DD.")
+            if ed < sd:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="end_date must be >= start_date")
+            start = datetime(sd.year, sd.month, sd.day)
+            end = datetime(ed.year, ed.month, ed.day).replace(hour=23, minute=59, second=59, microsecond=999999)
+        else:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid timeframe. Use today|1d|7d|30d|custom|all.")
+        query = query.filter(Report.created_at >= start, Report.created_at <= end)
+
+    reports_with_patient = query.order_by(Report.created_at.desc(), Report.id.desc()).all()
+
+    if latest_per_patient:
+        seen: set[int] = set()
+        deduped: list[tuple[Report, str]] = []
+        for report, patient_name in reports_with_patient:
+            if report.patient_id in seen:
+                continue
+            seen.add(report.patient_id)
+            deduped.append((report, patient_name))
+        reports_with_patient = deduped
 
     result = []
     for report, patient_name in reports_with_patient:
