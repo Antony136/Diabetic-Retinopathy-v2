@@ -18,18 +18,36 @@ try {
   Write-Host "Installing desktop requirements using: $python"
   & $python -m pip install -r requirements-desktop.txt
 
-  if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
-  if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
+  if (Test-Path "dist") {
+    Get-ChildItem -Path "dist" -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
+      try { $_.Attributes = 'Normal' } catch {}
+    }
+    Remove-Item -Recurse -Force "dist" -ErrorAction SilentlyContinue
+  }
+  if (Test-Path "build") {
+    Get-ChildItem -Path "build" -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
+      try { $_.Attributes = 'Normal' } catch {}
+    }
+    Remove-Item -Recurse -Force "build" -ErrorAction SilentlyContinue
+  }
 
-  Write-Host "Running PyInstaller via: $python -m pyinstaller"
-  & $python -m pyinstaller `
+  Write-Host "Running PyInstaller via: $python -m PyInstaller"
+  & $python -m PyInstaller `
     --noconfirm `
     --clean `
     --onefile `
-    --name "retina-max-backend" `
+    --name "desktop_server" `
     "desktop_server.py"
 
   Write-Host "Backend build output: $backendRoot\\dist"
+
+  # Ensure we have a backwards-compatible name for optional old path.
+  $sourceExe = Join-Path "dist" "desktop_server.exe"
+  $legacyExe = Join-Path "dist" "retina-max-backend.exe"
+  if ((Test-Path $sourceExe) -and -not (Test-Path $legacyExe)) {
+    Copy-Item $sourceExe $legacyExe -Force
+    Write-Host "Created legacy backend executable name: retina-max-backend.exe"
+  }
 } finally {
   Pop-Location
 }

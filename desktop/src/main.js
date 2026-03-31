@@ -41,8 +41,22 @@ function getBackendCommand() {
     return { cmd: pyCmd, args: [resourcePath("backend", "desktop_server.py")] };
   }
 
-  // Packaged: PyInstaller output is copied into resources/backend
-  const exeName = process.platform === "win32" ? "retina-max-backend.exe" : "retina-max-backend";
+  // Packaged: PyInstaller output is copied into resources/backend.
+  // Use desktop_server.exe as canonical name and fallback to retina-max-backend for compatibility.
+  const candidates = process.platform === "win32" ? ["desktop_server.exe", "retina-max-backend.exe"] : ["desktop_server", "retina-max-backend"];
+  for (const name of candidates) {
+    const candidatePath = resourcePath("backend", name);
+    try {
+      if (require("fs").existsSync(candidatePath)) {
+        return { cmd: candidatePath, args: [] };
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Fallback to the canonical name.
+  const exeName = process.platform === "win32" ? "desktop_server.exe" : "desktop_server";
   return { cmd: resourcePath("backend", exeName), args: [] };
 }
 

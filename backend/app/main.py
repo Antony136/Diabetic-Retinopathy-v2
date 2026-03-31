@@ -3,12 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.api import health, auth, patients, reports, notifications, preferences, profile, admin, doctor_assistant, inference, sync
 from pathlib import Path
-from app.db.database import engine
+from app.db.database import engine, Base
 from app.db.migrate import run_migrations
 import os
 
 
 app = FastAPI(title="Retina Max Backend", version="2.0.0")
+
+# Ensure local SQLite tables exist (desktop mode) before app usage.
+Base.metadata.create_all(bind=engine)
 
 
 @app.on_event("startup")
