@@ -6,6 +6,8 @@ import {
   explainDoctorQuery,
   type DoctorAssistantContextType,
   type DoctorAssistantExplainResponse,
+  type DoctorAssistantTask,
+  type DoctorAssistantTimeframe,
 } from "../../services/doctorAssistant";
 
 function priorityClasses(priority?: string | null) {
@@ -16,9 +18,13 @@ function priorityClasses(priority?: string | null) {
 
 export default function DoctorAssistant() {
   const [contextType, setContextType] = useState<DoctorAssistantContextType>("patient");
+  const [task, setTask] = useState<DoctorAssistantTask>("answer");
   const [patients, setPatients] = useState<PatientResponse[]>([]);
   const [patientId, setPatientId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
+  const [timeframe, setTimeframe] = useState<DoctorAssistantTimeframe | null>(null);
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -45,8 +51,9 @@ export default function DoctorAssistant() {
   const canSubmit = useMemo(() => {
     if (!query.trim()) return false;
     if (contextType === "patient") return !!patientId;
+    if (timeframe === "custom") return !!startDate && !!endDate;
     return true;
-  }, [contextType, patientId, query]);
+  }, [contextType, patientId, query, timeframe, startDate, endDate]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -60,6 +67,10 @@ export default function DoctorAssistant() {
         patient_id: contextType === "patient" ? patientId : null,
         doctor_query: query.trim(),
         context_type: contextType,
+        task,
+        timeframe: contextType === "general" ? null : timeframe,
+        start_date: timeframe === "custom" ? startDate : null,
+        end_date: timeframe === "custom" ? endDate : null,
       });
       setResult(data);
     } catch (err: any) {
@@ -81,17 +92,119 @@ export default function DoctorAssistant() {
       </div>
 
       <Card className="p-5">
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => {
+              setContextType("reports_range");
+              setTask("triage_queue");
+              setTimeframe("7d");
+              setQuery("Recommend a triage queue for the last 7 days and justify the urgency for each patient.");
+            }}
+            className="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface border border-outline/30 hover:border-primary/60 text-sm"
+          >
+            Triage Queue (7d)
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setContextType("patient");
+              setTask("draft_referral_letter");
+              setQuery("Draft a retina specialist referral letter for this patient based on the latest report.");
+            }}
+            className="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface border border-outline/30 hover:border-primary/60 text-sm"
+          >
+            Draft Referral Letter
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setContextType("patient");
+              setTask("draft_followup_plan");
+              setQuery("Draft a follow-up plan (tests, follow-up interval, red flags) for this patient.");
+            }}
+            className="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface border border-outline/30 hover:border-primary/60 text-sm"
+          >
+            Draft Follow-up Plan
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setResult(null);
+              setErrorMsg(null);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface border border-outline/30 hover:border-primary/60 text-sm"
+          >
+            Clear
+          </button>
+          {result?.answer && (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(result.answer || "");
+                } catch {
+                  // ignore
+                }
+              }}
+              className="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface border border-outline/30 hover:border-primary/60 text-sm"
+            >
+              Copy Answer
+            </button>
+          )}
+        </div>
+
         <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <label className="flex flex-col gap-2">
             <span className="text-sm text-on-surface-variant">Context</span>
             <select
               value={contextType}
-              onChange={(e) => setContextType(e.target.value as DoctorAssistantContextType)}
+              onChange={(e) => {
+                const v = e.target.value as DoctorAssistantContextType;
+                setContextType(v);
+                setResult(null);
+                if (v === "general") {
+                  setTask("answer");
+                  setTimeframe(null);
+                  setStartDate("");
+                  setEndDate("");
+                }
+                if (v === "today_reports") {
+                  setTask((t) => (t === "draft_referral_letter" || t === "draft_followup_plan" ? "answer" : t));
+                  setTimeframe("today");
+                  setStartDate("");
+                  setEndDate("");
+                }
+                if (v === "reports_range") {
+                  setTask((t) => (t === "draft_referral_letter" || t === "draft_followup_plan" ? "triage_queue" : t));
+                  setTimeframe((tf) => tf || "7d");
+                }
+              }}
               className="bg-surface-container-high text-on-surface rounded-lg px-3 py-2 outline-none border border-outline/30 focus:border-primary/60"
             >
               <option value="patient">Patient</option>
               <option value="today_reports">Today Reports</option>
+              <option value="reports_range">Reports (Range)</option>
               <option value="general">General</option>
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-sm text-on-surface-variant">Task</span>
+            <select
+              value={task}
+              onChange={(e) => setTask(e.target.value as DoctorAssistantTask)}
+              className="bg-surface-container-high text-on-surface rounded-lg px-3 py-2 outline-none border border-outline/30 focus:border-primary/60"
+            >
+              <option value="answer">Answer</option>
+              <option value="triage_queue">Triage Queue</option>
+              <option value="draft_referral_letter" disabled={contextType !== "patient"}>
+                Draft Referral Letter
+              </option>
+              <option value="draft_followup_plan" disabled={contextType !== "patient"}>
+                Draft Follow-up Plan
+              </option>
             </select>
           </label>
 
@@ -112,6 +225,69 @@ export default function DoctorAssistant() {
             </select>
           </label>
 
+          {(contextType === "today_reports" || contextType === "reports_range" || contextType === "patient") && (
+            <div className="md:col-span-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-on-surface-variant mr-1">Timeframe</span>
+                {(["today", "7d", "30d", "90d", "all"] as DoctorAssistantTimeframe[]).map((tf) => (
+                  <button
+                    key={tf}
+                    type="button"
+                    onClick={() => {
+                      setTimeframe(tf);
+                      setStartDate("");
+                      setEndDate("");
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-sm border ${
+                      timeframe === tf
+                        ? "bg-primary/15 text-on-surface border-primary/50"
+                        : "bg-surface-container-high text-on-surface border-outline/30 hover:border-primary/60"
+                    }`}
+                  >
+                    {tf.toUpperCase()}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setTimeframe("custom")}
+                  className={`px-3 py-1.5 rounded-lg text-sm border ${
+                    timeframe === "custom"
+                      ? "bg-primary/15 text-on-surface border-primary/50"
+                      : "bg-surface-container-high text-on-surface border-outline/30 hover:border-primary/60"
+                  }`}
+                >
+                  CUSTOM
+                </button>
+              </div>
+
+              {timeframe === "custom" && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm text-on-surface-variant">Start date</span>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="bg-surface-container-high text-on-surface rounded-lg px-3 py-2 outline-none border border-outline/30 focus:border-primary/60"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm text-on-surface-variant">End date</span>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="bg-surface-container-high text-on-surface rounded-lg px-3 py-2 outline-none border border-outline/30 focus:border-primary/60"
+                    />
+                  </label>
+                  <div className="text-xs text-on-surface-variant self-end pb-2">
+                    Uses backend UTC dates.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <label className="flex flex-col gap-2 md:col-span-3">
             <span className="text-sm text-on-surface-variant">Doctor query</span>
             <textarea
@@ -121,6 +297,8 @@ export default function DoctorAssistant() {
               placeholder={
                 contextType === "today_reports"
                   ? "Summarize today’s severe cases and suggested next steps…"
+                  : contextType === "reports_range"
+                  ? "Summarize the selected period and suggest triage priorities…"
                   : contextType === "general"
                   ? "What is diabetic retinopathy? How to treat grade 3 DR?"
                   : "Explain current stage and risk; is the patient worsening compared to last visit?"
@@ -133,9 +311,9 @@ export default function DoctorAssistant() {
             <Button type="submit" disabled={!canSubmit || loading}>
               {loading ? "Asking…" : "Ask Assistant"}
             </Button>
-            {contextType === "today_reports" && (
+            {(contextType === "today_reports" || contextType === "reports_range") && (
               <span className="text-xs text-on-surface-variant">
-                Uses today’s UTC date from the backend.
+                Time filtering uses backend UTC dates.
               </span>
             )}
           </div>

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Tuple
 
 from app.models.patient import Patient
 from app.models.report import Report
@@ -55,6 +55,8 @@ def safe_rule_based_answer(
     reports: Iterable[Report],
     doctor_query: str,
     today_rows: Optional[list[dict]] = None,
+    range_rows: Optional[list[dict]] = None,
+    task: str = "answer",
 ) -> tuple[str, str]:
     reports = list(reports)
     latest = reports[0] if reports else None
@@ -113,6 +115,32 @@ def safe_rule_based_answer(
 
         return "\n".join(lines).strip(), "Rule-based daily summary (LLM unavailable)."
 
+    if context_type == "reports_range":
+        items = range_rows or []
+        lines = [
+            "LLM is unavailable. Providing a rule-based caseload summary for the selected timeframe.",
+            "",
+            f"Task: {task}",
+            f"Items: {len(items)}",
+            "",
+        ]
+        if task == "triage_queue":
+            ranked = sorted(items, key=lambda it: (dr_stage_score(str(it.get("prediction") or "")), float(it.get("confidence") or 1.0)), reverse=True)
+            lines.append("Triage queue (rule-based):")
+            for it in ranked[:50]:
+                lines.append(
+                    f"- {it.get('name') or 'Patient'} (#{it.get('patient_id')}): {it.get('prediction')} (conf {it.get('confidence')})"
+                )
+        else:
+            lines.append("Patients:")
+            for it in items[:50]:
+                lines.extend(
+                    [
+                        f"- {it.get('name') or 'Patient'} (#{it.get('patient_id')}): {it.get('prediction')} (conf {it.get('confidence')})",
+                    ]
+                )
+        return "\n".join(lines).strip(), "Rule-based caseload response (LLM unavailable)."
+
     # patient
     p = patient
     who = f"{p.name} (age {p.age}, {p.gender})" if p else "Patient"
@@ -144,6 +172,9 @@ def build_prompts(
     reports: Optional[list[Report]] = None,
     today: Optional[date] = None,
     today_rows: Optional[list[dict]] = None,
+    range_rows: Optional[list[dict]] = None,
+    task: str = "answer",
+    dt_range: Optional[Tuple[datetime, datetime]] = None,
 ) -> DoctorAssistantPrompts:
     reports = reports or []
     today = today or datetime.now(timezone.utc).date()
@@ -226,10 +257,53 @@ def build_prompts(
         lines.append("In the Assessment section, include a concise per-patient triage list (high/medium/low).")
         return DoctorAssistantPrompts(system=system, user="\n".join(lines))
 
+    if context_type == "reports_range":
+        items = range_rows or []
+        start_s = ""
+        end_s = ""
+        if dt_range:
+            start_s = dt_range[0].strftime("%Y-%m-%d")
+            end_s = dt_range[1].strftime("%Y-%m-%d")
+
+        lines = [
+            "Context: reports_range (doctor caseload over a selected timeframe).",
+            f"Task: {task}",
+            (f"Timeframe: {start_s} to {end_s}" if start_s and end_s else "Timeframe: all/unspecified"),
+            "",
+            "Patients (leave a blank line between each patient block):",
+        ]
+        if not items:
+            lines.append("No reports found in this timeframe.")
+        else:
+            for i, it in enumerate(items[:80], start=1):
+                lines.extend(
+                    [
+                        f"--- Patient {i} ---",
+                        f"patient_id: {it.get('patient_id')}",
+                        f"name: {it.get('name')}",
+                        f"age: {it.get('age')}",
+                        f"gender: {it.get('gender')}",
+                        f"report_id: {it.get('report_id')}",
+                        f"stage: {it.get('prediction')}",
+                        f"confidence: {it.get('confidence')}",
+                        f"created_at: {_dt(it.get('created_at')) if isinstance(it.get('created_at'), datetime) else it.get('created_at')}",
+                        f"description: {it.get('description') or ''}".rstrip(),
+                        "",
+                        "",
+                    ]
+                )
+
+        lines.append(f"Doctor question: {doctor_query}")
+        if task == "triage_queue":
+            lines.append("Output requirement: In Assessment, produce an ordered triage queue with urgency + 1-line reason per patient.")
+        return DoctorAssistantPrompts(system=system, user="\n".join(lines))
+
     # patient
     lines = []
     if patient:
-        lines.append(f"Patient: id={patient.id}, name={patient.name}, age={patient.age}, gender={patient.gender}")
+        lines.append(
+            f"Patient: id={patient.id}, name={patient.name}, age={patient.age}, gender={patient.gender}, phone={patient.phone}, address={patient.address}"
+        )
     else:
         lines.append("Patient: unknown (record not found).")
 
@@ -250,7 +324,12 @@ def build_prompts(
 
     lines.append("")
     lines.append(f"Doctor question: {doctor_query}")
-    lines.append(
-        "Task: Explain the patient’s DR status, detect worsening vs prior report if possible, estimate risk level, and propose next steps."
-    )
+    if task == "draft_referral_letter":
+        lines.append("Task: Draft a retina specialist referral letter based on the available info. Keep it concise and clinic-ready.")
+    elif task == "draft_followup_plan":
+        lines.append("Task: Draft a follow-up plan (monitoring + investigations + timeframe) based on the available info.")
+    else:
+        lines.append(
+            "Task: Explain the patient’s DR status, detect worsening vs prior report if possible, estimate risk level, and propose next steps."
+        )
     return DoctorAssistantPrompts(system=system, user="\n".join(lines))
