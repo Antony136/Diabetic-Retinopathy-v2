@@ -1,5 +1,6 @@
 const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const path = require("path");
+const fs = require("fs");
 const { spawn } = require("child_process");
 const log = require("electron-log");
 const http = require("http");
@@ -14,52 +15,48 @@ let backendProcess = null;
 let backendPort = null;
 let backendReady = false;
 
+// Returns path to resources (frontend, backend) in both dev and packaged mode
 function resourcePath(...parts) {
-  // In dev, __dirname is desktop/src; resources are in repo root.
   if (!app.isPackaged) return path.join(__dirname, "..", "..", ...parts);
   return path.join(process.resourcesPath, ...parts);
 }
 
+// Get Python path for dev backend
 function getEnvBackendPython() {
   const envPath = process.env.RETINA_BACKEND_PYTHON || process.env.BACKEND_PYTHON_PATH;
   if (envPath) return envPath;
 
   const venvPath = path.join(__dirname, "..", "..", "backend", "venv");
-  if (process.platform === "win32") {
-    const candidate = path.join(venvPath, "Scripts", "python.exe");
-    return candidate;
-  }
-  const candidate = path.join(venvPath, "bin", "python");
-  return candidate;
+  if (process.platform === "win32") return path.join(venvPath, "Scripts", "python.exe");
+  return path.join(venvPath, "bin", "python");
 }
 
+// Get backend command (Python in dev, executable in packaged mode)
 function getBackendCommand() {
   if (!app.isPackaged) {
-    // Prefer dedicated venv Python for dev to satisfy dependencies like sqlalchemy.
     const venvPython = getEnvBackendPython();
     const pyCmd = venvPython || "python";
     return { cmd: pyCmd, args: [resourcePath("backend", "desktop_server.py")] };
   }
 
-  // Packaged: PyInstaller output is copied into resources/backend.
-  // Use desktop_server.exe as canonical name and fallback to retina-max-backend for compatibility.
-  const candidates = process.platform === "win32" ? ["desktop_server.exe", "retina-max-backend.exe"] : ["desktop_server", "retina-max-backend"];
+  const candidates = process.platform === "win32"
+    ? ["desktop_server.exe", "retina-max-backend.exe"]
+    : ["desktop_server", "retina-max-backend"];
   for (const name of candidates) {
     const candidatePath = resourcePath("backend", name);
-    try {
-      if (require("fs").existsSync(candidatePath)) {
-        return { cmd: candidatePath, args: [] };
-      }
-    } catch {
-      // ignore
+    if (fs.existsSync(candidatePath)) {
+      log.info("Using backend executable", candidatePath);
+      return { cmd: candidatePath, args: [] };
     }
   }
 
-  // Fallback to the canonical name.
-  const exeName = process.platform === "win32" ? "desktop_server.exe" : "desktop_server";
-  return { cmd: resourcePath("backend", exeName), args: [] };
+  const fallbackName = process.platform === "win32" ? "desktop_server.exe" : "desktop_server";
+  const fallbackPath = resourcePath("backend", fallbackName);
+  log.warn("No backend executable found among candidates; using fallback path", fallbackPath);
+  return { cmd: fallbackPath, args: [] };
 }
 
+// Start backend process
 async function startBackend() {
   backendPort = await getPortAsync({ port: [8000, 8001, 8002, 0] });
 
@@ -79,16 +76,18 @@ async function startBackend() {
     DATABASE_URL: `sqlite:///${dbPath.replace(/\\\\/g, "/")}`,
     ALLOWED_ORIGINS: "*",
     LOG_LEVEL: process.env.LOG_LEVEL || "info",
-    // Optional: allow cloud sync + Groq when available
     GROQ_API_KEY: process.env.GROQ_API_KEY || "",
     LLM_PROVIDER: process.env.LLM_PROVIDER || "ollama",
     OLLAMA_URL: process.env.OLLAMA_URL || "http://localhost:11434"
   };
 
-  log.info("Starting backend", { cmd, args, backendPort, dbPath, modelPath });
+  log.info("Starting backend", { cmd, args, backendPort, dbPath, modelPath, exists: fs.existsSync(cmd) });
+
+  if (!fs.existsSync(cmd)) {
+    throw new Error(`Backend executable not found at ${cmd}`);
+  }
 
   backendProcess = spawn(cmd, [...args], {
-    // Keep the desktop app self-contained: DB + uploads live under userData.
     cwd: userDataDir,
     env,
     stdio: ["ignore", "pipe", "pipe"]
@@ -103,7 +102,8 @@ async function startBackend() {
   });
 }
 
-async function waitForBackend(timeoutMs = 30000) {
+// Wait until backend responds to /health
+async function waitForBackend(timeoutMs = 180000) {
   const started = Date.now();
   const url = `http://127.0.0.1:${backendPort}/health`;
 
@@ -132,6 +132,7 @@ async function waitForBackend(timeoutMs = 30000) {
   return false;
 }
 
+// Create main BrowserWindow
 function createWindow() {
   const cloudApiBase = process.env.CLOUD_API_BASE_URL || process.env.VITE_CLOUD_API_BASE_URL || "";
   const win = new BrowserWindow({
@@ -154,32 +155,33 @@ function createWindow() {
   if (!app.isPackaged) {
     win.loadURL("http://localhost:5173");
   } else {
-    const indexPath = resourcePath("frontend", "index.html");
-    win.loadFile(indexPath);
+    const indexPath = path.join(process.resourcesPath, "frontend", "index.html");
+    if (!fs.existsSync(indexPath)) {
+      log.error("Missing frontend index.html", indexPath);
+      dialog.showErrorBox("App load error", `Cannot find built frontend at: ${indexPath}`);
+    } else {
+      win.loadFile(indexPath);
+    }
   }
 
   return win;
 }
 
+// App events
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
 app.on("before-quit", () => {
-  try {
-    if (backendProcess) backendProcess.kill();
-  } catch {}
+  try { if (backendProcess) backendProcess.kill(); } catch {}
 });
 
-ipcMain.handle("backend-status", async () => {
-  return { ready: backendReady, port: backendPort };
-});
+// IPC handlers
+ipcMain.handle("backend-status", async () => ({ ready: backendReady, port: backendPort }));
 
 ipcMain.handle("backend-restart", async () => {
   if (backendProcess) {
-    try {
-      backendProcess.kill();
-    } catch {}
+    try { backendProcess.kill(); } catch {}
     backendProcess = null;
   }
 
@@ -193,6 +195,7 @@ ipcMain.handle("backend-restart", async () => {
   }
 });
 
+// Main startup
 app.whenReady().then(async () => {
   try {
     await startBackend();
@@ -208,6 +211,5 @@ app.whenReady().then(async () => {
     dialog.showErrorBox("Backend error", String(e));
   }
 
-  // Expose port to preload via global state.
   createWindow();
 });

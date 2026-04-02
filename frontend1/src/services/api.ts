@@ -5,7 +5,7 @@ import { getAuthToken } from "./authStorage";
 const api = axios.create({
   headers: { "Content-Type": "application/json" },
   // Prevent "infinite loading" when the backend/DB is slow or waking up.
-  timeout: 20000,
+  timeout: 60000,
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -29,7 +29,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       import("./authStorage").then(({ clearAuthToken }) => {
         clearAuthToken();
-        window.location.href = "/login";
+        // Use hash for HashRouter redirection from outside of React components
+        window.location.hash = "#/login";
       });
     }
     return Promise.reject(error);

@@ -18,7 +18,7 @@ function makeClient(baseURL: string) {
   return axios.create({
     baseURL,
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    timeout: 30000,
+    timeout: 120000,
   });
 }
 

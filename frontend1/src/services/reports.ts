@@ -17,6 +17,7 @@ export async function createReport(params: { patientId: number; file: File }) {
   const { data } = await api.post<ReportResponse>("/reports/", formData, {
     params: { patient_id: params.patientId },
     headers: { "Content-Type": "multipart/form-data" },
+    timeout: 120000,
   });
   return data;
 }
@@ -40,4 +41,3 @@ export async function createManualReport(params: {
   const { data } = await api.post<ReportResponse>("/reports/manual", params);
   return data;
 }
-

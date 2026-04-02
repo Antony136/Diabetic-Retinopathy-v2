@@ -32,11 +32,14 @@ try {
   }
 
   Write-Host "Running PyInstaller via: $python -m PyInstaller"
-  & $python -m PyInstaller `
+& $python -m PyInstaller `
     --noconfirm `
     --clean `
     --onefile `
     --name "desktop_server" `
+    --hidden-import=passlib.handlers.bcrypt `
+    --hidden-import=passlib.handlers.pbkdf2_sha256 `
+    --hidden-import=passlib.handlers.argon2 `
     "desktop_server.py"
 
   Write-Host "Backend build output: $backendRoot\\dist"

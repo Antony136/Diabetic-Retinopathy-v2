@@ -10,7 +10,8 @@
     "dev:electron": "wait-on http://localhost:5173 && electron .",
     "build:frontend": "npm --prefix ../frontend1 run build",
     "build:backend:pyinstaller": "powershell -NoProfile -ExecutionPolicy Bypass -File ../backend/scripts/build_desktop_backend.ps1",
-    "build": "npm run build:frontend && npm run build:backend:pyinstaller && electron-builder",
+    "clean:release": "rimraf release --glob",
+    "build": "npm run clean:release && npm run build:frontend && npm run build:backend:pyinstaller && electron-builder",
     "dist": "npm run build",
     "lint": "node -e \"console.log('No desktop lint configured')\""
   },
@@ -22,6 +23,7 @@
     "concurrently": "^9.2.0",
     "electron": "^32.2.0",
     "electron-builder": "^25.1.8",
+    "rimraf": "^6.1.3",
     "wait-on": "^8.0.5"
   },
   "build": {
@@ -51,7 +53,8 @@
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "sign": false
     },
     "mac": {
       "target": [
@@ -65,4 +68,3 @@
     }
   }
 }
-

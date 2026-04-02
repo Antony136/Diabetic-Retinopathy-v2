@@ -1,133 +1,163 @@
 # Retina Max 2.0 - Diabetic Retinopathy Screening Suite
 
-Retina Max 2.0 is a production-grade, visually stunning Medical AI platform designed to help ophthalmologists screen and prioritize Diabetic Retinopathy (DR) cases using fundus images. It features real-time AI classification, Grad-CAM heatmap visualization, and comprehensive patient history management.
+Retina Max 2.0 is a professional, enterprise-grade Medical AI platform designed for ophthalmologists to screen, track, and prioritize Diabetic Retinopathy (DR) cases. Built as a cross-platform desktop application with offline-first capabilities, it enables clinical screening even in environments with intermittent or no internet connectivity.
 
-## 📺 Demo Videos
+---
 
-### 1. ML Model Analysis
-![ML Model Demo](./assets/videos/ML_model.gif)
+## 📺 Project Overview
 
-### 2. Admin Dashboard & Login
-![Admin Login Demo](./assets/videos/admin_login.gif)
+The application empowers clinicians to:
+- **Screen with AI**: Classify fundus images into 5 standard DR stages (No DR, Mild, Moderate, Severe, Proliferative).
+- **Explainable AI (XAI)**: View Grad-CAM heatmaps highlighting regions affecting the AI's diagnosis.
+- **Patient Management**: Maintain comprehensive longitudinal records, history, and metadata.
+- **Offline-First Workflow**: Run full AI inference and database operations locally, syncing with a cloud server when online.
+- **Micro-Animations & Premium UI**: A modern "Nordic Clinical" aesthetic built with Material Design 3 and Framer Motion.
 
-## 🌟 Key Features
+---
 
-- **AI-Powered Screening**: Instantly classify fundus images into 5 stages of DR (No DR, Mild, Moderate, Severe, Proliferative).
-- **Explainable AI (XAI)**: Generates Grad-CAM heatmaps to highlight specific regions influencing the AI's decision, building doctor trust.
-- **Patient Management**: Full CRUD operations for patients, including screening history and longitudinal tracking.
-- **Visual Analytics**: Interactive dashboards with Recharts to monitor patient progress and clinic trends.
-- **Export Capabilities**: Generate professional PDF reports for patients and export screening data to CSV.
-- **Micro-Animations**: Ultra-smooth UX with Framer Motion and modern Material Design 3 principles.
-- **Cloud Scale**: Fully integrated with Supabase Storage for reliable image hosting.
+## 🏗️ System Architecture
 
-## 🛠️ Technical Stack
+The project follows a decoupled, local-first architecture combining Electron, React, and FastAPI.
 
-### Frontend
-- **Framework**: React 19 + Vite
-- **Styling**: Tailwind CSS 4 + Material Design 3
-- **Animations**: Framer Motion
-- **Charts**: Recharts
-- **State/Routing**: React Router 7 + Axios
-- **Type Safety**: TypeScript
+### 1. Backend (Python + FastAPI)
+The engine of the application, responsible for AI inference and data persistence.
+- **Core Modules**: `app.main` (FastAPI app), `app.api` (REST endpoints), `app.services` (AI and Logic).
+- **Local AI**: uses **PyTorch**, **torchvision**, and **timm** (EfficientNet-B3) for offline fundus image classification and Grad-CAM generation.
+- **Sync Logic**: Implements a robust `client_uuid`-based sync mechanism (`app/api/sync.py`) for consistency between local and cloud databases.
 
-### Backend
-- **Core**: FastAPI (Python 3.10+)
-- **AI/ML**: PyTorch (CPU-optimized), Timm (EfficientNet-B3), Numpy
-- **Database**: PostgreSQL (SQLAlchemy ORM)
-- **Deployment**: Gunicorn + Uvicorn
-- **Storage**: Supabase Storage Bucket integration
+### 2. Frontend (Electron + React)
+A high-performance UI layer that communicates with the local backend.
+- **Framework**: React 19 + Vite + Tailwind 4.
+- **Desktop Bridge**: Electron 32 manages windowing, spawns the local Python backend, and provides access to system resources.
+- **Communication**: Frontend sends requests to `localhost:[dynamic_port]`. Port discovery is handled by Electron at startup.
 
-### ML Pipeline
-- **Architecture**: EfficientNet-B3 (Transfer Learning)
-- **Data Augmentation**: Mixup, Random Color Jitter, Horizontal/Vertical Flips
-- **Loss Function**: Label Smoothing Cross Entropy
-- **Explainability**: Integrated Grad-CAM hooks
-
-## 🏗️ Project Architecture
+### 3. Data & Sync
+- **Local DB**: SQLite managed via SQLAlchemy ORM.
+- **Cloud DB**: PostgreSQL/Supabase (configured via environment variables).
+- **Sync Mechanism**: Records are tracked using `client_uuid` and `updated_at` timestamps. The sync service exports local changes and imports remote updates using a "since" timestamp filter.
 
 ```mermaid
 graph TD
-    subgraph Frontend [React on Vercel]
-        UI[Material UI Components]
-        API_S[Axios Services]
-        Router[React Router 7]
+    subgraph Desktop [Electron App]
+        Renderer[React 19 Frontend]
+        Main[Electron Main Process]
+        Backend[FastAPI Local Server]
+        SQLite[(Local SQLite)]
+        ML[Local ML Model]
     end
 
-    subgraph Backend [FastAPI on Render]
-        API[API Endpoints]
-        Predictor[AI Predictor Service]
-        DB_Layer[SQLAlchemy ORM]
+    subgraph Cloud [External Services]
+        Supabase[(Supabase DB/Storage)]
+        HF[Hugging Face Space]
     end
 
-    subgraph Storage & DB
-        S3[Supabase Storage]
-        DB[Supabase PostgreSQL]
-    end
-
-    Router --> API_S
-    API_S --> API
-    API --> Predictor
-    Predictor --> S3
-    API --> DB_Layer
-    DB_Layer --> DB
+    Main -->|Spawns| Backend
+    Renderer -->|REST API| Backend
+    Backend -->|ORM| SQLite
+    Backend -->|Inference| ML
+    Backend <-->|Sync API| Supabase
 ```
 
-## 🚀 Installation & Local Development
+---
 
-### 1. Prerequisites
-- Python 3.10+
-- Node.js 18+
-- [Git](https://git-scm.com/)
+## 🚀 Installation & Setup
 
-### 2. Backend Setup
+### Prerequisites
+- **Node.js**: 18+ (latest LTS recommended)
+- **Python**: 3.10+
+- **Git**
+
+### 1. Backend Setup
 ```bash
 cd backend
 python -m venv venv
 source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
+# For local AI support:
+pip install -r requirements-desktop.txt
 ```
-*Note: Ensure your `.env` file contains your `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_KEY`.*
+*Create a `.env` file in `backend/` using `.env.example` as a template.*
 
-### 3. Frontend Setup
+### 2. Frontend Setup
 ```bash
 cd frontend1
 npm install
-npm run dev
-```
-*The app will be available at http://localhost:5173*
-
-## 🌩️ Deployment
-
-### Render (Backend)
-The backend is optimized for Render's Free Tier (512MB RAM):
-- **Memory Optimization**: Uses `torch.set_num_threads(1)` and manual garbage collection to stay within RAM limits.
-- **Timeout**: Increased to 300s to accommodate AI model loading on startup.
-- **Gunicorn**: Configured with `--worker-tmp-dir /dev/shm` for heartbeat stability.
-
-### Vercel (Frontend)
-The frontend uses `vercel.json` for SPA routing and asset protection:
-```json
-{
-  "rewrites": [
-    {
-      "source": "/((?!api|assets|.*\\..*).*)",
-      "destination": "/index.html"
-    }
-  ]
-}
 ```
 
-## 🧠 Memory Optimization Details
-Running a Torch-based AI model on a 512MB RAM limit is challenging. This project implements several "RAM Diet" strategies:
-- **Matplotlib Replacement**: Uses a pure Numpy/Pillow implementation for JET colormaps to save ~100MB RAM.
-- **Gradient Purging**: `model.zero_grad(set_to_none=True)` is called immediately after heatmap generation.
-- **Weight Deletion**: Checkpoint dictionaries are deleted immediately after loading into the model architecture.
+### 3. Desktop Setup
+```bash
+cd desktop
+npm install
+```
 
 ---
 
-## Desktop (Offline-Capable)
+## 🛠️ Development & Building
 
-An Electron wrapper with a bundled local FastAPI backend (SQLite + local ML inference) lives in `desktop/`.
-See `desktop/README.md` for build + packaging instructions.
+### Running in Development
+To start the full desktop suite (Frontend + Electron + Backend):
+```bash
+cd desktop
+npm run dev
+```
 
+### Packaging the App
+1. **Build Frontend**: `npm --prefix ../frontend1 run build`
+2. **Build Backend (PyInstaller)**: `powershell -File ../backend/scripts/build_desktop_backend.ps1`
+3. **Package Electron**: `npm run build` (This runs `electron-builder`)
+*The final executable will be in `desktop/release/`.*
+
+---
+
+## 📁 Project Structure
+
+```text
+├── assets/             # Media and static branding assets
+├── backend/            # FastAPI source code
+│   ├── app/
+│   │   ├── api/       # API endpoints (sync, patients, reports, inference)
+│   │   ├── db/        # SQLAlchemy engine & migrations
+│   │   ├── models/    # Database tables (Patient, Report, User)
+│   │   └── services/  # AI logic (local_ai_service, ai_service)
+│   ├── scripts/        # Build and utility scripts
+│   └── desktop_server.py # Entry point for local backend server
+├── desktop/            # Electron wrapper and config
+│   └── src/
+│       ├── main.js    # Electron main: Spawns backend & browser
+│       └── preload.js  # IPC bridge between Renderer and Main
+├── frontend1/          # React 19 codebase
+└── ml_pipeline/        # Model training and evaluation scripts
+```
+
+---
+
+## 🌩️ Offline & Sync Details
+
+### Local Connectivity
+- The app runs a dedicated FastAPI server on a random free port discovered at launch.
+- Database path: `%APPDATA%/retina-max-desktop/retina-max.sqlite3` (on Windows).
+
+### Sync Logic
+- **Export**: The app polls for records where `updated_at > last_sync_time`.
+- **Import**: Incoming records from the cloud are matched by `client_uuid`. Existing records are updated only if the remote `updated_at` is newer.
+- **Images**: Reports include local paths/filenames. In cloud mode, images are uploaded to Supabase Storage.
+
+---
+
+## 🧪 Testing & Debugging
+
+- **Debugging Backend**: Set `LOG_LEVEL=debug` in your `.env`. You can use `curl http://localhost:[port]/health` to check server status.
+- **Inspecting Database**: Use a SQLite browser to open the `.sqlite3` file in the app data directory.
+- **Testing Sync**: Trigger manual sync via the Settings/Sync dashboard and monitor terminal logs for "Sync import" messages.
+
+---
+
+## 📝 Future Improvements
+- [ ] **Image Caching**: Local caching of cloud-hosted images for smoother history viewing.
+- [ ] **Visit Notes**: Dedicated model for patient visits with rich text support.
+- [ ] **Dirty Flags**: Explicit bit tracking for locally modified records to optimize sync performance.
+- [ ] **On-Device Quantization**: Move to INT8 models to reduce memory footprint on older desktops.
+
+---
+
+Developed with ❤️ by the Retina Max Team.
