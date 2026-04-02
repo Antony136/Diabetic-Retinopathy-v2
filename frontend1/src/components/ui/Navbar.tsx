@@ -22,6 +22,7 @@ export default function Navbar() {
   const role = getRoleFromToken(getAuthToken());
   const online = useOnlineStatus();
   const [backendStatus, setBackendStatus] = useState<{ ready: boolean; port?: number } | null>(null);
+  const hasLocalBackend = Boolean(getLocalApiBaseUrl());
 
   useEffect(() => {
     let active = true;
@@ -59,7 +60,7 @@ export default function Navbar() {
   useEffect(() => {
     // Auto-sync when connectivity returns (desktop/offline-first mode).
     if (!online) return;
-    if (!getLocalApiBaseUrl()) return; // avoid syncing on web deploy (cloud-only)
+    if (!hasLocalBackend) return; // avoid syncing on web deploy (cloud-only)
     if (!getAuthToken()) return;
 
     setSyncError(null);
@@ -113,10 +114,12 @@ export default function Navbar() {
               Offline Mode
             </div>
           )}
-          <div className="px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-bold tracking-wide">
-            Sync: {syncStatus === "pending" ? "Pending" : syncStatus === "synced" ? "Synced" : syncStatus === "failed" ? "Failed" : "Idle"}
-            {syncStatusReason ? ` (${syncStatusReason})` : ""}
-          </div>
+          {hasLocalBackend && (
+            <div className="px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-bold tracking-wide">
+              Sync: {syncStatus === "pending" ? "Pending" : syncStatus === "synced" ? "Synced" : syncStatus === "failed" ? "Failed" : "Idle"}
+              {syncStatusReason ? ` (${syncStatusReason})` : ""}
+            </div>
+          )}
           {backendStatus && !backendStatus.ready && (
             <button
               onClick={async () => {
@@ -139,7 +142,7 @@ export default function Navbar() {
               Restart backend
             </button>
           )}
-          {getLocalApiBaseUrl() && (
+          {hasLocalBackend && (
             <button
               onClick={() => {
                 const next = !useCloudBackend;
@@ -154,7 +157,7 @@ export default function Navbar() {
               <span className="material-symbols-outlined">{useCloudBackend ? "cloud" : "cloud_off"}</span>
             </button>
           )}
-          {getLocalApiBaseUrl() && (
+          {hasLocalBackend && (
             <button
               onClick={async () => {
                 try {

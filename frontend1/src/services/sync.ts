@@ -86,7 +86,7 @@ export async function runSync() {
     }
 
     const localToken = getAuthToken();
-    const cloudToken = getCloudAuthToken() || localToken;
+    const cloudToken = getCloudAuthToken();
     if (!cloudToken) {
       setSyncStatus("failed", "cloud_auth_missing");
       return { ok: false, reason: "cloud_auth_missing" };

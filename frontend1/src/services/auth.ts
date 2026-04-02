@@ -114,6 +114,22 @@ async function loginCloud(request: LoginRequest): Promise<TokenResponse> {
   return data;
 }
 
+async function registerCloudIfMissing(request: RegisterRequest): Promise<void> {
+  const cloudBase = getCloudApiBaseUrl();
+  const cloudClient = axios.create({ baseURL: cloudBase, timeout: 20000 });
+  try {
+    await cloudClient.post<UserResponse>("/auth/register", request);
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      const detail = (err.response?.data as { detail?: unknown } | undefined)?.detail;
+      if (typeof detail === "string" && detail.includes("Email already registered")) {
+        return;
+      }
+    }
+    throw err;
+  }
+}
+
 async function registerLocalIfMissing(request: RegisterRequest): Promise<void> {
   try {
     await api.post<UserResponse>("/auth/register", request);
@@ -154,7 +170,18 @@ async function ensureCloudAuth(request: LoginRequest) {
     await loginCloud(request);
     console.log("auth: cloud login ensured after local login");
   } catch (err) {
-    console.warn("auth: cloud login during local path failed; continuing with local token", err);
+    if (axios.isAxiosError(err) && err.response?.status === 401) {
+      try {
+        await registerCloudIfMissing({ name: request.email.split("@")[0], email: request.email, password: request.password });
+        await loginCloud(request);
+        console.log("auth: cloud register+login ensured after local login");
+        return;
+      } catch (err2) {
+        console.warn("auth: cloud register+login failed; cannot sync to cloud", err2);
+        return;
+      }
+    }
+    console.warn("auth: cloud login during local path failed; cannot sync to cloud", err);
   }
 }
 

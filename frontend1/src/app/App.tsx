@@ -5,6 +5,8 @@ import Navbar from "../components/ui/Navbar";
 import BottomNav from "../components/ui/BottomNav";
 import AppRoutes from "./routes";
 import { syncAuthFromSecureStore } from "../services/authStorage";
+import { getAuthToken } from "../services/authStorage";
+import { getUserIdFromToken } from "../services/jwt";
 
 function AppChrome() {
   const location = useLocation();
@@ -25,7 +27,18 @@ function AppChrome() {
 
 export default function App() {
   useEffect(() => {
-    void syncAuthFromSecureStore();
+    void (async () => {
+      await syncAuthFromSecureStore();
+      const token = getAuthToken();
+      const userId = getUserIdFromToken(token);
+      if (userId && window.electronAPI?.setActiveDoctor) {
+        try {
+          await window.electronAPI.setActiveDoctor(userId);
+        } catch {
+          // ignore
+        }
+      }
+    })();
   }, []);
 
   return (
