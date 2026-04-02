@@ -41,14 +41,21 @@ def resolve(
     if getattr(current_user, "role", "doctor") == "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin cache resolve not supported")
 
-    cached = image_cache_service.lookup_cached(db, doctor_id=current_user.id, remote_url=url)
-    if cached and not force:
-        return {"remote_url": image_cache_service.canonicalize_url(url), "cached": True, "local_url": cached}
+    canonical = image_cache_service.canonicalize_url(url)
 
-    local_url = image_cache_service.cache_url(db, doctor_id=current_user.id, remote_url=url, force=force)
-    if local_url:
-        return {"remote_url": image_cache_service.canonicalize_url(url), "cached": True, "local_url": local_url}
-    return {"remote_url": image_cache_service.canonicalize_url(url), "cached": False, "local_url": None}
+    try:
+        cached = image_cache_service.lookup_cached(db, doctor_id=current_user.id, remote_url=url)
+        if cached and not force:
+            return {"remote_url": canonical, "cached": True, "local_url": cached}
+
+        local_url = image_cache_service.cache_url(db, doctor_id=current_user.id, remote_url=url, force=force)
+        if local_url:
+            return {"remote_url": canonical, "cached": True, "local_url": local_url}
+    except Exception:
+        # Never hard-fail the UI for caching issues; caller can fall back to remote URL.
+        return {"remote_url": canonical, "cached": False, "local_url": None}
+
+    return {"remote_url": canonical, "cached": False, "local_url": None}
 
 
 @router.post("/warm")

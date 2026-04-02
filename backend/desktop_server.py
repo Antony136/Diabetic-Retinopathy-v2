@@ -9,15 +9,18 @@ def setup_environment():
     os.environ.setdefault("AI_PROVIDER", "local")
     os.environ.setdefault("ALLOWED_ORIGINS", "*")
 
-    # Fix working directory when running as PyInstaller EXE
-    if getattr(sys, 'frozen', False):
-        # Running inside EXE
-        base_path = sys._MEIPASS
+    # When running from Electron we intentionally keep the current working directory (cwd)
+    # set by the parent process (typically Electron's app.getPath("userData")).
+    # That ensures SQLite + uploads persist under the user's profile and are writable.
+    #
+    # We only need to ensure Python can import the backend package when cwd is not the repo root.
+    if getattr(sys, "frozen", False):
+        base_path = getattr(sys, "_MEIPASS", os.getcwd())
     else:
-        # Running in dev
         base_path = os.path.dirname(os.path.abspath(__file__))
 
-    os.chdir(base_path)
+    if base_path and base_path not in sys.path:
+        sys.path.insert(0, base_path)
 
 
 def main():

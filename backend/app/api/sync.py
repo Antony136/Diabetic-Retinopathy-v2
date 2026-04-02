@@ -66,12 +66,16 @@ def _download_and_cache_image(db: Session, doctor_id: int, remote_url: str) -> s
     if not _is_remote_url(remote_url):
         return remote_url
 
-    cached = get_cached_image(db, doctor_id, remote_url)
-    if cached:
-        return cached.local_url
+    try:
+        cached = get_cached_image(db, doctor_id, remote_url)
+        if cached:
+            return cached.local_url
 
-    local_url = cache_remote_image(db, doctor_id, remote_url)
-    return local_url or remote_url
+        local_url = cache_remote_image(db, doctor_id, remote_url)
+        return local_url or remote_url
+    except Exception:
+        # Best-effort only: sync should not fail if caching fails.
+        return remote_url
 
 
 def _desktop_cache_enabled() -> bool:

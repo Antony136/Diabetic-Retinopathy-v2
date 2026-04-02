@@ -9,9 +9,6 @@ from urllib.parse import quote, unquote
 
 load_dotenv()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
 class StorageService:
     @staticmethod
     def _write_local_upload(data: bytes, remote_filename: str) -> str:
@@ -54,20 +51,20 @@ class StorageService:
         Upload raw bytes to Supabase Storage with retry logic.
         Returns the public object URL (requires a public bucket).
         """
-        if not SUPABASE_URL or not SUPABASE_KEY:
+        supabase_url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+        supabase_key = os.getenv("SUPABASE_KEY") or ""
+        desktop_mode = (os.getenv("DESKTOP_MODE") or "").strip() == "1"
+
+        if not supabase_url or not supabase_key:
             # Offline/local fallback: persist to disk and serve via /uploads static mount.
-            try:
-                return StorageService._write_local_upload(data, remote_filename)
-            except Exception as e:
-                print(f"ERROR: Failed to write local upload fallback: {e}")
-                return f"/uploads/{Path(unquote(remote_filename)).name}"
+            return StorageService._write_local_upload(data, remote_filename)
 
         if not data:
             print("ERROR: No data provided for upload (0 bytes).")
             return ""
 
         safe_filename = quote(remote_filename)
-        endpoint = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{safe_filename}"
+        endpoint = f"{supabase_url}/storage/v1/object/{bucket}/{safe_filename}"
 
         if content_type is None:
             file_ext = Path(remote_filename).suffix.lower()
@@ -79,8 +76,8 @@ class StorageService:
                 content_type = "application/octet-stream"
 
         headers = {
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {supabase_key}",
+            "apikey": supabase_key,
             "Content-Type": content_type,
             "x-upsert": "true",
         }
@@ -97,7 +94,7 @@ class StorageService:
                         response = client.put(endpoint, content=data, headers=headers)
 
                     if response.status_code in (200, 201):
-                        public_url = f"{SUPABASE_URL}/storage/v1/object/public/{bucket}/{safe_filename}"
+                        public_url = f"{supabase_url}/storage/v1/object/public/{bucket}/{safe_filename}"
                         print(f"SUCCESS: Uploaded to cloud: {public_url}")
                         return public_url
 
@@ -108,24 +105,23 @@ class StorageService:
             if attempt < retries - 1:
                 time.sleep(2)
 
-        # Cloud upload failed; fall back to local persistence so desktop/offline remains consistent.
-        try:
+        # Cloud upload failed.
+        # Desktop/offline: best-effort fallback to local disk so work isn't lost.
+        # Cloud deployments: do NOT fall back to local /uploads (ephemeral on Render) because it creates broken URLs.
+        if desktop_mode:
             return StorageService._write_local_upload(data, remote_filename)
-        except Exception as e:
-            print(f"ERROR: Failed to write local upload fallback after cloud failure: {e}")
-            return ""
+        return ""
 
     @staticmethod
     def upload_file(local_path: str, remote_filename: str, bucket: str = "retina-images", retries: int = 3) -> str:
         """
         Uploads a file to Supabase Storage with retry logic.
         """
-        if not SUPABASE_URL or not SUPABASE_KEY:
-            try:
-                return StorageService._write_local_upload(Path(local_path).read_bytes(), remote_filename)
-            except Exception as e:
-                print(f"ERROR: Failed to write local upload fallback: {e}")
-                return f"/uploads/{Path(remote_filename).name}"
+        supabase_url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+        supabase_key = os.getenv("SUPABASE_KEY") or ""
+
+        if not supabase_url or not supabase_key:
+            return StorageService._write_local_upload(Path(local_path).read_bytes(), remote_filename)
 
         if not os.path.exists(local_path):
             print(f"ERROR: Local file not found: {local_path}")

@@ -67,9 +67,9 @@ async function startBackend() {
 
   const { cmd, args } = getBackendCommand();
   const userDataDir = app.getPath("userData");
-  const dbPath = activeDoctorId
-    ? path.join(userDataDir, `retina-max-user-${activeDoctorId}.sqlite3`)
-    : path.join(userDataDir, "retina-max.sqlite3");
+  // Use a single SQLite DB per installation (scoped by doctor_id in tables).
+  // Per-doctor DB files cause token/session invalidation when switching DBs after login.
+  const dbPath = path.join(userDataDir, "retina-max.sqlite3");
   const modelPath = app.isPackaged
     ? resourcePath("backend", "model_b3.pth")
     : resourcePath("backend", "app", "checkpoints", "model_b3.pth");
@@ -217,20 +217,8 @@ ipcMain.handle("set-active-doctor", async (_, userId) => {
   }
 
   activeDoctorId = parsed;
-
-  if (backendProcess) {
-    try { backendProcess.kill(); } catch {}
-    backendProcess = null;
-  }
-
-  try {
-    await startBackend();
-    const ok = await waitForBackend();
-    return { ok, message: ok ? "Backend switched" : "Backend switch failed" };
-  } catch (e) {
-    log.error("set-active-doctor error", e);
-    return { ok: false, message: String(e) };
-  }
+  // No backend restart needed (single DB). Keep this IPC for forwards compatibility.
+  return { ok: true, message: "doctor active" };
 });
 
 ipcMain.handle("secure-token-get", async (_, key) => {
