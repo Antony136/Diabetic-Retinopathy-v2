@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
+from app.db.database import engine
 from app.db.database import SessionLocal
 from app.models.patient import Patient
 from app.models.report import Report
@@ -70,6 +72,20 @@ def _download_and_cache_image(db: Session, doctor_id: int, remote_url: str) -> s
 
     local_url = cache_remote_image(db, doctor_id, remote_url)
     return local_url or remote_url
+
+
+def _desktop_cache_enabled() -> bool:
+    """
+    Only cache remote assets into /uploads for the desktop/offline backend.
+
+    On cloud deployments, rewriting image URLs to /uploads would break persistence.
+    """
+    try:
+        if engine.dialect.name == "sqlite":
+            return True
+    except Exception:
+        pass
+    return (os.getenv("DESKTOP_MODE") or "").strip() == "1"
 
 
 class SyncPatient(BaseModel):
@@ -241,6 +257,7 @@ def import_changes(
         patient_map[c_uuid] = new_p
 
     # Reports next.
+    enable_cache = _desktop_cache_enabled()
     for r in payload.reports:
         c_uuid = (r.client_uuid or "").strip()
         p_uuid = (r.patient_client_uuid or "").strip()
@@ -266,10 +283,11 @@ def import_changes(
         image_url = _resolve_cloud_url(r.image_url, cloud_base)
         heatmap_url = _resolve_cloud_url(r.heatmap_url, cloud_base)
 
-        if image_url and _is_remote_url(image_url):
-            image_url = _download_and_cache_image(db, current_user.id, image_url)
-        if heatmap_url and _is_remote_url(heatmap_url):
-            heatmap_url = _download_and_cache_image(db, current_user.id, heatmap_url)
+        if enable_cache:
+            if image_url and _is_remote_url(image_url):
+                image_url = _download_and_cache_image(db, current_user.id, image_url)
+            if heatmap_url and _is_remote_url(heatmap_url):
+                heatmap_url = _download_and_cache_image(db, current_user.id, heatmap_url)
 
         new_r = Report(
             client_uuid=c_uuid,
@@ -288,4 +306,3 @@ def import_changes(
 
     db.commit()
     return {"status": "ok"}
-

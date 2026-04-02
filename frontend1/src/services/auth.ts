@@ -90,8 +90,19 @@ export async function registerUser(request: RegisterRequest) {
   return data;
 }
 
+function getPinnedLocalApiBase() {
+  // In desktop, always use the local backend for local auth/session (even if "use cloud backend" toggle is on).
+  return getLocalApiBaseUrl() || api.defaults.baseURL || "";
+}
+
+function makePinnedLocalClient() {
+  const baseURL = getPinnedLocalApiBase();
+  return axios.create({ baseURL, timeout: 20000 });
+}
+
 async function loginLocal(request: LoginRequest): Promise<TokenResponse> {
-  const { data } = await api.post<TokenResponse>("/auth/login", request);
+  const localClient = makePinnedLocalClient();
+  const { data } = await localClient.post<TokenResponse>("/auth/login", request);
   return data;
 }
 
@@ -131,8 +142,9 @@ async function registerCloudIfMissing(request: RegisterRequest): Promise<void> {
 }
 
 async function registerLocalIfMissing(request: RegisterRequest): Promise<void> {
+  const localClient = makePinnedLocalClient();
   try {
-    await api.post<UserResponse>("/auth/register", request);
+    await localClient.post<UserResponse>("/auth/register", request);
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       const detail = (err.response?.data as { detail?: unknown } | undefined)?.detail;
@@ -163,6 +175,9 @@ async function prepareDoctorSession(accessToken: string | null) {
 }
 
 async function ensureCloudAuth(request: LoginRequest) {
+  // Only meaningful in desktop (needs both local + cloud endpoints).
+  if (!getLocalApiBaseUrl()) return;
+
   const cloudToken = getCloudAuthToken();
   if (cloudToken) return;
 
@@ -194,7 +209,8 @@ export async function loginUser(request: LoginRequest) {
 
     await prepareDoctorSession(localToken.access_token);
 
-    if (navigator.onLine) {
+    // Desktop sync only (cloud website has no local backend, so sync is not configured there).
+    if (navigator.onLine && getLocalApiBaseUrl()) {
       await ensureCloudAuth(request);
       console.log("auth: online -> running sync");
       try {
