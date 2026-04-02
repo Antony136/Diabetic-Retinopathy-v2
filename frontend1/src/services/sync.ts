@@ -94,6 +94,7 @@ export async function runSync() {
 
     const local = makeClient(localBase, localToken);
     const cloud = makeClient(cloudBase, cloudToken);
+    const localOrigin = localBase.replace(/\/api\/?$/, "");
 
     const since = getLastSync();
     const localExport = await local.get("/sync/export", { params: since ? { since } : undefined });
@@ -121,12 +122,12 @@ export async function runSync() {
     if (r.created_at) form.append("created_at", r.created_at);
     if (r.updated_at) form.append("updated_at", r.updated_at);
 
-    const imageFile = await fetchAsFile(`${localBase.replace(/\/$/, "")}${imageUrl}`, r.filename || "retina.png");
+    const imageFile = await fetchAsFile(`${localOrigin.replace(/\/$/, "")}${imageUrl}`, r.filename || "retina.png");
     form.append("file", imageFile);
 
     const heatmapUrl = String(r?.heatmap_url || "");
     if (heatmapUrl.startsWith("/uploads/")) {
-      const hm = await fetchAsFile(`${localBase.replace(/\/$/, "")}${heatmapUrl}`, "heatmap.png");
+      const hm = await fetchAsFile(`${localOrigin.replace(/\/$/, "")}${heatmapUrl}`, "heatmap.png");
       form.append("heatmap", hm);
     }
 

@@ -13,7 +13,8 @@ class ImageCache(Base):
 
     # Canonicalized remote URL (querystring stripped) to avoid cache misses on signed URLs.
     remote_url = Column(String, nullable=False)
-    local_path = Column(String, nullable=False)
+    # Existing desktop DBs use `local_url`. Keep that stable.
+    local_url = Column(String, nullable=False)
 
     content_type = Column(String, nullable=True)
     etag = Column(String, nullable=True)
@@ -27,6 +28,6 @@ class ImageCache(Base):
     __table_args__ = (UniqueConstraint("doctor_id", "remote_url", name="uq_image_cache_doctor_remote"),)
 
     @property
-    def local_url(self) -> str:
-        return self.local_path
-
+    def local_path(self) -> str:
+        # Back-compat alias for older code paths.
+        return self.local_url

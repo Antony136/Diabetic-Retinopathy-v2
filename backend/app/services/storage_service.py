@@ -14,6 +14,34 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 class StorageService:
     @staticmethod
+    def _write_local_upload(data: bytes, remote_filename: str) -> str:
+        uploads_dir = Path("uploads")
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+
+        # Normalize and sanitize remote filenames to avoid encoded path mismatch
+        filename = Path(remote_filename).name
+        filename = unquote(filename)
+        filename = re.sub(r"[^A-Za-z0-9_.()\-]", "_", filename).strip("_ ")
+        if not filename:
+            filename = f"{uuid.uuid4().hex}.bin"
+
+        local_path = uploads_dir / filename
+        # Avoid collisions by appending numeric suffix
+        if local_path.exists():
+            stem = local_path.stem
+            suffix = local_path.suffix
+            i = 1
+            while True:
+                candidate = uploads_dir / f"{stem}_{i}{suffix}"
+                if not candidate.exists():
+                    local_path = candidate
+                    break
+                i += 1
+
+        local_path.write_bytes(data or b"")
+        return f"/uploads/{local_path.name}"
+
+    @staticmethod
     def upload_bytes(
         data: bytes,
         remote_filename: str,
@@ -28,31 +56,7 @@ class StorageService:
         if not SUPABASE_URL or not SUPABASE_KEY:
             # Offline/local fallback: persist to disk and serve via /uploads static mount.
             try:
-                uploads_dir = Path("uploads")
-                uploads_dir.mkdir(parents=True, exist_ok=True)
-
-                # Normalize and sanitize remote filenames to avoid encoded path mismatch
-                filename = Path(remote_filename).name
-                filename = unquote(filename)
-                filename = re.sub(r"[^A-Za-z0-9_.()\-]", "_", filename).strip("_ ")
-                if not filename:
-                    filename = f"{uuid.uuid4().hex}.bin"
-
-                local_path = uploads_dir / filename
-                # Avoid collisions by appending numeric suffix
-                if local_path.exists():
-                    stem = local_path.stem
-                    suffix = local_path.suffix
-                    i = 1
-                    while True:
-                        candidate = uploads_dir / f"{stem}_{i}{suffix}"
-                        if not candidate.exists():
-                            local_path = candidate
-                            break
-                        i += 1
-
-                local_path.write_bytes(data or b"")
-                return f"/uploads/{local_path.name}"
+                return StorageService._write_local_upload(data, remote_filename)
             except Exception as e:
                 print(f"ERROR: Failed to write local upload fallback: {e}")
                 return f"/uploads/{Path(unquote(remote_filename)).name}"
@@ -103,7 +107,12 @@ class StorageService:
             if attempt < retries - 1:
                 time.sleep(2)
 
-        return f"/uploads/{remote_filename}"
+        # Cloud upload failed; fall back to local persistence so desktop/offline remains consistent.
+        try:
+            return StorageService._write_local_upload(data, remote_filename)
+        except Exception as e:
+            print(f"ERROR: Failed to write local upload fallback after cloud failure: {e}")
+            return ""
 
     @staticmethod
     def upload_file(local_path: str, remote_filename: str, bucket: str = "retina-images", retries: int = 3) -> str:
@@ -112,11 +121,7 @@ class StorageService:
         """
         if not SUPABASE_URL or not SUPABASE_KEY:
             try:
-                uploads_dir = Path("uploads")
-                uploads_dir.mkdir(parents=True, exist_ok=True)
-                local_dest = uploads_dir / Path(remote_filename).name
-                local_dest.write_bytes(Path(local_path).read_bytes())
-                return f"/uploads/{local_dest.name}"
+                return StorageService._write_local_upload(Path(local_path).read_bytes(), remote_filename)
             except Exception as e:
                 print(f"ERROR: Failed to write local upload fallback: {e}")
                 return f"/uploads/{Path(remote_filename).name}"

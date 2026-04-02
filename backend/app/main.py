@@ -21,6 +21,9 @@ except Exception as e:
 
 @app.on_event("startup")
 def _startup_migrations():
+    if (os.getenv("RUN_MIGRATIONS") or "1").strip() in ("0", "false", "False", "no", "NO"):
+        print("Migrations skipped (RUN_MIGRATIONS=0).")
+        return
     try:
         run_migrations(engine)
         print("Migrations applied (if any).")

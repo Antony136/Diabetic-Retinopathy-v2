@@ -139,12 +139,14 @@ def cache_url(
     )
 
     if existing and not force:
-        local_rel = existing.local_path
+        local_rel = existing.local_url
         local_fs = uploads_dir / Path(local_rel).name
         if local_fs.exists() and local_fs.stat().st_size > 0:
             existing.last_accessed_at = datetime.utcnow()
             db.commit()
             return local_rel
+        # Mapping exists but file is missing/corrupt; force re-download.
+        force = True
 
     p = urlparse(download_url)
     url_path_ext = _ext_from_url_path(p.path)
@@ -178,7 +180,7 @@ def cache_url(
     local_rel = f"/uploads/{fname}"
 
     if existing:
-        existing.local_path = local_rel
+        existing.local_url = local_rel
         existing.content_type = ct
         existing.etag = etag
         existing.last_modified = last_modified
@@ -191,7 +193,7 @@ def cache_url(
     rec = ImageCache(
         doctor_id=doctor_id,
         remote_url=canonical,
-        local_path=local_rel,
+        local_url=local_rel,
         content_type=ct,
         etag=etag,
         last_modified=last_modified,
@@ -210,7 +212,7 @@ def lookup_cached(db: Session, *, doctor_id: int, remote_url: str) -> Optional[s
     rec = db.query(ImageCache).filter(ImageCache.doctor_id == doctor_id, ImageCache.remote_url == canonical).first()
     if not rec:
         return None
-    return rec.local_path
+    return rec.local_url
 
 
 # --- Backward-compatible API used by sync.py ---
@@ -220,11 +222,23 @@ def get_cached_image(db: Session, doctor_id: int, remote_url: str) -> Optional[I
         canonical = canonicalize_url(remote_url)
     except Exception:
         return None
-    return (
+    rec = (
         db.query(ImageCache)
         .filter(ImageCache.doctor_id == doctor_id, ImageCache.remote_url == canonical)
         .first()
     )
+    if not rec:
+        return None
+
+    # If file is missing, treat as uncached so the caller can re-download.
+    try:
+        uploads_dir = Path("uploads")
+        fs_path = uploads_dir / Path(rec.local_url).name
+        if not fs_path.exists() or fs_path.stat().st_size == 0:
+            return None
+    except Exception:
+        return None
+    return rec
 
 
 def cache_remote_image(db: Session, doctor_id: int, remote_url: str) -> Optional[str]:
