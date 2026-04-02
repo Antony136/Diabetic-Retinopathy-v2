@@ -1,6 +1,6 @@
 import api from "./api";
 import axios from "axios";
-import { getCloudApiBaseUrl, getLocalApiBaseUrl } from "./apiBase";
+import { getActiveApiBaseUrl, getCloudApiBaseUrl, getLocalApiBaseUrl } from "./apiBase";
 import { runSync, clearSyncState } from "./sync";
 import { getUserIdFromToken } from "./jwt";
 import { clearAuthToken, getAuthToken, setAuthToken, getCloudAuthToken, setCloudAuthToken } from "./authStorage";
@@ -92,7 +92,8 @@ export async function registerUser(request: RegisterRequest) {
 
 function getPinnedLocalApiBase() {
   // In desktop, always use the local backend for local auth/session (even if "use cloud backend" toggle is on).
-  return getLocalApiBaseUrl() || api.defaults.baseURL || "";
+  // In the web app (no local backend), fall back to the active API base (cloud).
+  return getLocalApiBaseUrl() || getActiveApiBaseUrl() || "";
 }
 
 function makePinnedLocalClient() {
