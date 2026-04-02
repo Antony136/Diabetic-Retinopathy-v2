@@ -126,3 +126,55 @@ def run_migrations(engine: Engine):
                         ddl = ddl.replace(" IF NOT EXISTS", "")
                         ddl = ddl.replace("TIMESTAMP", "DATETIME")
                     conn.execute(text(ddl))
+
+    # image_cache table may not exist in older environments (desktop/offline feature)
+    # Create table only when missing (safe for both SQLite/Postgres).
+    insp = inspect(engine)
+    try:
+        existing_tables = set(insp.get_table_names())
+    except Exception:
+        existing_tables = set()
+
+    if "image_cache" not in existing_tables:
+        if dialect == "postgresql":
+            ddl = """
+            CREATE TABLE IF NOT EXISTS image_cache (
+                id SERIAL PRIMARY KEY,
+                doctor_id INTEGER NOT NULL REFERENCES users(id),
+                remote_url VARCHAR NOT NULL,
+                local_path VARCHAR NOT NULL,
+                content_type VARCHAR NULL,
+                etag VARCHAR NULL,
+                last_modified VARCHAR NULL,
+                byte_size INTEGER NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                last_accessed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT uq_image_cache_doctor_remote UNIQUE (doctor_id, remote_url)
+            )
+            """
+            idx = "CREATE INDEX IF NOT EXISTS ix_image_cache_doctor_id ON image_cache (doctor_id)"
+        else:
+            ddl = """
+            CREATE TABLE IF NOT EXISTS image_cache (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doctor_id INTEGER NOT NULL,
+                remote_url TEXT NOT NULL,
+                local_path TEXT NOT NULL,
+                content_type TEXT NULL,
+                etag TEXT NULL,
+                last_modified TEXT NULL,
+                byte_size INTEGER NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                last_accessed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(doctor_id, remote_url)
+            )
+            """
+            idx = "CREATE INDEX IF NOT EXISTS ix_image_cache_doctor_id ON image_cache (doctor_id)"
+
+        with engine.begin() as conn:
+            if dialect == "postgresql":
+                conn.execute(text("SET statement_timeout TO 0"))
+            conn.execute(text(ddl))
+            conn.execute(text(idx))

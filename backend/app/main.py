@@ -12,7 +12,11 @@ import os
 app = FastAPI(title="Retina Max Backend", version="2.0.0")
 
 # Ensure local SQLite tables exist (desktop mode) before app usage.
-Base.metadata.create_all(bind=engine)
+try:
+    if engine.dialect.name == "sqlite" or (os.getenv("DESKTOP_MODE") or "").strip() == "1":
+        Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"WARNING: create_all skipped/failed: {e}")
 
 
 @app.on_event("startup")

@@ -1,86 +1,61 @@
-import api from "./api";
+import { getAuthToken } from "./authStorage";
 
-const IMAGE_CACHE_KEY = "retina_image_cache";
+const PREFIX = "retina_img_cache:";
 
-interface ImageCacheMap {
-  [remoteUrl: string]: string;
+function key(remoteUrl: string) {
+  return `${PREFIX}${remoteUrl}`;
 }
 
-function getCacheMap(): ImageCacheMap {
-  try {
-    const raw = localStorage.getItem(IMAGE_CACHE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as ImageCacheMap;
-  } catch {
-    return {};
-  }
+function getLocalApiBase() {
+  return (window.__LOCAL_API_BASE__ || window.electronAPI?.getLocalApiBase?.() || "").trim();
 }
 
-function setCacheMap(map: ImageCacheMap) {
-  try {
-    localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(map));
-  } catch {
-    // ignore
-  }
+function getLocalOrigin() {
+  const base = getLocalApiBase();
+  if (!base) return "";
+  return base.replace(/\/api\/?$/, "");
 }
 
-export function getCachedImageUrl(remoteUrl: string): string | null {
-  if (!remoteUrl) return null;
-  const map = getCacheMap();
-  return map[remoteUrl] || null;
+export function getCachedImageUrl(remoteUrl: string) {
+  const localPath = localStorage.getItem(key(remoteUrl)) || "";
+  if (!localPath) return "";
+  const origin = getLocalOrigin();
+  if (!origin) return "";
+  const normalized = localPath.replace(/\\/g, "/");
+  if (normalized.startsWith("http")) return normalized;
+  if (normalized.startsWith("/")) return `${origin}${normalized}`;
+  return `${origin}/${normalized}`;
 }
 
-export async function getCachedImageUrlFromServer(remoteUrl: string): Promise<string | null> {
-  if (!remoteUrl) return null;
-
-  try {
-    const response = await api.get("/images/cache", { params: { url: remoteUrl } });
-    if (response.status !== 200) return null;
-
-    const data = response.data as { local_url?: string | null };
-    if (data?.local_url) {
-      setCachedImageUrl(remoteUrl, data.local_url);
-      return data.local_url;
-    }
-    return null;
-  } catch {
-    return null;
-  }
+export function setCachedImageUrl(remoteUrl: string, localUrlOrPath: string) {
+  if (!remoteUrl || !localUrlOrPath) return;
+  // Store as path when possible to keep it portable across ports.
+  const origin = getLocalOrigin();
+  const v =
+    origin && localUrlOrPath.startsWith(origin)
+      ? localUrlOrPath.slice(origin.length)
+      : localUrlOrPath;
+  localStorage.setItem(key(remoteUrl), v);
 }
 
-export function setCachedImageUrl(remoteUrl: string, localUrl: string) {
-  if (!remoteUrl || !localUrl) return;
-  const map = getCacheMap();
-  map[remoteUrl] = localUrl;
-  setCacheMap(map);
-}
+export async function cacheRemoteImage(remoteUrl: string) {
+  const base = getLocalApiBase();
+  const origin = getLocalOrigin();
+  if (!base || !origin) return "";
+  if (!navigator.onLine) return "";
 
-export async function cacheRemoteImage(remoteUrl: string): Promise<string | null> {
-  if (!remoteUrl || !remoteUrl.startsWith("http")) return null;
+  const token = getAuthToken();
+  if (!token) return "";
 
-  const cached = getCachedImageUrl(remoteUrl);
-  if (cached) return cached;
+  const url = `${base.replace(/\/$/, "")}/cache/resolve?url=${encodeURIComponent(remoteUrl)}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return "";
+  const data = (await res.json()) as { local_url?: string | null };
+  const local = (data?.local_url || "").trim();
+  if (!local) return "";
 
-  const cachedFromServer = await getCachedImageUrlFromServer(remoteUrl);
-  if (cachedFromServer) return cachedFromServer;
-
-  try {
-    const formData = new FormData();
-    formData.append("url", remoteUrl);
-
-    const response = await api.post("/images/cache", formData);
-    if (response.status !== 200) {
-      return null;
-    }
-
-    const data = response.data as { local_url?: string };
-    if (data?.local_url) {
-      setCachedImageUrl(remoteUrl, data.local_url);
-      return data.local_url;
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
+  setCachedImageUrl(remoteUrl, local);
+  const normalized = local.replace(/\\/g, "/");
+  if (normalized.startsWith("/")) return `${origin}${normalized}`;
+  return `${origin}/${normalized}`;
 }

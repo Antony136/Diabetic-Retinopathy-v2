@@ -9,6 +9,7 @@ import { getRoleFromToken } from "../../services/jwt";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import { runSync, getSyncStatus } from "../../services/sync";
 import type { SyncStatus } from "../../services/sync";
+import { getLocalApiBaseUrl } from "../../services/apiBase";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -58,7 +59,7 @@ export default function Navbar() {
   useEffect(() => {
     // Auto-sync when connectivity returns (desktop/offline-first mode).
     if (!online) return;
-    if (!window.__LOCAL_API_BASE__) return; // avoid syncing on web deploy (cloud-only)
+    if (!getLocalApiBaseUrl()) return; // avoid syncing on web deploy (cloud-only)
     if (!getAuthToken()) return;
 
     setSyncError(null);
@@ -138,7 +139,7 @@ export default function Navbar() {
               Restart backend
             </button>
           )}
-          {window.__LOCAL_API_BASE__ && (
+          {getLocalApiBaseUrl() && (
             <button
               onClick={() => {
                 const next = !useCloudBackend;
@@ -153,7 +154,7 @@ export default function Navbar() {
               <span className="material-symbols-outlined">{useCloudBackend ? "cloud" : "cloud_off"}</span>
             </button>
           )}
-          {window.__LOCAL_API_BASE__ && (
+          {getLocalApiBaseUrl() && (
             <button
               onClick={async () => {
                 try {

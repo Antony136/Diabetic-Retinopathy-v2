@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "../utils/constants";
+import { getCachedImageUrl, cacheRemoteImage, setCachedImageUrl } from "./imageCache";
 
 export function getLocalApiBaseUrl() {
   return (window.__LOCAL_API_BASE__ || window.electronAPI?.getLocalApiBase?.() || "").trim();
@@ -10,8 +11,6 @@ export function getCloudApiBaseUrl() {
     API_BASE_URL
   );
 }
-
-import { getCachedImageUrl, cacheRemoteImage, setCachedImageUrl } from "./imageCache";
 
 export function getActiveApiBaseUrl() {
   // In Electron, prefer local backend even when online (offline-first).

@@ -139,7 +139,8 @@ export async function runSync() {
 
   // 3) Pull cloud changes back to local (patients + reports metadata)
   const cloudExport = await cloud.get("/sync/export", { params: since ? { since } : undefined });
-    await local.post(`/sync/import?cloud_base=${encodeURIComponent(cloudBase)}`, cloudExport.data);
+    const cloudOrigin = cloudBase.replace(/\/api\/?$/, "");
+    await local.post(`/sync/import?cloud_base=${encodeURIComponent(cloudOrigin)}`, cloudExport.data);
   setLastSync(cloudExport.data?.server_time || localExport.data?.server_time || "");
   setSyncStatus("synced");
   return { ok: true };
@@ -148,4 +149,3 @@ export async function runSync() {
     throw error;
   }
 }
-
