@@ -21,7 +21,8 @@ class StorageService:
         # Normalize and sanitize remote filenames to avoid encoded path mismatch
         filename = Path(remote_filename).name
         filename = unquote(filename)
-        filename = re.sub(r"[^A-Za-z0-9_.()\-]", "_", filename).strip("_ ")
+        # Keep spaces to avoid URL/DB mismatch (StaticFiles decodes %20 -> space).
+        filename = re.sub(r"[^A-Za-z0-9_.()\\- ]", "_", filename).strip("_ ")
         if not filename:
             filename = f"{uuid.uuid4().hex}.bin"
 

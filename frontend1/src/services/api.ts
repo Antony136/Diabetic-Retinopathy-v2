@@ -1,6 +1,6 @@
 import axios, { AxiosHeaders, type InternalAxiosRequestConfig } from "axios";
-import { getActiveApiBaseUrl } from "./apiBase";
-import { getAuthToken } from "./authStorage";
+import { getActiveApiBaseUrl, getCloudApiBaseUrl } from "./apiBase";
+import { getAuthToken, getCloudAuthToken } from "./authStorage";
 
 const api = axios.create({
   headers: { "Content-Type": "application/json" },
@@ -13,7 +13,9 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   config.baseURL = baseURL;
   console.debug("API request", config.method, baseURL, config.url);
 
-  const token = getAuthToken();
+  const cloudBase = getCloudApiBaseUrl();
+  const isCloud = Boolean(cloudBase) && baseURL === cloudBase;
+  const token = isCloud ? getCloudAuthToken() : getAuthToken();
   if (!token) return config;
 
   const headers = AxiosHeaders.from(config.headers);

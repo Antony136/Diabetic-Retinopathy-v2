@@ -39,7 +39,12 @@ uploads_dir.mkdir(parents=True, exist_ok=True)
 print(f"Server starting - Environment: PORT={os.getenv('PORT')}")
 
 # Mount uploads directory as static files (legacy local-storage support)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+try:
+    from app.services.uploads_static import UploadsStaticFiles
+
+    app.mount("/uploads", UploadsStaticFiles(directory="uploads"), name="uploads")
+except Exception:
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # CORS middleware
 origins_env = os.getenv("ALLOWED_ORIGINS")
