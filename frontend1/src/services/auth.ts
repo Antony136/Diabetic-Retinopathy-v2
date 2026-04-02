@@ -3,7 +3,7 @@ import axios from "axios";
 import { getCloudApiBaseUrl, getLocalApiBaseUrl } from "./apiBase";
 import { runSync, clearSyncState } from "./sync";
 import { getUserIdFromToken } from "./jwt";
-import { clearAuthToken, getAuthToken, setAuthToken, setCloudAuthToken } from "./authStorage";
+import { clearAuthToken, getAuthToken, setAuthToken, getCloudAuthToken, setCloudAuthToken } from "./authStorage";
 
 const CURRENT_USER_KEY = "retina_current_user_id";
 
@@ -41,6 +41,13 @@ async function clearLocalDoctorData() {
 export async function logoutUser() {
   const token = getAuthToken();
   const userId = getUserIdFromToken(token);
+
+  try {
+    await clearLocalDoctorData();
+  } catch {
+    // ignore
+  }
+
   clearAuthToken();
   setLocalCurrentUserId(null);
   clearSyncState();
@@ -52,12 +59,6 @@ export async function logoutUser() {
   if (userId) {
     localStorage.removeItem(`retina_sync_last_${userId}`);
     localStorage.removeItem(`retina_sync_status_${userId}`);
-  }
-
-  try {
-    await clearLocalDoctorData();
-  } catch {
-    // ignore
   }
 }
 
@@ -145,6 +146,18 @@ async function prepareDoctorSession(accessToken: string | null) {
   }
 }
 
+async function ensureCloudAuth(request: LoginRequest) {
+  const cloudToken = getCloudAuthToken();
+  if (cloudToken) return;
+
+  try {
+    await loginCloud(request);
+    console.log("auth: cloud login ensured after local login");
+  } catch (err) {
+    console.warn("auth: cloud login during local path failed; continuing with local token", err);
+  }
+}
+
 export async function loginUser(request: LoginRequest) {
   console.log("auth: attempting local login");
   try {
@@ -155,6 +168,7 @@ export async function loginUser(request: LoginRequest) {
     await prepareDoctorSession(localToken.access_token);
 
     if (navigator.onLine) {
+      await ensureCloudAuth(request);
       console.log("auth: online -> running sync");
       try {
         await runSync();
