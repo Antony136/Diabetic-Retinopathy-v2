@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { APP_NAME } from "../../utils/constants";
-import { clearAuthToken, getAuthToken } from "../../services/authStorage";
+import { getAuthToken } from "../../services/authStorage";
+import { logoutUser } from "../../services/auth";
 import { listNotifications } from "../../services/notifications";
 import { getAppSettings } from "../../services/appSettings";
 import { getRoleFromToken } from "../../services/jwt";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
-import { runSync } from "../../services/sync";
+import { runSync, getSyncStatus } from "../../services/sync";
+import type { SyncStatus } from "../../services/sync";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const [unread, setUnread] = useState(0);
   const [syncBusy, setSyncBusy] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const [syncStatusReason, setSyncStatusReason] = useState<string | undefined>(undefined);
   const [useCloudBackend, setUseCloudBackend] = useState(() => localStorage.getItem("retina_use_cloud_backend") === "1");
   const role = getRoleFromToken(getAuthToken());
   const online = useOnlineStatus();
@@ -46,6 +50,12 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    const status = getSyncStatus();
+    setSyncStatus(status.status);
+    setSyncStatusReason(status.reason);
+  }, []);
+
+  useEffect(() => {
     // Auto-sync when connectivity returns (desktop/offline-first mode).
     if (!online) return;
     if (!window.__LOCAL_API_BASE__) return; // avoid syncing on web deploy (cloud-only)
@@ -54,7 +64,17 @@ export default function Navbar() {
     setSyncError(null);
     setSyncBusy(true);
     runSync()
-      .catch((e) => setSyncError(String(e?.message || e)))
+      .then(() => {
+        const status = getSyncStatus();
+        setSyncStatus(status.status);
+        setSyncStatusReason(status.reason);
+      })
+      .catch((e) => {
+        setSyncError(String(e?.message || e));
+        const status = getSyncStatus();
+        setSyncStatus(status.status);
+        setSyncStatusReason(status.reason);
+      })
       .finally(() => setSyncBusy(false));
   }, [online]);
 
@@ -92,6 +112,10 @@ export default function Navbar() {
               Offline Mode
             </div>
           )}
+          <div className="px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-bold tracking-wide">
+            Sync: {syncStatus === "pending" ? "Pending" : syncStatus === "synced" ? "Synced" : syncStatus === "failed" ? "Failed" : "Idle"}
+            {syncStatusReason ? ` (${syncStatusReason})` : ""}
+          </div>
           {backendStatus && !backendStatus.ready && (
             <button
               onClick={async () => {
@@ -136,8 +160,14 @@ export default function Navbar() {
                   setSyncError(null);
                   setSyncBusy(true);
                   await runSync();
+                  const status = getSyncStatus();
+                  setSyncStatus(status.status);
+                  setSyncStatusReason(status.reason);
                 } catch (e: any) {
                   setSyncError(String(e?.message || e));
+                  const status = getSyncStatus();
+                  setSyncStatus(status.status);
+                  setSyncStatusReason(status.reason);
                 } finally {
                   setSyncBusy(false);
                 }
@@ -151,8 +181,12 @@ export default function Navbar() {
             </button>
           )}
           <button
-            onClick={() => {
-              clearAuthToken();
+            onClick={async () => {
+              try {
+                await logoutUser();
+              } catch (err) {
+                console.warn("logout failed", err);
+              }
               navigate("/login", { replace: true });
             }}
             className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"

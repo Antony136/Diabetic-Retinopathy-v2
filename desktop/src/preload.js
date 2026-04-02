@@ -18,6 +18,10 @@ const api = {
   getBackendBase: () => getBackendBase(),
   backendStatus: () => ipcRenderer.invoke("backend-status"),
   backendRestart: () => ipcRenderer.invoke("backend-restart"),
+  setActiveDoctor: (userId) => ipcRenderer.invoke("set-active-doctor", userId),
+  getSecureToken: (key) => ipcRenderer.invoke("secure-token-get", key),
+  setSecureToken: (key, value) => ipcRenderer.invoke("secure-token-set", key, value),
+  clearSecureToken: (key) => ipcRenderer.invoke("secure-token-clear", key),
 };
 
 contextBridge.exposeInMainWorld("electronAPI", api);

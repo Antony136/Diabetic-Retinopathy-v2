@@ -5,6 +5,7 @@ import axios from "axios";
 import Button from "../../components/ui/Button";
 import { loginUser } from "../../services/auth";
 import { getAuthToken, setAuthToken } from "../../services/authStorage";
+import { runSync } from "../../services/sync";
 import AuthLayout from "./AuthLayout";
 
 type LocationState = { from?: { pathname?: string } } | null;
@@ -36,6 +37,15 @@ export default function Login() {
     try {
       const token = await loginUser({ email, password });
       setAuthToken(token.access_token);
+
+      if (navigator.onLine) {
+        try {
+          await runSync();
+        } catch (syncErr) {
+          console.warn("Sync after login failed", syncErr);
+        }
+      }
+
       navigate(redirectTo, { replace: true });
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {

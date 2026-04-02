@@ -35,3 +35,14 @@ export function getRoleFromToken(token: string | null): string | null {
   return typeof role === "string" ? role : null;
 }
 
+export function getUserIdFromToken(token: string | null): number | null {
+  if (!token) return null;
+  const payload = decodeJwtPayload(token);
+  const sub = payload?.sub;
+  if (typeof sub === "string" || typeof sub === "number") {
+    const id = Number(sub);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+  return null;
+}
+

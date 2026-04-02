@@ -6,6 +6,9 @@ from sqlalchemy.exc import OperationalError
 from app.db.database import SessionLocal
 from app.models.users import User
 from app.models.user_preference import UserPreference
+from app.models.patient import Patient
+from app.models.report import Report
+from app.models.notification import Notification
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserResponse
 from app.core.security import hash_password, verify_password, create_access_token, decode_token
 
@@ -42,18 +45,16 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == request.email).first()
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
+        return existing_user
     
     # Create new user with hashed password
     hashed_password = hash_password(request.password)
+    role = request.role if request.role in ("admin", "doctor") else "doctor"
     new_user = User(
         name=request.name,
         email=request.email,
         password=hashed_password,
-        role="doctor",
+        role=role,
     )
     
     db.add(new_user)
@@ -159,6 +160,25 @@ def get_current_user(
         )
     
     return user
+
+
+@router.post("/clear-local-data")
+def clear_local_data(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Clear local patient/report/notification data for cross-user isolation."""
+    if getattr(current_user, "role", "doctor") != "admin":
+        # Remove stale data from other doctors before sign-in or sign-out transitions.
+        db.query(Report).join(Patient, Patient.id == Report.patient_id).filter(Patient.doctor_id != current_user.id).delete(synchronize_session=False)
+        db.query(Notification).filter(Notification.user_id != current_user.id).delete(synchronize_session=False)
+        db.query(Patient).filter(Patient.doctor_id != current_user.id).delete(synchronize_session=False)
+        db.query(UserPreference).filter(UserPreference.user_id != current_user.id).delete(synchronize_session=False)
+    else:
+        db.query(Notification).filter(Notification.user_id != current_user.id).delete(synchronize_session=False)
+
+    db.commit()
+    return {"status": "ok"}
 
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:

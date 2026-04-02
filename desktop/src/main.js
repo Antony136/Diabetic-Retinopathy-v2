@@ -4,6 +4,11 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 const log = require("electron-log");
 const http = require("http");
+const keytar = require("keytar");
+
+const KEYTAR_SERVICE = "retina-max-desktop";
+let activeDoctorId = null;
+
 
 // get-port v8 is ESM-only; import dynamically from CommonJS.
 async function getPortAsync(options) {
@@ -62,7 +67,9 @@ async function startBackend() {
 
   const { cmd, args } = getBackendCommand();
   const userDataDir = app.getPath("userData");
-  const dbPath = path.join(userDataDir, "retina-max.sqlite3");
+  const dbPath = activeDoctorId
+    ? path.join(userDataDir, `retina-max-user-${activeDoctorId}.sqlite3`)
+    : path.join(userDataDir, "retina-max.sqlite3");
   const modelPath = app.isPackaged
     ? resourcePath("backend", "model_b3.pth")
     : resourcePath("backend", "app", "checkpoints", "model_b3.pth");
@@ -192,6 +199,63 @@ ipcMain.handle("backend-restart", async () => {
   } catch (e) {
     log.error("backend-restart error", e);
     return { ok: false, message: String(e) };
+  }
+});
+
+ipcMain.handle("set-active-doctor", async (_, userId) => {
+  const parsed = userId === null || userId === undefined ? null : Number(userId);
+  if (parsed && Number.isNaN(parsed)) {
+    return { ok: false, message: "invalid userId" };
+  }
+
+  if (parsed === activeDoctorId) {
+    return { ok: true, message: "doctor already active" };
+  }
+
+  activeDoctorId = parsed;
+
+  if (backendProcess) {
+    try { backendProcess.kill(); } catch {}
+    backendProcess = null;
+  }
+
+  try {
+    await startBackend();
+    const ok = await waitForBackend();
+    return { ok, message: ok ? "Backend switched" : "Backend switch failed" };
+  } catch (e) {
+    log.error("set-active-doctor error", e);
+    return { ok: false, message: String(e) };
+  }
+});
+
+ipcMain.handle("secure-token-get", async (_, key) => {
+  try {
+    const value = await keytar.getPassword(KEYTAR_SERVICE, key);
+    return value || null;
+  } catch (err) {
+    log.error("keytar get error", err);
+    return null;
+  }
+});
+
+ipcMain.handle("secure-token-set", async (_, key, value) => {
+  try {
+    await keytar.setPassword(KEYTAR_SERVICE, key, value);
+    return true;
+  } catch (err) {
+    log.error("keytar set error", err);
+    return false;
+  }
+});
+
+ipcMain.handle("secure-token-clear", async (_, key) => {
+  try {
+    await keytar.deletePassword(KEYTAR_SERVICE, key);
+    return true;
+  } catch (err) {
+    log.error("keytar clear error", err);
+    return false;
   }
 });
 

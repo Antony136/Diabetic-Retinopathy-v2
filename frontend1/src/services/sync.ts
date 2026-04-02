@@ -1,23 +1,64 @@
 import axios from "axios";
-import { getAuthToken } from "./authStorage";
+import { getAuthToken, getCloudAuthToken } from "./authStorage";
 import { getCloudApiBaseUrl, getLocalApiBaseUrl } from "./apiBase";
+import { getUserIdFromToken } from "./jwt";
 
 const LAST_SYNC_KEY = "retina_sync_last";
+const SYNC_STATUS_KEY = "retina_sync_status";
+
+function syncStorageKey() {
+  const userId = getUserIdFromToken(getAuthToken());
+  return userId ? `${LAST_SYNC_KEY}_${userId}` : LAST_SYNC_KEY;
+}
+
+function syncStatusKey() {
+  const userId = getUserIdFromToken(getAuthToken());
+  return userId ? `${SYNC_STATUS_KEY}_${userId}` : SYNC_STATUS_KEY;
+}
+
+export type SyncStatus = "idle" | "pending" | "synced" | "failed";
 
 function getLastSync() {
-  return localStorage.getItem(LAST_SYNC_KEY) || "";
+  return localStorage.getItem(syncStorageKey()) || "";
 }
 
 function setLastSync(value: string) {
   if (!value) return;
-  localStorage.setItem(LAST_SYNC_KEY, value);
+  localStorage.setItem(syncStorageKey(), value);
 }
 
-function makeClient(baseURL: string) {
-  const token = getAuthToken();
+export function getSyncStatus(): { status: SyncStatus; reason?: string } {
+  try {
+    const raw = localStorage.getItem(syncStatusKey());
+    if (!raw) return { status: "idle" };
+    return JSON.parse(raw) as { status: SyncStatus; reason?: string };
+  } catch {
+    return { status: "idle" };
+  }
+}
+
+export function clearSyncState() {
+  try {
+    localStorage.removeItem(syncStatusKey());
+    localStorage.removeItem(syncStorageKey());
+  } catch {
+    // fallback: ignore
+  }
+}
+
+function setSyncStatus(status: SyncStatus, reason?: string) {
+  try {
+    localStorage.setItem(syncStatusKey(), JSON.stringify({ status, reason }));
+  } catch {
+    // fallback: no-op
+  }
+}
+
+function makeClient(baseURL: string, token?: string | null) {
+  const authToken = token ?? getAuthToken();
   return axios.create({
     baseURL,
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
     timeout: 120000,
   });
 }
@@ -30,17 +71,32 @@ async function fetchAsFile(url: string, filename: string) {
 }
 
 export async function runSync() {
-  if (!navigator.onLine) return { ok: false, reason: "offline" };
+  setSyncStatus("pending");
+  try {
+    if (!navigator.onLine) {
+      setSyncStatus("failed", "offline");
+      return { ok: false, reason: "offline" };
+    }
 
-  const localBase = getLocalApiBaseUrl();
-  const cloudBase = getCloudApiBaseUrl();
-  if (!localBase || !cloudBase || localBase === cloudBase) return { ok: false, reason: "not_configured" };
+    const localBase = getLocalApiBaseUrl();
+    const cloudBase = getCloudApiBaseUrl();
+    if (!localBase || !cloudBase || localBase === cloudBase) {
+      setSyncStatus("failed", "not_configured");
+      return { ok: false, reason: "not_configured" };
+    }
 
-  const local = makeClient(localBase);
-  const cloud = makeClient(cloudBase);
+    const localToken = getAuthToken();
+    const cloudToken = getCloudAuthToken() || localToken;
+    if (!cloudToken) {
+      setSyncStatus("failed", "cloud_auth_missing");
+      return { ok: false, reason: "cloud_auth_missing" };
+    }
 
-  const since = getLastSync();
-  const localExport = await local.get("/sync/export", { params: since ? { since } : undefined });
+    const local = makeClient(localBase, localToken);
+    const cloud = makeClient(cloudBase, cloudToken);
+
+    const since = getLastSync();
+    const localExport = await local.get("/sync/export", { params: since ? { since } : undefined });
 
   // 1) Push patients + cloud-friendly reports metadata
   const patients = localExport.data?.patients || [];
@@ -86,6 +142,11 @@ export async function runSync() {
   await local.post("/sync/import", cloudExport.data);
 
   setLastSync(cloudExport.data?.server_time || localExport.data?.server_time || "");
+  setSyncStatus("synced");
   return { ok: true };
+  } catch (error) {
+    setSyncStatus("failed", String(error));
+    throw error;
+  }
 }
 

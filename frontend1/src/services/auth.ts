@@ -1,4 +1,65 @@
 import api from "./api";
+import axios from "axios";
+import { getCloudApiBaseUrl, getLocalApiBaseUrl } from "./apiBase";
+import { runSync, clearSyncState } from "./sync";
+import { getUserIdFromToken } from "./jwt";
+import { clearAuthToken, getAuthToken, setAuthToken, setCloudAuthToken } from "./authStorage";
+
+const CURRENT_USER_KEY = "retina_current_user_id";
+
+function getLocalCurrentUserId(): number | null {
+  try {
+    const value = localStorage.getItem(CURRENT_USER_KEY);
+    if (!value) return null;
+    const id = Number(value);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+function setLocalCurrentUserId(userId: number | null) {
+  try {
+    if (userId == null) {
+      localStorage.removeItem(CURRENT_USER_KEY);
+    } else {
+      localStorage.setItem(CURRENT_USER_KEY, String(userId));
+    }
+  } catch {
+    // ignore
+  }
+}
+
+async function clearLocalDoctorData() {
+  try {
+    await api.post("/auth/clear-local-data");
+  } catch {
+    // fallback: continue
+  }
+}
+
+export async function logoutUser() {
+  const token = getAuthToken();
+  const userId = getUserIdFromToken(token);
+  clearAuthToken();
+  setLocalCurrentUserId(null);
+  clearSyncState();
+
+  if (typeof window !== "undefined" && (window.electronAPI as any)?.setActiveDoctor) {
+    (window.electronAPI as any).setActiveDoctor(null);
+  }
+
+  if (userId) {
+    localStorage.removeItem(`retina_sync_last_${userId}`);
+    localStorage.removeItem(`retina_sync_status_${userId}`);
+  }
+
+  try {
+    await clearLocalDoctorData();
+  } catch {
+    // ignore
+  }
+}
 
 export interface RegisterRequest {
   name: string;
@@ -28,9 +89,110 @@ export async function registerUser(request: RegisterRequest) {
   return data;
 }
 
-export async function loginUser(request: LoginRequest) {
+async function loginLocal(request: LoginRequest): Promise<TokenResponse> {
   const { data } = await api.post<TokenResponse>("/auth/login", request);
   return data;
+}
+
+async function loginCloud(request: LoginRequest): Promise<TokenResponse> {
+  const cloudBase = getCloudApiBaseUrl();
+  const localBase = getLocalApiBaseUrl();
+  console.log("auth: cloudBase", cloudBase, "localBase", localBase);
+
+  if (!cloudBase) {
+    throw new Error("Cloud API base URL is not configured. Set VITE_CLOUD_API_BASE_URL or window.__CLOUD_API_BASE__.");
+  }
+  if (cloudBase === localBase) {
+    throw new Error("Cloud API base URL matches local backend. Provide a separate cloud endpoint.");
+  }
+
+  const cloudClient = axios.create({ baseURL: cloudBase, timeout: 20000 });
+  const { data } = await cloudClient.post<TokenResponse>("/auth/login", request);
+
+  setCloudAuthToken(data.access_token);
+  return data;
+}
+
+async function registerLocalIfMissing(request: RegisterRequest): Promise<void> {
+  try {
+    await api.post<UserResponse>("/auth/register", request);
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      const detail = (err.response?.data as { detail?: unknown } | undefined)?.detail;
+      if (typeof detail === "string" && detail.includes("Email already registered")) {
+        return;
+      }
+    }
+    throw err;
+  }
+}
+
+
+async function prepareDoctorSession(accessToken: string | null) {
+  const userId = getUserIdFromToken(accessToken);
+  const previousUserId = getLocalCurrentUserId();
+
+  if (previousUserId && userId && previousUserId !== userId) {
+    await clearLocalDoctorData();
+    clearSyncState();
+  }
+
+  if (userId) {
+    setLocalCurrentUserId(userId);
+    if (typeof window !== "undefined" && (window.electronAPI as any)?.setActiveDoctor) {
+      (window.electronAPI as any).setActiveDoctor(userId);
+    }
+  }
+}
+
+export async function loginUser(request: LoginRequest) {
+  console.log("auth: attempting local login");
+  try {
+    const localToken = await loginLocal(request);
+    setAuthToken(localToken.access_token);
+    console.log("auth: local login successful");
+
+    await prepareDoctorSession(localToken.access_token);
+
+    if (navigator.onLine) {
+      console.log("auth: online -> running sync");
+      try {
+        await runSync();
+        console.log("auth: sync successful");
+      } catch (syncErr) {
+        console.warn("auth: sync failed after local login", syncErr);
+      }
+    }
+
+    return localToken;
+  } catch (localError) {
+    if (axios.isAxiosError(localError) && localError.response?.status === 401 && navigator.onLine) {
+      console.log("auth: local login 401, falling back to cloud login");
+      await loginCloud(request);
+      console.log("auth: cloud login successful");
+
+      await registerLocalIfMissing({ name: request.email.split("@")[0], email: request.email, password: request.password });
+      console.log("auth: local register/idempotent apply done");
+
+      const localTokenAfterRegister = await loginLocal(request);
+      setAuthToken(localTokenAfterRegister.access_token);
+      console.log("auth: local login after cloud register successful");
+
+      await prepareDoctorSession(localTokenAfterRegister.access_token);
+
+      console.log("auth: running sync after fallback login");
+      try {
+        await runSync();
+        console.log("auth: sync successful after fallback login");
+      } catch (syncErr) {
+        console.warn("auth: sync failed after fallback login", syncErr);
+      }
+      return localTokenAfterRegister;
+    }
+
+    console.warn("auth: local login failed and cannot fallback", localError);
+    throw localError;
+  }
 }
 
 export async function getMe() {
