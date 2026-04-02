@@ -178,3 +178,44 @@ def run_migrations(engine: Engine):
                 conn.execute(text("SET statement_timeout TO 0"))
             conn.execute(text(ddl))
             conn.execute(text(idx))
+    else:
+        # Add missing columns for older desktop DBs (backward-compatible).
+        def _add_col(table: str, col: str, ddl_pg: str, ddl_sqlite: str):
+            if _has_column(engine, table, col):
+                return
+            ddl = ddl_pg if dialect == "postgresql" else ddl_sqlite
+            with engine.begin() as conn:
+                if dialect == "postgresql":
+                    conn.execute(text("SET statement_timeout TO 0"))
+                conn.execute(text(ddl))
+
+        _add_col(
+            "image_cache",
+            "content_type",
+            "ALTER TABLE image_cache ADD COLUMN IF NOT EXISTS content_type VARCHAR NULL",
+            "ALTER TABLE image_cache ADD COLUMN content_type TEXT",
+        )
+        _add_col(
+            "image_cache",
+            "etag",
+            "ALTER TABLE image_cache ADD COLUMN IF NOT EXISTS etag VARCHAR NULL",
+            "ALTER TABLE image_cache ADD COLUMN etag TEXT",
+        )
+        _add_col(
+            "image_cache",
+            "last_modified",
+            "ALTER TABLE image_cache ADD COLUMN IF NOT EXISTS last_modified VARCHAR NULL",
+            "ALTER TABLE image_cache ADD COLUMN last_modified TEXT",
+        )
+        _add_col(
+            "image_cache",
+            "byte_size",
+            "ALTER TABLE image_cache ADD COLUMN IF NOT EXISTS byte_size INTEGER NULL",
+            "ALTER TABLE image_cache ADD COLUMN byte_size INTEGER",
+        )
+        _add_col(
+            "image_cache",
+            "last_accessed_at",
+            "ALTER TABLE image_cache ADD COLUMN IF NOT EXISTS last_accessed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            "ALTER TABLE image_cache ADD COLUMN last_accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+        )
