@@ -1,9 +1,11 @@
 import os
 import httpx
+import re
 import time
+import uuid
 from pathlib import Path
 from dotenv import load_dotenv
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 load_dotenv()
 
@@ -28,12 +30,32 @@ class StorageService:
             try:
                 uploads_dir = Path("uploads")
                 uploads_dir.mkdir(parents=True, exist_ok=True)
-                local_path = uploads_dir / Path(remote_filename).name
+
+                # Normalize and sanitize remote filenames to avoid encoded path mismatch
+                filename = Path(remote_filename).name
+                filename = unquote(filename)
+                filename = re.sub(r"[^A-Za-z0-9_.()\-]", "_", filename).strip("_ ")
+                if not filename:
+                    filename = f"{uuid.uuid4().hex}.bin"
+
+                local_path = uploads_dir / filename
+                # Avoid collisions by appending numeric suffix
+                if local_path.exists():
+                    stem = local_path.stem
+                    suffix = local_path.suffix
+                    i = 1
+                    while True:
+                        candidate = uploads_dir / f"{stem}_{i}{suffix}"
+                        if not candidate.exists():
+                            local_path = candidate
+                            break
+                        i += 1
+
                 local_path.write_bytes(data or b"")
                 return f"/uploads/{local_path.name}"
             except Exception as e:
                 print(f"ERROR: Failed to write local upload fallback: {e}")
-                return f"/uploads/{Path(remote_filename).name}"
+                return f"/uploads/{Path(unquote(remote_filename)).name}"
 
         if not data:
             print("ERROR: No data provided for upload (0 bytes).")

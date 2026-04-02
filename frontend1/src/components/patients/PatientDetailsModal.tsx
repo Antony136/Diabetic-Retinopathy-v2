@@ -3,14 +3,7 @@ import Card from "../ui/Card";
 import Button from "../ui/Button";
 import { getPatient, type PatientResponse } from "../../services/patients";
 import { listPatientReports, type ReportResponse } from "../../services/reports";
-import { getActiveBackendOrigin } from "../../services/apiBase";
-
-function resolveBackendUrl(pathOrUrl: string) {
-  if (!pathOrUrl) return "";
-  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://") || pathOrUrl.startsWith("data:")) return pathOrUrl;
-  const normalized = pathOrUrl.replace(/\\/g, "/").replace(/^\/+/, "");
-  return `${getActiveBackendOrigin()}/${normalized}`;
-}
+import { resolveBackendImageUrl } from "../../services/apiBase";
 
 function formatPercent(confidence: number) {
   return `${(confidence * 100).toFixed(1)}%`;
@@ -117,7 +110,7 @@ export default function PatientDetailsModal(props: {
                     onClick={() => {
                       const r = sortedReports[0];
                       if (!r) return;
-                      const url = resolveBackendUrl(r.image_url);
+                      const url = resolveBackendImageUrl(r.image_url);
                       if (url) window.open(url, "_blank", "noreferrer");
                     }}
                   >
@@ -168,7 +161,7 @@ export default function PatientDetailsModal(props: {
                           </button>
                           <a
                             className="px-3 py-1 rounded-lg bg-surface-container-high text-on-surface-variant text-xs font-bold hover:text-primary transition-colors"
-                            href={resolveBackendUrl(r.image_url)}
+                            href={resolveBackendImageUrl(r.image_url)}
                             target="_blank"
                             rel="noreferrer"
                           >
@@ -176,7 +169,7 @@ export default function PatientDetailsModal(props: {
                           </a>
                           <a
                             className="px-3 py-1 rounded-lg bg-surface-container-high text-on-surface-variant text-xs font-bold hover:text-primary transition-colors"
-                            href={resolveBackendUrl(r.heatmap_url)}
+                            href={resolveBackendImageUrl(r.heatmap_url)}
                             target="_blank"
                             rel="noreferrer"
                           >
@@ -225,13 +218,13 @@ export default function PatientDetailsModal(props: {
                   <div className="px-4 py-3 text-xs uppercase tracking-widest text-on-surface-variant font-bold border-b border-outline/10">
                     Input image
                   </div>
-                  <img className="w-full aspect-square object-cover" src={resolveBackendUrl(reportModal.image_url)} alt="Input" />
+                  <img className="w-full aspect-square object-cover" src={resolveBackendImageUrl(reportModal.image_url)} alt="Input" />
                 </div>
                 <div className="rounded-xl overflow-hidden border border-outline/10 bg-surface-container-lowest">
                   <div className="px-4 py-3 text-xs uppercase tracking-widest text-on-surface-variant font-bold border-b border-outline/10">
                     Heatmap
                   </div>
-                  <img className="w-full aspect-square object-cover" src={resolveBackendUrl(reportModal.heatmap_url)} alt="Heatmap" />
+                  <img className="w-full aspect-square object-cover" src={resolveBackendImageUrl(reportModal.heatmap_url)} alt="Heatmap" />
                 </div>
               </div>
 
@@ -245,7 +238,7 @@ export default function PatientDetailsModal(props: {
                   <div className="flex gap-3">
                     <a
                       className="px-6 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform bg-surface-container-highest text-on-surface font-bold hover:bg-surface-container transition-colors"
-                      href={resolveBackendUrl(reportModal.image_url)}
+                      href={resolveBackendImageUrl(reportModal.image_url)}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -254,7 +247,7 @@ export default function PatientDetailsModal(props: {
                     </a>
                     <a
                       className="px-6 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform bg-surface-container-highest text-on-surface font-bold hover:bg-surface-container transition-colors"
-                      href={resolveBackendUrl(reportModal.heatmap_url)}
+                      href={resolveBackendImageUrl(reportModal.heatmap_url)}
                       target="_blank"
                       rel="noreferrer"
                     >

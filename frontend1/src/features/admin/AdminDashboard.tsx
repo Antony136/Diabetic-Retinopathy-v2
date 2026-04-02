@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import api from "../../services/api";
-import { getActiveBackendOrigin } from "../../services/apiBase";
+import { resolveBackendImageUrl, getActiveBackendOrigin } from "../../services/apiBase";
 import { severityFromStage, stageDescription } from "../screening/mockAnalysis";
 
 type AdminUser = { id: number; name: string; email: string; role: string; is_active?: boolean; created_at?: string };
@@ -28,13 +28,6 @@ type AdminReport = {
 };
 
 const BACKEND_ORIGIN = getActiveBackendOrigin();
-
-function resolveBackendUrl(pathOrUrl: string) {
-  if (!pathOrUrl) return "";
-  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://") || pathOrUrl.startsWith("data:")) return pathOrUrl;
-  const normalized = pathOrUrl.replace(/\\/g, "/").replace(/^\/+/, "");
-  return `${BACKEND_ORIGIN}/${normalized}`;
-}
 
 function sameLocalDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -532,8 +525,8 @@ export default function AdminDashboard() {
     const frame = printFrameRef.current;
     if (!frame) return;
 
-    const imageUrl = resolveBackendUrl(report.image_url);
-    const heatmapUrl = resolveBackendUrl(report.heatmap_url);
+    const imageUrl = resolveBackendImageUrl(report.image_url);
+    const heatmapUrl = resolveBackendImageUrl(report.heatmap_url);
     const createdAt = new Date(report.created_at).toLocaleString();
     const priority = severityFromStage(report.prediction);
 
@@ -1174,7 +1167,7 @@ export default function AdminDashboard() {
                           </button>
                           <a
                             className="px-3 py-1 rounded-lg bg-surface-container-high text-on-surface-variant text-xs font-bold hover:text-primary transition-colors"
-                            href={resolveBackendUrl(r.heatmap_url)}
+                            href={resolveBackendImageUrl(r.heatmap_url)}
                             target="_blank"
                             rel="noreferrer"
                           >
@@ -1397,7 +1390,7 @@ export default function AdminDashboard() {
                                   </button>
                                   <a
                                     className="px-3 py-1 rounded-lg bg-surface-container-high text-on-surface-variant text-xs font-bold hover:text-primary transition-colors"
-                                    href={resolveBackendUrl(r.heatmap_url)}
+                                    href={resolveBackendImageUrl(r.heatmap_url)}
                                     target="_blank"
                                     rel="noreferrer"
                                   >
@@ -1466,13 +1459,13 @@ export default function AdminDashboard() {
                   <div className="px-4 py-3 text-xs uppercase tracking-widest text-on-surface-variant font-bold border-b border-outline/10">
                     Input image
                   </div>
-                  <img className="w-full aspect-square object-cover" src={resolveBackendUrl(reportModal.report.image_url)} alt="Input" />
+                  <img className="w-full aspect-square object-cover" src={resolveBackendImageUrl(reportModal.report.image_url)} alt="Input" />
                 </div>
                 <div className="rounded-xl overflow-hidden border border-outline/10 bg-surface-container-lowest">
                   <div className="px-4 py-3 text-xs uppercase tracking-widest text-on-surface-variant font-bold border-b border-outline/10">
                     Heatmap
                   </div>
-                  <img className="w-full aspect-square object-cover" src={resolveBackendUrl(reportModal.report.heatmap_url)} alt="Heatmap" />
+                  <img className="w-full aspect-square object-cover" src={resolveBackendImageUrl(reportModal.report.heatmap_url)} alt="Heatmap" />
                 </div>
               </div>
 
@@ -1489,7 +1482,7 @@ export default function AdminDashboard() {
                     </Button>
                     <a
                       className="px-6 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform bg-surface-container-highest text-on-surface font-bold hover:bg-surface-container transition-colors"
-                      href={resolveBackendUrl(reportModal.report.heatmap_url)}
+                      href={resolveBackendImageUrl(reportModal.report.heatmap_url)}
                       target="_blank"
                       rel="noreferrer"
                     >

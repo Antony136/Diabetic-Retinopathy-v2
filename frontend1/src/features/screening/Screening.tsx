@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
-import { getActiveBackendOrigin } from "../../services/apiBase";
+import { resolveBackendImageUrl } from "../../services/apiBase";
 import {
   createPatient,
   listPatients,
@@ -18,20 +18,6 @@ import { getAppSettings } from "../../services/appSettings";
 
 type ReportRow = ReportResponse & { priority_score: 1 | 2 | 3 | 4 | 5 };
 
-const BACKEND_ORIGIN = getActiveBackendOrigin();
-
-function resolveBackendUrl(pathOrUrl: string) {
-  if (!pathOrUrl) return "";
-  if (
-    pathOrUrl.startsWith("http://") ||
-    pathOrUrl.startsWith("https://") ||
-    pathOrUrl.startsWith("data:")
-  ) {
-    return pathOrUrl;
-  }
-  const normalized = pathOrUrl.replace(/\\/g, "/").replace(/^\/+/, "");
-  return `${BACKEND_ORIGIN}/${normalized}`;
-}
 
 function toReportRow(report: ReportResponse): ReportRow {
   return { ...report, priority_score: severityFromStage(report.prediction) };
@@ -192,8 +178,8 @@ export default function Screening() {
     if (!frame) return;
 
     const pdfSettings = getAppSettings();
-    const imageUrl = resolveBackendUrl(report.image_url);
-    const heatmapUrl = resolveBackendUrl(report.heatmap_url);
+    const imageUrl = resolveBackendImageUrl(report.image_url);
+    const heatmapUrl = resolveBackendImageUrl(report.heatmap_url);
     const createdAt = new Date(report.created_at).toLocaleString();
     const paperSizeCss = pdfSettings.pdfPaperSize === "letter" ? "Letter" : "A4";
 
@@ -296,7 +282,7 @@ export default function Screening() {
     frame.srcdoc = html;
   }
 
-  const resolvedHeatmap = report ? resolveBackendUrl(report.heatmap_url) : "";
+  const resolvedHeatmap = report ? resolveBackendImageUrl(report.heatmap_url) : "";
   const confidencePct = report ? Math.min(100, Math.max(0, report.confidence * 100)) : 0;
 
   const inputClass =

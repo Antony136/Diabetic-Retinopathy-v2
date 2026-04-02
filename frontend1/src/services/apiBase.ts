@@ -11,6 +11,8 @@ export function getCloudApiBaseUrl() {
   );
 }
 
+import { getCachedImageUrl, cacheRemoteImage, setCachedImageUrl } from "./imageCache";
+
 export function getActiveApiBaseUrl() {
   // In Electron, prefer local backend even when online (offline-first).
   const local = getLocalApiBaseUrl();
@@ -25,4 +27,29 @@ export function getActiveApiBaseUrl() {
 
 export function getActiveBackendOrigin() {
   return getActiveApiBaseUrl().replace(/\/api\/?$/, "");
+}
+
+export function resolveBackendImageUrl(pathOrUrl: string) {
+  if (!pathOrUrl) return "";
+
+  if (pathOrUrl.startsWith("data:")) return pathOrUrl;
+
+  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+    const cached = getCachedImageUrl(pathOrUrl);
+    if (cached) return cached;
+
+    // Kick off background cache of known remote images (first access path)
+    cacheRemoteImage(pathOrUrl).then((local) => {
+      if (local) {
+        setCachedImageUrl(pathOrUrl, local);
+      }
+    }).catch(() => {
+      // ignore caching errors
+    });
+
+    return pathOrUrl;
+  }
+
+  const normalized = pathOrUrl.replace(/\\/g, "/").replace(/^\/+/, "");
+  return `${getActiveBackendOrigin()}/${normalized}`;
 }

@@ -10,6 +10,8 @@ from app.schemas.report import ReportCreate, ReportResponse
 from app.api.auth import get_current_user
 from app.services.storage_service import storage_service
 from pathlib import Path
+from urllib.parse import urlparse
+import httpx
 import os
 import tempfile
 import uuid
@@ -82,6 +84,27 @@ def get_or_create_preferences(db: Session, user_id: int) -> UserPreference:
     db.commit()
     db.refresh(pref)
     return pref
+
+
+@router.post("/cache-url")
+async def cache_image_url(
+    url: str = Form(...),
+    current_user: User = Depends(get_current_user),
+):
+    if not url or not (url.startswith("http://") or url.startswith("https://")):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid image URL")
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            parsed = Path(urlparse(url).path).name
+            if not parsed:
+                parsed = f"{uuid.uuid4().hex}.png"
+            local_url = storage_service.upload_bytes(response.content, parsed)
+            return {"local_url": local_url}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to cache image: {e}")
 
 
 @router.post("/", response_model=ReportResponse)

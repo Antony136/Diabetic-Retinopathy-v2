@@ -3,7 +3,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import Optional
+from urllib.parse import urlparse
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -13,6 +15,8 @@ from app.db.database import SessionLocal
 from app.models.patient import Patient
 from app.models.report import Report
 from app.models.users import User
+from app.services.storage_service import storage_service
+from app.services.image_cache_service import cache_remote_image, get_cached_image
 
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
@@ -37,6 +41,35 @@ def _parse_dt(value: str | None) -> Optional[datetime]:
 
 def _dt_iso(dt: datetime) -> str:
     return dt.replace(microsecond=0).isoformat() + "Z"
+
+
+def _is_remote_url(path: str | None) -> bool:
+    if not path:
+        return False
+    lower = path.lower()
+    return lower.startswith("http://") or lower.startswith("https://")
+
+
+def _resolve_cloud_url(path: str | None, cloud_base: str | None) -> Optional[str]:
+    if not path:
+        return None
+    if _is_remote_url(path):
+        return path
+    if path.startswith("/uploads") and cloud_base:
+        return f"{cloud_base.rstrip('/')}{path}"
+    return path
+
+
+def _download_and_cache_image(db: Session, doctor_id: int, remote_url: str) -> str:
+    if not _is_remote_url(remote_url):
+        return remote_url
+
+    cached = get_cached_image(db, doctor_id, remote_url)
+    if cached:
+        return cached.local_url
+
+    local_url = cache_remote_image(db, doctor_id, remote_url)
+    return local_url or remote_url
 
 
 class SyncPatient(BaseModel):
@@ -161,6 +194,7 @@ def export_changes(
 @router.post("/import")
 def import_changes(
     payload: SyncImportRequest,
+    cloud_base: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -229,12 +263,20 @@ def import_changes(
         created_dt = _parse_dt(r.created_at) or datetime.utcnow()
         updated_dt = _parse_dt(r.updated_at) or created_dt
 
+        image_url = _resolve_cloud_url(r.image_url, cloud_base)
+        heatmap_url = _resolve_cloud_url(r.heatmap_url, cloud_base)
+
+        if image_url and _is_remote_url(image_url):
+            image_url = _download_and_cache_image(db, current_user.id, image_url)
+        if heatmap_url and _is_remote_url(heatmap_url):
+            heatmap_url = _download_and_cache_image(db, current_user.id, heatmap_url)
+
         new_r = Report(
             client_uuid=c_uuid,
             patient_id=patient.id,
             filename=r.filename,
-            image_url=r.image_url,
-            heatmap_url=r.heatmap_url,
+            image_url=image_url,
+            heatmap_url=heatmap_url,
             prediction=r.prediction,
             confidence=float(r.confidence),
             description=r.description,
