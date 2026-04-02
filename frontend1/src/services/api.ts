@@ -1,6 +1,6 @@
 import axios, { AxiosHeaders, type InternalAxiosRequestConfig } from "axios";
-import { getActiveApiBaseUrl, getCloudApiBaseUrl } from "./apiBase";
-import { getAuthToken, getCloudAuthToken } from "./authStorage";
+import { getActiveApiBaseUrl, getCloudApiBaseUrl, getLocalApiBaseUrl } from "./apiBase";
+import { getAuthToken, getCloudAuthToken, clearAuthToken, clearCloudAuthToken } from "./authStorage";
 
 const api = axios.create({
   headers: { "Content-Type": "application/json" },
@@ -13,9 +13,10 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   config.baseURL = baseURL;
   console.debug("API request", config.method, baseURL, config.url);
 
+  const hasLocalBackend = Boolean(getLocalApiBaseUrl());
   const cloudBase = getCloudApiBaseUrl();
   const isCloud = Boolean(cloudBase) && baseURL === cloudBase;
-  const token = isCloud ? getCloudAuthToken() : getAuthToken();
+  const token = isCloud ? (hasLocalBackend ? getCloudAuthToken() : getAuthToken()) : getAuthToken();
   if (!token) return config;
 
   const headers = AxiosHeaders.from(config.headers);
@@ -29,11 +30,20 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      import("./authStorage").then(({ clearAuthToken }) => {
-        clearAuthToken();
-        // Use hash for HashRouter redirection from outside of React components
-        window.location.hash = "#/login";
-      });
+      const baseURL = String(error.config?.baseURL || "");
+      const cloudBase = getCloudApiBaseUrl();
+      const hasLocalBackend = Boolean(getLocalApiBaseUrl());
+      const isCloud = Boolean(cloudBase) && baseURL === cloudBase;
+
+      // Desktop: if a cloud call 401s, don't throw the user out of offline/local mode.
+      if (hasLocalBackend && isCloud) {
+        clearCloudAuthToken();
+        return Promise.reject(error);
+      }
+
+      clearAuthToken();
+      // Use hash for HashRouter redirection from outside of React components
+      window.location.hash = "#/login";
     }
     return Promise.reject(error);
   }

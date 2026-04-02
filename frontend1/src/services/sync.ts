@@ -110,6 +110,7 @@ export async function runSync() {
   await cloud.post("/sync/import", { patients, reports });
 
   // 2) Push reports with local images as multipart (preserves offline inference results)
+  const missingLocalAssets: string[] = [];
   for (const r of localExport.data?.reports || []) {
     const imageUrl = String(r?.image_url || "");
     if (!imageUrl.startsWith("/uploads/")) continue;
@@ -122,13 +123,22 @@ export async function runSync() {
     if (r.created_at) form.append("created_at", r.created_at);
     if (r.updated_at) form.append("updated_at", r.updated_at);
 
-    const imageFile = await fetchAsFile(`${localOrigin.replace(/\/$/, "")}${imageUrl}`, r.filename || "retina.png");
-    form.append("file", imageFile);
+    try {
+      const imageFile = await fetchAsFile(`${localOrigin.replace(/\/$/, "")}${imageUrl}`, r.filename || "retina.png");
+      form.append("file", imageFile);
+    } catch (e) {
+      missingLocalAssets.push(imageUrl);
+      continue; // cannot sync this report without the original image bytes
+    }
 
     const heatmapUrl = String(r?.heatmap_url || "");
     if (heatmapUrl.startsWith("/uploads/")) {
-      const hm = await fetchAsFile(`${localOrigin.replace(/\/$/, "")}${heatmapUrl}`, "heatmap.png");
-      form.append("heatmap", hm);
+      try {
+        const hm = await fetchAsFile(`${localOrigin.replace(/\/$/, "")}${heatmapUrl}`, "heatmap.png");
+        form.append("heatmap", hm);
+      } catch {
+        // heatmap is optional; still sync the report image + metadata
+      }
     }
 
     await cloud.post("/reports/import", form, {
@@ -143,6 +153,10 @@ export async function runSync() {
     const cloudOrigin = cloudBase.replace(/\/api\/?$/, "");
     await local.post(`/sync/import?cloud_base=${encodeURIComponent(cloudOrigin)}`, cloudExport.data);
   setLastSync(cloudExport.data?.server_time || localExport.data?.server_time || "");
+  if (missingLocalAssets.length > 0) {
+    setSyncStatus("failed", `missing_local_assets:${missingLocalAssets.length}`);
+    return { ok: false, reason: "missing_local_assets" };
+  }
   setSyncStatus("synced");
   return { ok: true };
   } catch (error) {

@@ -78,11 +78,15 @@ async function startBackend() {
     ...process.env,
     PORT: String(backendPort),
     HOST: "127.0.0.1",
+    DESKTOP_MODE: "1",
     AI_PROVIDER: "local",
     MODEL_PATH: modelPath,
     DATABASE_URL: `sqlite:///${dbPath.replace(/\\\\/g, "/")}`,
     ALLOWED_ORIGINS: "*",
     LOG_LEVEL: process.env.LOG_LEVEL || "info",
+    // Force desktop backend to persist images locally (avoid accidental cloud-upload attempts).
+    SUPABASE_URL: "",
+    SUPABASE_KEY: "",
     GROQ_API_KEY: process.env.GROQ_API_KEY || "",
     LLM_PROVIDER: process.env.LLM_PROVIDER || "ollama",
     OLLAMA_URL: process.env.OLLAMA_URL || "http://localhost:11434"

@@ -82,5 +82,22 @@ export function clearAuthToken() {
   localStorage.removeItem(CLOUD_AUTH_TOKEN_STORAGE_KEY);
 }
 
+export function clearLocalAuthToken() {
+  if (typeof window !== "undefined" && (window.electronAPI as any)?.clearSecureToken) {
+    (window.electronAPI as any).clearSecureToken(AUTH_TOKEN_STORAGE_KEY).catch(() => {
+      /* ignore */
+    });
+  }
+  localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+}
+
+export function clearCloudAuthToken() {
+  if (typeof window !== "undefined" && (window.electronAPI as any)?.clearSecureToken) {
+    (window.electronAPI as any).clearSecureToken(CLOUD_AUTH_TOKEN_STORAGE_KEY).catch(() => {
+      /* ignore */
+    });
+  }
+  localStorage.removeItem(CLOUD_AUTH_TOKEN_STORAGE_KEY);
+}
 
 
