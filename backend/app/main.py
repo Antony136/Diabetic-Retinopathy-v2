@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi import Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.api import health, auth, patients, reports, notifications, preferences, profile, admin, doctor_assistant, inference, sync, diagnostics
@@ -7,6 +9,7 @@ from pathlib import Path
 from app.db.database import engine, Base
 from app.db.migrate import run_migrations
 import os
+import traceback
 
 
 app = FastAPI(title="Retina Max Backend", version="2.0.0")
@@ -58,6 +61,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    # Ensure desktop gets JSON errors (instead of plain "Internal Server Error"),
+    # which makes debugging offline issues much easier.
+    desktop = (os.getenv("DESKTOP_MODE") or "").strip() == "1"
+    if desktop:
+        try:
+            traceback.print_exc()
+        except Exception:
+            pass
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "Internal Server Error",
+                "error": str(exc),
+                "type": exc.__class__.__name__,
+                "path": str(request.url.path),
+            },
+        )
+
+    # Cloud: keep response generic.
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 
 @app.api_route("/", methods=["GET", "HEAD"])

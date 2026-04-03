@@ -216,56 +216,65 @@ async def create_report(
     db.commit()
     db.refresh(new_report)
 
-    pref = get_or_create_preferences(db, current_user.id)
+    # Notifications/preferences are non-critical; don't fail the analysis if these tables are out of date locally.
+    try:
+        pref = get_or_create_preferences(db, current_user.id)
 
-    db.add(
-        Notification(
-            user_id=current_user.id,
-            patient_id=patient.id,
-            report_id=new_report.id,
-            type="REPORT_READY",
-            title="Report ready",
-            message=f"Report #{new_report.id} for {patient.name} is ready.",
-        )
-    )
-
-    if pref.notifications_high_risk:
-        if prediction in ["Severe", "Proliferative DR"]:
-            db.add(
-                Notification(
-                    user_id=current_user.id,
-                    patient_id=patient.id,
-                    report_id=new_report.id,
-                    type="HIGH_RISK",
-                    title="Severe DR detected",
-                    message=f"{patient.name} has {prediction}. Review within {pref.urgent_review_hours}h.",
-                )
-            )
-        elif prediction == "Moderate":
-            db.add(
-                Notification(
-                    user_id=current_user.id,
-                    patient_id=patient.id,
-                    report_id=new_report.id,
-                    type="FOLLOW_UP",
-                    title="Moderate DR detected",
-                    message=f"{patient.name} has Moderate DR. Follow-up in {pref.follow_up_days_moderate} days.",
-                )
-            )
-
-    if confidence < pref.min_confidence_threshold:
         db.add(
             Notification(
                 user_id=current_user.id,
                 patient_id=patient.id,
                 report_id=new_report.id,
-                type="MANUAL_REVIEW",
-                title="Low confidence",
-                message=f"Report #{new_report.id} confidence is {round(confidence * 100, 1)}%. Please review before action.",
+                type="REPORT_READY",
+                title="Report ready",
+                message=f"Report #{new_report.id} for {patient.name} is ready.",
             )
         )
 
-    db.commit()
+        if pref.notifications_high_risk:
+            if prediction in ["Severe", "Proliferative DR"]:
+                db.add(
+                    Notification(
+                        user_id=current_user.id,
+                        patient_id=patient.id,
+                        report_id=new_report.id,
+                        type="HIGH_RISK",
+                        title="Severe DR detected",
+                        message=f"{patient.name} has {prediction}. Review within {pref.urgent_review_hours}h.",
+                    )
+                )
+            elif prediction == "Moderate":
+                db.add(
+                    Notification(
+                        user_id=current_user.id,
+                        patient_id=patient.id,
+                        report_id=new_report.id,
+                        type="FOLLOW_UP",
+                        title="Moderate DR detected",
+                        message=f"{patient.name} has Moderate DR. Follow-up in {pref.follow_up_days_moderate} days.",
+                    )
+                )
+
+        if confidence < pref.min_confidence_threshold:
+            db.add(
+                Notification(
+                    user_id=current_user.id,
+                    patient_id=patient.id,
+                    report_id=new_report.id,
+                    type="MANUAL_REVIEW",
+                    title="Low confidence",
+                    message=f"Report #{new_report.id} confidence is {round(confidence * 100, 1)}%. Please review before action.",
+                )
+            )
+
+        db.commit()
+    except Exception as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        print(f"WARNING: post-report notifications/preferences failed: {e}")
+
     return new_report
 
 

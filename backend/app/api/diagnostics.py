@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, status
+from sqlalchemy import text
+from app.db.database import engine
 
 
 router = APIRouter(prefix="/api/diagnostics", tags=["diagnostics"])
@@ -38,3 +40,27 @@ def local_ai():
         return {"ok": True, "model_path": os.getenv("MODEL_PATH", "")}
     except Exception as e:
         return {"ok": False, "error": str(e), "model_path": os.getenv("MODEL_PATH", "")}
+
+
+@router.get("/schema")
+def schema():
+    _require_desktop()
+    if engine.dialect.name != "sqlite":
+        return {"ok": False, "error": "schema endpoint only supports sqlite"}
+
+    def _cols(table: str) -> list[str]:
+        try:
+            with engine.begin() as conn:
+                rows = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            return [str(r[1]) for r in rows]
+        except Exception:
+            return []
+
+    return {
+        "ok": True,
+        "user_preferences": _cols("user_preferences"),
+        "reports": _cols("reports"),
+        "patients": _cols("patients"),
+        "image_cache": _cols("image_cache"),
+        "notifications": _cols("notifications"),
+    }
