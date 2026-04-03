@@ -67,6 +67,8 @@ async function startBackend() {
 
   const { cmd, args } = getBackendCommand();
   const userDataDir = app.getPath("userData");
+  const uploadsDir = path.join(userDataDir, "uploads");
+  try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch {}
   // Use a single SQLite DB per installation (scoped by doctor_id in tables).
   // Per-doctor DB files cause token/session invalidation when switching DBs after login.
   const dbPath = path.join(userDataDir, "retina-max.sqlite3");
@@ -82,6 +84,7 @@ async function startBackend() {
     AI_PROVIDER: "local",
     MODEL_PATH: modelPath,
     DATABASE_URL: `sqlite:///${dbPath.replace(/\\\\/g, "/")}`,
+    UPLOADS_DIR: uploadsDir,
     ALLOWED_ORIGINS: "*",
     LOG_LEVEL: process.env.LOG_LEVEL || "info",
     // Force desktop backend to persist images locally (avoid accidental cloud-upload attempts).

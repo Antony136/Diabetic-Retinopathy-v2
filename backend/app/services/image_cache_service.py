@@ -129,6 +129,9 @@ def cache_url(
 
     canonical = canonicalize_url(download_url)
 
+    if str(uploads_dir) == "uploads":
+        uploads_dir = (os.getenv("UPLOADS_DIR") or "uploads").strip() or "uploads"
+
     uploads_dir = Path(uploads_dir)
     uploads_dir.mkdir(parents=True, exist_ok=True)
 
@@ -232,7 +235,7 @@ def get_cached_image(db: Session, doctor_id: int, remote_url: str) -> Optional[I
 
     # If file is missing, treat as uncached so the caller can re-download.
     try:
-        uploads_dir = Path("uploads")
+        uploads_dir = Path((os.getenv("UPLOADS_DIR") or "uploads").strip() or "uploads")
         fs_path = uploads_dir / Path(rec.local_url).name
         if not fs_path.exists() or fs_path.stat().st_size == 0:
             return None

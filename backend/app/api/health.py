@@ -11,7 +11,7 @@ def health_check():
         return {"status": "ok"}
 
     try:
-        uploads_dir = Path("uploads")
+        uploads_dir = Path((os.getenv("UPLOADS_DIR") or "uploads").strip() or "uploads")
         count = len(list(uploads_dir.glob("*"))) if uploads_dir.exists() else 0
     except Exception:
         count = -1
@@ -20,6 +20,6 @@ def health_check():
         "status": "ok",
         "desktop_mode": True,
         "cwd": os.getcwd(),
-        "uploads_dir": str(Path("uploads").resolve()),
+        "uploads_dir": str(Path((os.getenv("UPLOADS_DIR") or "uploads").strip() or "uploads").resolve()),
         "uploads_count": count,
     }

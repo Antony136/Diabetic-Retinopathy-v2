@@ -12,7 +12,7 @@ load_dotenv()
 class StorageService:
     @staticmethod
     def _write_local_upload(data: bytes, remote_filename: str) -> str:
-        uploads_dir = Path("uploads")
+        uploads_dir = Path((os.getenv("UPLOADS_DIR") or "uploads").strip() or "uploads")
         uploads_dir.mkdir(parents=True, exist_ok=True)
 
         # Normalize and sanitize remote filenames to avoid encoded path mismatch

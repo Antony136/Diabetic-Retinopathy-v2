@@ -33,7 +33,7 @@ def _startup_migrations():
 
 
 # Create uploads directory (ensure it exists)
-uploads_dir = Path("uploads")
+uploads_dir = Path((os.getenv("UPLOADS_DIR") or "uploads").strip() or "uploads")
 uploads_dir.mkdir(parents=True, exist_ok=True)
 
 print(f"Server starting - Environment: PORT={os.getenv('PORT')}")
@@ -42,9 +42,9 @@ print(f"Server starting - Environment: PORT={os.getenv('PORT')}")
 try:
     from app.services.uploads_static import UploadsStaticFiles
 
-    app.mount("/uploads", UploadsStaticFiles(directory="uploads"), name="uploads")
+    app.mount("/uploads", UploadsStaticFiles(directory=str(uploads_dir)), name="uploads")
 except Exception:
-    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 # CORS middleware
 origins_env = os.getenv("ALLOWED_ORIGINS")

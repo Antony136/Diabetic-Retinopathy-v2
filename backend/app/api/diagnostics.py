@@ -17,12 +17,13 @@ def _require_desktop():
 @router.get("/paths")
 def paths():
     _require_desktop()
+    uploads_dir = (os.getenv("UPLOADS_DIR") or "uploads").strip() or "uploads"
     return {
         "cwd": os.getcwd(),
         "database_url": os.getenv("DATABASE_URL", ""),
         "model_path": os.getenv("MODEL_PATH", ""),
-        "uploads_dir": str(Path("uploads").resolve()),
-        "uploads_exists": Path("uploads").exists(),
+        "uploads_dir": str(Path(uploads_dir).resolve()),
+        "uploads_exists": Path(uploads_dir).exists(),
     }
 
 
@@ -37,4 +38,3 @@ def local_ai():
         return {"ok": True, "model_path": os.getenv("MODEL_PATH", "")}
     except Exception as e:
         return {"ok": False, "error": str(e), "model_path": os.getenv("MODEL_PATH", "")}
-
