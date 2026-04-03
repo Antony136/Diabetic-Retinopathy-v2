@@ -9,21 +9,21 @@ export default function BottomNav() {
   const items = role === "admin" ? ADMIN_NAV_ITEMS : DOCTOR_NAV_ITEMS;
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-2 mb-6 bg-surface-container-high backdrop-blur-xl rounded-full mx-auto w-fit shadow-[0_0_32px_rgba(148,34,156,0.1)] font-label text-xs font-medium border border-outline-variant/10">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 p-1.5 mb-6 bg-black/60 backdrop-blur-xl rounded-none mx-auto w-fit border border-white/10 font-mono text-[10px] font-medium tracking-widest uppercase">
       {items.map((item) => {
         const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
         return (
           <NavLink
             key={item.path}
             to={item.path}
-            className={`flex flex-col items-center justify-center rounded-full px-6 py-2 transition-all duration-300 ease-out ${
+            className={`flex flex-col items-center justify-center px-5 py-2.5 transition-all duration-300 ease-out border ${
               isActive
-                ? "bg-primary/15 text-primary scale-105"
-                : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
+                ? "border-[#C87CFF]/50 text-[#C87CFF] bg-[#C87CFF]/10 shadow-[0_0_15px_rgba(200,124,255,0.2)]"
+                : "border-transparent text-white/40 hover:text-white/70 hover:border-white/10"
             }`}
           >
             <span
-              className="material-symbols-outlined"
+              className="material-symbols-outlined text-lg"
               style={
                 isActive
                   ? { fontVariationSettings: "'FILL' 1" }
@@ -32,7 +32,7 @@ export default function BottomNav() {
             >
               {item.icon}
             </span>
-            <span>{item.label}</span>
+            <span className="mt-0.5">{item.label}</span>
           </NavLink>
         );
       })}

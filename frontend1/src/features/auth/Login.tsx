@@ -53,9 +53,9 @@ export default function Login() {
         if (typeof detail === "string" && detail.trim()) {
           setError(detail);
         } else if (err.code === "ECONNABORTED") {
-          setError("Login timed out. If the server was idle, it may be waking up - please try again.");
+          setError("Connection timed out. Server may be waking up — please retry.");
         } else {
-          setError(err.message || "Login failed");
+          setError(err.message || "Authentication failed");
         }
         return;
       }
@@ -63,7 +63,7 @@ export default function Login() {
       const message =
         err && typeof err === "object" && "message" in err
           ? String((err as { message: unknown }).message)
-          : "Login failed";
+          : "Authentication failed";
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -72,70 +72,69 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title="Welcome back"
-      subtitle="Login to continue to your dashboard."
+      title="Establish Connection"
+      subtitle="Initiate contact with the Retina network. Provide your credentials below."
       footer={
         <>
-          Don&apos;t have an account?{" "}
+          No account?{" "}
           <button
             type="button"
             onClick={() => navigate("/register")}
-            className="text-primary hover:underline font-semibold"
+            className="text-[#C87CFF] hover:text-[#C87CFF]/80 font-mono tracking-wider transition-colors"
           >
-            Register
+            REGISTER
           </button>
         </>
       }
     >
-      {/* GDSC Hackathon Notice */}
-      <div className="mb-8 p-5 rounded-2xl bg-primary-container/10 border border-primary/10 space-y-3">
-        <div className="flex items-center gap-2 text-primary">
-          <span className="font-label font-bold text-sm tracking-wide uppercase">GDSC Notice</span>
+      {/* GDSC Notice */}
+      <div className="mb-8 p-5 border border-white/10 rounded-lg bg-white/[0.02] space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-[#C87CFF]" />
+          <span className="font-mono font-bold text-xs tracking-[0.2em] uppercase text-white/70">SYSTEM_NOTICE</span>
         </div>
         
-        <div className="space-y-2">
-          <p className="text-sm font-label text-on-surface/80 leading-relaxed">
-            Welcome GDSC Reviewers! Use these credentials for a quick preview:
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="p-3 bg-surface-container-low rounded-xl border border-outline/5">
-              <p className="text-[10px] font-bold text-primary uppercase mb-1">Admin Access</p>
-              <p className="text-xs font-mono text-on-surface">icebox1306@gmail.com</p>
-              <p className="text-xs font-mono text-on-surface-variant">Pass: 123456</p>
-            </div>
-            <div className="p-3 bg-surface-container-low rounded-xl border border-outline/5">
-              <p className="text-[10px] font-bold text-secondary uppercase mb-1">Doctor Access</p>
-              <p className="text-xs font-mono text-on-surface">doc@gmail.com</p>
-              <p className="text-xs font-mono text-on-surface-variant">Pass: 123456</p>
-            </div>
+        <p className="text-xs font-mono text-white/50 leading-relaxed">
+          GDSC Reviewers: Use these credentials for a quick preview.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="p-3 border border-white/5 rounded-lg">
+            <p className="text-[10px] font-mono font-bold text-[#C87CFF] uppercase tracking-widest mb-1">ADMIN_ACCESS</p>
+            <p className="text-xs font-mono text-white/70">icebox1306@gmail.com</p>
+            <p className="text-xs font-mono text-white/40">Pass: 123456</p>
+          </div>
+          <div className="p-3 border border-white/5 rounded-lg">
+            <p className="text-[10px] font-mono font-bold text-[#5efdba] uppercase tracking-widest mb-1">DOCTOR_ACCESS</p>
+            <p className="text-xs font-mono text-white/70">doc@gmail.com</p>
+            <p className="text-xs font-mono text-white/40">Pass: 123456</p>
           </div>
         </div>
-
-        <div className="pt-2 border-t border-outline/5">
-          <p className="text-[11px] leading-normal text-on-surface-variant italic">
-            Note: We recently migrated the ML inference engine to <strong>Hugging Face Spaces</strong> to leverage dedicated RAM, after Render's 512MB limit caused frequent stability issues.
+        
+        <div className="pt-2 border-t border-white/5">
+          <p className="text-[11px] font-mono text-white/30 leading-relaxed">
+            ML inference engine runs on <span className="text-[#C87CFF]/70">Hugging Face Spaces</span>.
           </p>
-          
           <a 
             href="https://huggingface.co/spaces/jczdgyo/diabetic-retinopathy" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/20 transition-colors uppercase tracking-wider"
+            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#C87CFF]/30 text-[#C87CFF] text-[10px] font-mono font-bold hover:bg-[#C87CFF]/10 transition-colors uppercase tracking-widest"
           >
-            <span className="material-symbols-rounded text-xs">explore</span>
-            View Model on Hugging Face
+            <span className="material-symbols-outlined text-xs">explore</span>
+            VIEW MODEL
           </a>
         </div>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-label text-on-surface-variant mb-2">
-            Email
+      <form onSubmit={onSubmit} className="space-y-6">
+        {/* Email field - template style with bottom border only */}
+        <div className="space-y-2">
+          <label className="block text-xs font-mono text-white/40 uppercase tracking-[0.2em]">
+            COMMUNICATION_RELAY
           </label>
           <input
-            className="block w-full px-4 py-3 bg-surface-container-lowest border border-outline/10 rounded-xl font-body text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-transparent transition-all outline-none"
-            placeholder="you@domain.com"
+            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-white/10 font-mono text-white/80 placeholder:text-white/20 focus:border-[#C87CFF]/50 focus:ring-0 transition-colors outline-none text-sm"
+            placeholder="Secure channel address..."
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -144,13 +143,14 @@ export default function Login() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-label text-on-surface-variant mb-2">
-            Password
+        {/* Password field */}
+        <div className="space-y-2">
+          <label className="block text-xs font-mono text-white/40 uppercase tracking-[0.2em]">
+            ACCESS_KEY
           </label>
           <input
-            className="block w-full px-4 py-3 bg-surface-container-lowest border border-outline/10 rounded-xl font-body text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-transparent transition-all outline-none"
-            placeholder="********"
+            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-white/10 font-mono text-white/80 placeholder:text-white/20 focus:border-[#C87CFF]/50 focus:ring-0 transition-colors outline-none text-sm"
+            placeholder="Enter passphrase..."
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -160,18 +160,18 @@ export default function Login() {
         </div>
 
         {error && (
-          <div className="rounded-xl bg-error-container/30 text-error px-4 py-3 text-sm animate-[pulse_1.2s_ease-in-out_1]">
-            {error}
+          <div className="font-mono text-xs text-red-400 border border-red-400/20 bg-red-400/5 px-4 py-3 tracking-wider uppercase">
+            [ERROR] {error}
           </div>
         )}
 
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full"
-          icon={isSubmitting ? "progress_activity" : "login"}
+          className="w-full mt-4"
+          icon={isSubmitting ? "progress_activity" : "send"}
         >
-          {isSubmitting ? "Signing in..." : "Login"}
+          {isSubmitting ? "AUTHENTICATING..." : "TRANSMIT"}
         </Button>
       </form>
     </AuthLayout>

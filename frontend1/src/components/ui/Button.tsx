@@ -1,6 +1,8 @@
-import type { ReactNode, ButtonHTMLAttributes } from "react";
+import { motion } from "framer-motion";
+import type { HTMLMotionProps } from "framer-motion";
+import type { ReactNode } from "react";
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends Omit<HTMLMotionProps<"button">, "onAnimationStart" | "onDrag" | "onDragStart" | "onDragEnd"> {
   variant?: "primary" | "secondary" | "ghost";
   icon?: string;
   children: ReactNode;
@@ -8,11 +10,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<string, string> = {
   primary:
-    "bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform",
+    "bg-[#C87CFF] text-black font-bold uppercase tracking-widest hover:shadow-[0_0_25px_rgba(200,124,255,0.7)] border border-[#C87CFF] hover:bg-[#d99aff]",
   secondary:
-    "bg-surface-container-highest text-on-surface font-bold hover:bg-surface-container transition-colors",
+    "bg-[#C87CFF]/10 text-[#C87CFF] border border-[#C87CFF]/50 font-bold uppercase tracking-widest hover:bg-[#C87CFF]/20 hover:shadow-[0_0_15px_rgba(200,124,255,0.3)] hover:border-[#C87CFF]/80",
   ghost:
-    "border border-outline-variant/30 text-on-surface-variant font-bold hover:bg-surface-container-high transition-colors",
+    "bg-transparent text-white/60 border border-white/20 font-bold uppercase tracking-widest hover:text-white hover:border-white/40 hover:bg-white/5",
 };
 
 export default function Button({
@@ -23,14 +25,16 @@ export default function Button({
   ...props
 }: ButtonProps) {
   return (
-    <button
-      className={`px-6 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform ${variantClasses[variant]} ${className}`}
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      className={`px-6 py-3 rounded-none font-mono text-xs flex items-center justify-center gap-3 transition-colors ${variantClasses[variant]} ${className}`}
       {...props}
     >
       {icon && (
         <span className="material-symbols-outlined text-sm">{icon}</span>
       )}
       {children}
-    </button>
+    </motion.button>
   );
 }

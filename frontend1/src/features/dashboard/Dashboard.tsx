@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import MechanicalEye from "../../components/eye/MechanicalEye";
+import NexusEye from "../../components/eye/NexusEye";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import { getMe, type UserResponse } from "../../services/auth";
@@ -42,12 +42,12 @@ function SvgBars(props: { labels: string[]; values: number[]; yUnit?: string }) 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="w-full h-72 text-on-surface-variant"
+      className="w-full h-72 text-white/40"
     >
       <defs>
         <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgb(251,130,253)" stopOpacity="0.95" />
-          <stop offset="100%" stopColor="rgb(148,34,156)" stopOpacity="0.75" />
+          <stop offset="0%" stopColor="rgb(200,124,255)" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="rgb(46,24,61)" stopOpacity="0.7" />
         </linearGradient>
       </defs>
 
@@ -183,13 +183,13 @@ function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="w-full h-72 text-on-surface-variant"
+      className="w-full h-72 text-white/40"
     >
       <defs>
         <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="rgb(148,34,156)" stopOpacity="0.55" />
-          <stop offset="60%" stopColor="rgb(251,130,253)" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="rgb(251,130,253)" stopOpacity="0.35" />
+          <stop offset="0%" stopColor="rgb(46,24,61)" stopOpacity="0.55" />
+          <stop offset="60%" stopColor="rgb(200,124,255)" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="rgb(200,124,255)" stopOpacity="0.35" />
         </linearGradient>
       </defs>
       {[0, 0.25, 0.5, 0.75, 1].map((t) => {
@@ -251,7 +251,7 @@ function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string
         const y = paddingTop + (plotH * (max - v)) / span;
         return (
           <g key={i}>
-            <circle cx={x} cy={y} r="4.5" fill="rgb(251,130,253)" opacity={0.9} />
+            <circle cx={x} cy={y} r="4.5" fill="rgb(200,124,255)" opacity={0.9} />
           </g>
         );
       })}
@@ -292,18 +292,25 @@ function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string
   );
 }
 
-function StatCard(props: { label: string; value: string; hint?: string; icon: string }) {
+import FadeInReveal from "../../components/ui/FadeInReveal";
+
+function StatCard({ label, value, hint, icon, index = 0 }: { label: string; value: string; hint?: string; icon: string, index?: number }) {
   return (
-    <Card className="p-6 space-y-3 shadow-2xl shadow-black/10 hover:shadow-black/20 transition-shadow">
-      <div className="flex items-center justify-between">
-        <span className="text-on-surface-variant font-medium">{props.label}</span>
-        <span className="material-symbols-outlined text-primary text-xl">{props.icon}</span>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-headline font-bold">{props.value}</span>
-        {props.hint && <span className="text-on-surface-variant text-sm">{props.hint}</span>}
-      </div>
-    </Card>
+    <FadeInReveal delay={index * 0.1}>
+      <Card className="p-6 space-y-3 relative overflow-hidden group">
+        {/* Glow effect overlay */}
+        <div className="absolute inset-0 bg-primary-bright/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        
+        <div className="flex items-center justify-between relative z-10">
+          <span className="text-white/50 font-mono text-xs uppercase tracking-widest">{label}</span>
+          <span className="material-symbols-outlined text-primary-bright/70 text-xl group-hover:text-primary-bright group-hover:shadow-[0_0_10px_#C87CFF] transition-all">{icon}</span>
+        </div>
+        <div className="flex items-baseline gap-2 relative z-10">
+          <span className="text-3xl font-mono font-bold text-white group-hover:glow-text-primary transition-all">{value}</span>
+          {hint && <span className="text-white/30 text-xs font-mono">{hint}</span>}
+        </div>
+      </Card>
+    </FadeInReveal>
   );
 }
 
@@ -408,155 +415,157 @@ export default function Dashboard() {
   const patientNameById = useMemo(() => new Map(patients.map((p) => [p.id, p.name])), [patients]);
 
   return (
-    <main className="min-h-screen pt-24 pb-32 px-6 md:px-12 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
-        <div>
-          <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">
-            {user ? `Welcome, ${user.name}` : "Dashboard"}
-          </h1>
+    <main className="min-h-screen pt-24 pb-32 px-6 md:px-12 max-w-7xl mx-auto relative z-10">
+      <FadeInReveal delay={0}>
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
+          <div>
+            <h1 className="text-4xl font-mono font-extrabold text-white tracking-[0.2em] uppercase glow-text-primary">
+              {user ? `[USER_ID: ${user.name}]` : "DASHBOARD"}
+            </h1>
+            <div className="text-primary-bright/70 font-mono text-sm mt-2 uppercase tracking-widest">
+              {'// System Status: NORMAL_OPERATION'}
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="secondary" icon="refresh" onClick={load} disabled={isLoading}>
+              SYNC_DATA
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <Button variant="secondary" icon="refresh" onClick={load} disabled={isLoading}>
-            Refresh
-          </Button>
-        </div>
-      </div>
+      </FadeInReveal>
 
       {error && (
-        <Card className="p-5 mb-8 border border-error/25 bg-error-container/20">
-          <div className="text-error font-semibold">{error}</div>
-          <div className="text-on-surface-variant text-sm mt-1">
-            Make sure the backend is running and you&apos;re logged in.
-          </div>
-        </Card>
+        <FadeInReveal delay={0.1}>
+          <Card className="p-5 mb-8 border border-error/50 bg-error/10">
+            <div className="text-error font-mono font-bold tracking-widest uppercase">[{error}]</div>
+            <div className="text-white/50 text-sm mt-1 font-mono uppercase tracking-widest">
+              Please verify backend connectivity and token status.
+            </div>
+          </Card>
+        </FadeInReveal>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
-          <StatCard label="Patients" value={formatCompact(stats.patientCount)} icon="group" />
-          <StatCard label="Total Reports" value={formatCompact(stats.reportCount)} icon="summarize" />
-          <StatCard label="Reports Today" value={formatCompact(stats.todayCount)} icon="today" />
-          <StatCard
-            label="High Priority"
-            value={formatCompact(stats.highPriority)}
-            hint="(4–5)"
-            icon="priority_high"
-          />
-          <StatCard
-            label="Avg Confidence"
-            value={`${(stats.avgConfidence * 100).toFixed(1)}%`}
-            icon="analytics"
-          />
-          <StatCard
-            label="Last Analysis"
-            value={stats.lastReportAt ? stats.lastReportAt.toLocaleTimeString() : "—"}
-            hint={stats.lastReportAt ? stats.lastReportAt.toLocaleDateString() : undefined}
-            icon="schedule"
-          />
+          <StatCard label="Patients" value={formatCompact(stats.patientCount)} icon="group" index={1} />
+          <StatCard label="Total Reports" value={formatCompact(stats.reportCount)} icon="summarize" index={2} />
+          <StatCard label="Reports Today" value={formatCompact(stats.todayCount)} icon="today" index={3} />
+          <StatCard label="High Priority" value={formatCompact(stats.highPriority)} hint="(4–5)" icon="priority_high" index={4} />
+          <StatCard label="Avg Confidence" value={`${(stats.avgConfidence * 100).toFixed(1)}%`} icon="analytics" index={5} />
+          <StatCard label="Last Analysis" value={stats.lastReportAt ? stats.lastReportAt.toLocaleTimeString() : "—"} hint={stats.lastReportAt ? stats.lastReportAt.toLocaleDateString() : undefined} icon="schedule" index={6} />
         </div>
 
-        <div className="lg:col-span-5 flex flex-col items-center justify-center">
+        <FadeInReveal delay={0.5} className="lg:col-span-5 flex flex-col items-center justify-center">
           <div className="w-full flex items-center justify-center py-6">
-            <MechanicalEye />
+            <NexusEye size={450} />
           </div>
-          <Card className="w-full p-6">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-headline font-bold">Reports (14 days)</div>
-              <div className="text-xs text-on-surface-variant">
-                {isLoading ? "Loading…" : `${reportsLast14Days.reduce((a, b) => a + b, 0)} total`}
+          <Card className="w-full p-6 group">
+            <div className="flex items-center justify-between mb-3 relative z-10">
+              <div className="font-mono font-bold tracking-widest uppercase text-white group-hover:glow-text-primary transition-all">REPORTS_TREND [14_DAYS]</div>
+              <div className="text-xs text-white/50 font-mono tracking-widest">
+                {isLoading ? "CALCULATING…" : `${reportsLast14Days.reduce((a, b) => a + b, 0)} TOTAL`}
               </div>
             </div>
-            <div className="flex items-center justify-between text-xs text-on-surface-variant mb-3">
-              <span>X: Days (old → new)</span>
-              <span>Y: Reports (count)</span>
+            <div className="flex items-center justify-between text-xs text-white/30 mb-3 font-mono tracking-widest relative z-10">
+              <span>X: DAYS</span>
+              <span>Y: COUNT</span>
             </div>
-            <SvgLine
-              values={reportsLast14Days}
-              yUnit="Reports"
-              xStartLabel="14d ago"
-              xEndLabel="Today"
-            />
+            <div className="relative z-10">
+              <SvgLine
+                values={reportsLast14Days}
+                yUnit="COUNT"
+                xStartLabel="-14D"
+                xEndLabel="NOW"
+              />
+            </div>
           </Card>
-        </div>
-
+        </FadeInReveal>
         <div className="lg:col-span-3 space-y-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-headline font-bold">Severity Distribution</div>
-              <div className="text-xs text-on-surface-variant">{reports.length} reports</div>
-            </div>
-            <div className="flex items-center justify-between text-xs text-on-surface-variant mb-3">
-              <span>X: DR stage</span>
-              <span>Y: Reports (count)</span>
-            </div>
-            <SvgBars labels={["0", "1", "2", "3", "4"]} values={severityDist.counts} yUnit="Reports" />
-            <div className="grid grid-cols-5 gap-2 mt-2 text-xs text-on-surface-variant">
-              {["No DR", "Mild", "Moderate", "Severe", "Prolif."].map((t) => (
-                <div key={t} className="text-center">
-                  {t}
-                </div>
-              ))}
-            </div>
-          </Card>
+          <FadeInReveal delay={0.6}>
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-mono font-bold tracking-widest uppercase text-white">SEVERITY_DISTRIBUTION</div>
+                <div className="text-xs text-white/50 font-mono tracking-widest">{reports.length} REPORTS</div>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-white/30 mb-3 font-mono tracking-widest">
+                <span>X: STAGE</span>
+                <span>Y: COUNT</span>
+              </div>
+              <SvgBars labels={["0", "1", "2", "3", "4"]} values={severityDist.counts} yUnit="COUNT" />
+              <div className="grid grid-cols-5 gap-2 mt-2 text-[10px] text-white/50 font-mono tracking-widest uppercase">
+                {["No DR", "Mild", "Mod", "Sev", "Prolif"].map((t) => (
+                  <div key={t} className="text-center">
+                    {t}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </FadeInReveal>
 
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-headline font-bold">Confidence Histogram</div>
-              <div className="text-xs text-on-surface-variant">(% bins)</div>
-            </div>
-            <div className="flex items-center justify-between text-xs text-on-surface-variant mb-3">
-              <span>X: Confidence (%)</span>
-              <span>Y: Reports (count)</span>
-            </div>
-            <SvgBars labels={confidenceHistogram.labels} values={confidenceHistogram.counts} yUnit="Reports" />
-          </Card>
+          <FadeInReveal delay={0.7}>
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-mono font-bold tracking-widest uppercase text-white">CONFIDENCE_BINS</div>
+                <div className="text-xs text-white/50 font-mono tracking-widest">(%)</div>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-white/30 mb-3 font-mono tracking-widest">
+                <span>X: PERCENT</span>
+                <span>Y: COUNT</span>
+              </div>
+              <SvgBars labels={confidenceHistogram.labels} values={confidenceHistogram.counts} yUnit="COUNT" />
+            </Card>
+          </FadeInReveal>
         </div>
       </div>
 
-      <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <Card className="lg:col-span-12 p-6 overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-headline font-bold text-xl">Recent Reports</h2>
-            <div className="text-xs text-on-surface-variant">
-              {isLoading ? "Loading…" : "Newest first"}
+      <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+        <FadeInReveal delay={0.8} className="lg:col-span-12">
+          <Card className="p-6 overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-mono font-bold text-xl tracking-widest uppercase text-white">SYSTEM_LOGS // RECENT_REPORTS</h2>
+              <div className="text-xs text-white/50 font-mono tracking-widest">
+                {isLoading ? "LOADING…" : "LATEST"}
+              </div>
             </div>
-          </div>
-          <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="text-xs uppercase tracking-wider text-on-surface-variant">
-                  <th className="py-3 pr-4">Patient</th>
-                  <th className="py-3 pr-4">Prediction</th>
-                  <th className="py-3 pr-4 text-center">Confidence</th>
-                  <th className="py-3 pr-4 text-center">Priority</th>
-                  <th className="py-3 text-right">Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/10">
-                {recent.map((r) => (
-                  <tr key={r.id} className="text-sm hover:bg-surface-container-high transition-colors">
-                    <td className="py-4 pr-4 font-semibold">
-                      {patientNameById.get(r.patient_id) ?? `Patient #${r.patient_id}`}
-                    </td>
-                    <td className="py-4 pr-4 text-on-surface-variant">{r.prediction}</td>
-                    <td className="py-4 pr-4 text-center text-on-surface-variant">{formatPercent(r.confidence)}</td>
-                    <td className="py-4 pr-4 text-center font-bold text-primary">{r.priority_score}</td>
-                    <td className="py-4 text-right text-on-surface-variant">
-                      {new Date(r.created_at).toLocaleString()}
-                    </td>
+            <div className="overflow-x-auto no-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wider text-white/30 font-mono border-b border-white/10">
+                    <th className="py-3 pr-4">SUBJECT_ID</th>
+                    <th className="py-3 pr-4">PREDICTION_STATE</th>
+                    <th className="py-3 pr-4 text-center">CONFIDENCE</th>
+                    <th className="py-3 pr-4 text-center">PRIORITY</th>
+                    <th className="py-3 text-right">TIMESTAMP</th>
                   </tr>
-                ))}
-                {!isLoading && recent.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-10 text-center text-on-surface-variant">
-                      No reports yet. Run a screening to populate the dashboard.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+                </thead>
+                <tbody className="divide-y divide-white/5 font-mono text-sm">
+                  {recent.map((r) => (
+                    <tr key={r.id} className="hover:bg-white/5 transition-colors group cursor-pointer text-white/70 hover:text-white">
+                      <td className="py-4 pr-4 font-bold tracking-widest group-hover:glow-text-primary transition-all">
+                        {patientNameById.get(r.patient_id) ?? `SUB_${r.patient_id}`}
+                      </td>
+                      <td className="py-4 pr-4">{r.prediction}</td>
+                      <td className="py-4 pr-4 text-center text-primary-bright/80 font-bold">{formatPercent(r.confidence)}</td>
+                      <td className={`py-4 pr-4 text-center font-bold text-[10px] tracking-widest`}>
+                        <span className={`px-2 py-1 border rounded-non ${r.priority_score >= 4 ? 'border-error text-error shadow-[0_0_10px_rgba(255,0,0,0.3)]' : 'border-primary-bright text-primary-bright'}`}>LVL_{r.priority_score}</span>
+                      </td>
+                      <td className="py-4 text-right text-xs text-white/40">
+                        {new Date(r.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                  {!isLoading && recent.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-10 text-center text-white/30 tracking-widest uppercase text-xs">
+                        {">"} TERMINAL_EMPTY // NO_LOGS_FOUND 
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </FadeInReveal>
       </div>
     </main>
   );

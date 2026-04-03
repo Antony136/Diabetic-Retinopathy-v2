@@ -17,7 +17,6 @@ export default function Navbar() {
   const [syncBusy, setSyncBusy] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
-  const [syncStatusReason, setSyncStatusReason] = useState<string | undefined>(undefined);
   const [useCloudBackend, setUseCloudBackend] = useState(() => localStorage.getItem("retina_use_cloud_backend") === "1");
   const role = getRoleFromToken(getAuthToken());
   const online = useOnlineStatus();
@@ -54,13 +53,11 @@ export default function Navbar() {
   useEffect(() => {
     const status = getSyncStatus();
     setSyncStatus(status.status);
-    setSyncStatusReason(status.reason);
   }, []);
 
   useEffect(() => {
-    // Auto-sync when connectivity returns (desktop/offline-first mode).
     if (!online) return;
-    if (!hasLocalBackend) return; // avoid syncing on web deploy (cloud-only)
+    if (!hasLocalBackend) return;
     if (!getAuthToken()) return;
 
     setSyncError(null);
@@ -69,13 +66,11 @@ export default function Navbar() {
       .then(() => {
         const status = getSyncStatus();
         setSyncStatus(status.status);
-        setSyncStatusReason(status.reason);
       })
       .catch((e) => {
         setSyncError(String(e?.message || e));
         const status = getSyncStatus();
         setSyncStatus(status.status);
-        setSyncStatusReason(status.reason);
       })
       .finally(() => setSyncBusy(false));
   }, [online]);
@@ -100,31 +95,33 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[60] bg-transparent font-headline font-semibold tracking-tight">
+    <header className="fixed top-0 left-0 right-0 z-[60] bg-black/40 backdrop-blur-md border-b border-white/5 font-mono">
       <div className="flex justify-between items-center w-full px-8 py-4">
-        <div 
-          className="text-xl font-bold text-on-surface cursor-pointer"
+        {/* Logo - matching NEXUS template style */}
+        <div
+          className="text-lg font-bold text-white tracking-[0.3em] cursor-pointer hover:text-[#C87CFF] transition-colors duration-300 uppercase"
           onClick={() => navigate(role === "admin" ? "/admin/overview" : "/")}
         >
           {APP_NAME}
         </div>
-        <div className="flex items-center gap-6">
+
+        {/* Right side nav items */}
+        <div className="flex items-center gap-5">
+          {/* Status indicators */}
           {!online && (
-            <div className="px-3 py-1 rounded-full bg-error-container text-on-error-container text-xs font-bold tracking-wide">
-              Offline Mode
+            <div className="px-3 py-1 border border-red-500/30 text-red-400 text-[10px] font-mono tracking-widest uppercase">
+              OFFLINE
             </div>
           )}
           {hasLocalBackend && (
-            <div className="px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-bold tracking-wide">
-              Sync: {syncStatus === "pending" ? "Pending" : syncStatus === "synced" ? "Synced" : syncStatus === "failed" ? "Failed" : "Idle"}
-              {syncStatusReason ? ` (${syncStatusReason})` : ""}
+            <div className="text-[10px] font-mono tracking-widest uppercase text-white/30">
+              SYNC: {syncStatus === "synced" ? <span className="text-[#5efdba]">OK</span> : syncStatus === "failed" ? <span className="text-red-400">FAIL</span> : <span className="text-white/50">{syncStatus.toUpperCase()}</span>}
             </div>
           )}
           {backendStatus && !backendStatus.ready && (
             <button
               onClick={async () => {
                 if (!window.electronAPI?.backendRestart) return;
-                setSyncError(null);
                 setSyncBusy(true);
                 try {
                   const result = await window.electronAPI.backendRestart();
@@ -136,10 +133,9 @@ export default function Navbar() {
                 }
               }}
               disabled={syncBusy}
-              className="px-2 py-1 rounded bg-warning-container text-warning text-xs font-bold"
-              title="Attempt to restart local backend"
+              className="text-[10px] font-mono tracking-widest uppercase text-yellow-400/70 border border-yellow-400/20 px-2 py-1 hover:bg-yellow-400/5 transition-colors"
             >
-              Restart backend
+              RESTART_BACKEND
             </button>
           )}
           {hasLocalBackend && (
@@ -150,11 +146,10 @@ export default function Navbar() {
                 localStorage.setItem("retina_use_cloud_backend", next ? "1" : "0");
               }}
               disabled={!online}
-              className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
-              title={useCloudBackend ? "Using cloud backend (online)" : "Using local backend (offline-first)"}
-              aria-label="Toggle cloud backend"
+              className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300 disabled:opacity-20"
+              title={useCloudBackend ? "Using cloud backend" : "Using local backend"}
             >
-              <span className="material-symbols-outlined">{useCloudBackend ? "cloud" : "cloud_off"}</span>
+              <span className="material-symbols-outlined text-lg">{useCloudBackend ? "cloud" : "cloud_off"}</span>
             </button>
           )}
           {hasLocalBackend && (
@@ -164,61 +159,53 @@ export default function Navbar() {
                   setSyncError(null);
                   setSyncBusy(true);
                   await runSync();
-                  const status = getSyncStatus();
-                  setSyncStatus(status.status);
-                  setSyncStatusReason(status.reason);
+                  setSyncStatus(getSyncStatus().status);
                 } catch (e: any) {
                   setSyncError(String(e?.message || e));
-                  const status = getSyncStatus();
-                  setSyncStatus(status.status);
-                  setSyncStatusReason(status.reason);
+                  setSyncStatus(getSyncStatus().status);
                 } finally {
                   setSyncBusy(false);
                 }
               }}
               disabled={syncBusy || !online}
-              className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
-              title={syncError ? `Sync error: ${syncError}` : syncBusy ? "Syncing…" : "Sync offline data"}
-              aria-label="Sync"
+              className="text-white/30 hover:text-[#5efdba] transition-colors duration-300 disabled:opacity-20"
+              title={syncError ? `Sync error: ${syncError}` : "Sync"}
             >
-              <span className="material-symbols-outlined">{syncBusy ? "sync" : "sync"}</span>
+              <span className="material-symbols-outlined text-lg">sync</span>
             </button>
           )}
+
+          {/* Logout */}
           <button
             onClick={async () => {
-              try {
-                await logoutUser();
-              } catch (err) {
-                console.warn("logout failed", err);
-              }
+              try { await logoutUser(); } catch {}
               navigate("/login", { replace: true });
             }}
-            className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+            className="text-white/30 hover:text-red-400 transition-colors duration-300"
             title="Logout"
-            aria-label="Logout"
           >
-            <span className="material-symbols-outlined">logout</span>
+            <span className="material-symbols-outlined text-lg">logout</span>
           </button>
+
+          {/* Role-specific nav */}
           {role !== "admin" && (
             <>
               <button
                 onClick={() => navigate("/notifications")}
-                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+                className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300 relative"
               >
-                <span className="material-symbols-outlined relative">
-                  notifications
-                  {unread > 0 && (
-                    <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-on-primary text-[10px] leading-4 text-center font-bold">
-                      {unread > 99 ? "99+" : unread}
-                    </span>
-                  )}
-                </span>
+                <span className="material-symbols-outlined text-lg">notifications</span>
+                {unread > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-3 h-3 px-0.5 rounded-full bg-[#C87CFF] text-black text-[8px] leading-3 text-center font-bold">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => navigate("/profile")}
-                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
+                className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300"
               >
-                <span className="material-symbols-outlined">account_circle</span>
+                <span className="material-symbols-outlined text-lg">account_circle</span>
               </button>
             </>
           )}
@@ -226,34 +213,26 @@ export default function Navbar() {
             <>
               <button
                 onClick={() => navigate("/admin/notifications")}
-                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
-                title="Notifications"
-                aria-label="Notifications"
+                className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300 relative"
               >
-                <span className="material-symbols-outlined relative">
-                  notifications
-                  {unread > 0 && (
-                    <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-on-primary text-[10px] leading-4 text-center font-bold">
-                      {unread > 99 ? "99+" : unread}
-                    </span>
-                  )}
-                </span>
+                <span className="material-symbols-outlined text-lg">notifications</span>
+                {unread > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-3 h-3 px-0.5 rounded-full bg-[#C87CFF] text-black text-[8px] leading-3 text-center font-bold">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => navigate("/admin/settings")}
-                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
-                title="Settings"
-                aria-label="Settings"
+                className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300"
               >
-                <span className="material-symbols-outlined">settings</span>
+                <span className="material-symbols-outlined text-lg">settings</span>
               </button>
               <button
                 onClick={() => navigate("/admin/profile")}
-                className="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-90 transition-transform flex items-center justify-center"
-                title="Profile"
-                aria-label="Profile"
+                className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300"
               >
-                <span className="material-symbols-outlined">account_circle</span>
+                <span className="material-symbols-outlined text-lg">account_circle</span>
               </button>
             </>
           )}

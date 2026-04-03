@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
@@ -39,29 +39,29 @@ export default function Register() {
 
   return (
     <AuthLayout
-      title="Create account"
-      subtitle="Register to start using Retina Max."
+      title="Initialize Account"
+      subtitle="Create a new identity on the Retina network."
       footer={
         <>
-          Already have an account?{" "}
+          Existing user?{" "}
           <button
             type="button"
             onClick={() => navigate("/login")}
-            className="text-primary hover:underline font-semibold"
+            className="text-[#C87CFF] hover:text-[#C87CFF]/80 font-mono tracking-wider transition-colors"
           >
-            Login
+            AUTHENTICATE
           </button>
         </>
       }
     >
-      <form onSubmit={onSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-label text-on-surface-variant mb-2">
-            Name
+      <form onSubmit={onSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <label className="block text-xs font-mono text-white/40 uppercase tracking-[0.2em]">
+            SUBJECT_IDENTIFIER
           </label>
           <input
-            className="block w-full px-4 py-3 bg-surface-container-lowest border border-outline/10 rounded-xl font-body text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-transparent transition-all outline-none"
-            placeholder="Your name"
+            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-white/10 font-mono text-white/80 placeholder:text-white/20 focus:border-[#C87CFF]/50 focus:ring-0 transition-colors outline-none text-sm"
+            placeholder="Enter designation..."
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -70,13 +70,13 @@ export default function Register() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-label text-on-surface-variant mb-2">
-            Email
+        <div className="space-y-2">
+          <label className="block text-xs font-mono text-white/40 uppercase tracking-[0.2em]">
+            COMMUNICATION_RELAY
           </label>
           <input
-            className="block w-full px-4 py-3 bg-surface-container-lowest border border-outline/10 rounded-xl font-body text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-transparent transition-all outline-none"
-            placeholder="you@domain.com"
+            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-white/10 font-mono text-white/80 placeholder:text-white/20 focus:border-[#C87CFF]/50 focus:ring-0 transition-colors outline-none text-sm"
+            placeholder="Secure channel address..."
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -85,13 +85,13 @@ export default function Register() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-label text-on-surface-variant mb-2">
-            Password
+        <div className="space-y-2">
+          <label className="block text-xs font-mono text-white/40 uppercase tracking-[0.2em]">
+            ACCESS_KEY
           </label>
           <input
-            className="block w-full px-4 py-3 bg-surface-container-lowest border border-outline/10 rounded-xl font-body text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-transparent transition-all outline-none"
-            placeholder="Create a password"
+            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-white/10 font-mono text-white/80 placeholder:text-white/20 focus:border-[#C87CFF]/50 focus:ring-0 transition-colors outline-none text-sm"
+            placeholder="Create passphrase..."
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -101,18 +101,18 @@ export default function Register() {
         </div>
 
         {error && (
-          <div className="rounded-xl bg-error-container/30 text-error px-4 py-3 text-sm animate-[pulse_1.2s_ease-in-out_1]">
-            {error}
+          <div className="font-mono text-xs text-red-400 border border-red-400/20 bg-red-400/5 px-4 py-3 tracking-wider uppercase">
+            [ERROR] {error}
           </div>
         )}
 
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full"
+          className="w-full mt-4"
           icon={isSubmitting ? "progress_activity" : "person_add"}
         >
-          {isSubmitting ? "Creating..." : "Register"}
+          {isSubmitting ? "INITIALIZING..." : "CREATE_IDENTITY"}
         </Button>
       </form>
     </AuthLayout>
