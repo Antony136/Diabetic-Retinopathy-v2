@@ -97,6 +97,32 @@ def _resolve_model_path() -> str:
     return str(Path(__file__).resolve().parents[1] / "checkpoints" / "model_b3.pth")
 
 
+def _pick_gradcam_layer(model):
+    """
+    Try to pick a stable convolution layer for Grad-CAM across timm/torch versions.
+    """
+    torch, _, _ = _lazy_import_torch()
+
+    # Prefer known EfficientNet head if present.
+    head = getattr(model, "conv_head", None)
+    if head is not None:
+        return head
+
+    # Fall back to the last Conv2d module.
+    try:
+        for m in reversed(list(model.modules())):
+            if isinstance(m, torch.nn.Conv2d):
+                return m
+    except Exception:
+        pass
+
+    # Last resort: last module (may be suboptimal but avoids crashing).
+    try:
+        return list(model.modules())[-1]
+    except Exception:
+        return model
+
+
 def load_predictor():
     global _model, _img_size, _model_path
     if _model is not None:
@@ -113,11 +139,59 @@ def load_predictor():
     except TypeError:
         ckpt = torch.load(model_path, map_location="cpu")
 
-    num_classes = int(ckpt.get("num_classes", 5))
-    _img_size = int(ckpt.get("img_size", 300))
+    # Support multiple checkpoint formats.
+    state_dict = None
+    num_classes = 5
+    _img_size = 300
+
+    if isinstance(ckpt, dict):
+        # Common training checkpoint format.
+        if "state_dict" in ckpt and isinstance(ckpt["state_dict"], dict):
+            state_dict = ckpt["state_dict"]
+        elif "model_state_dict" in ckpt and isinstance(ckpt["model_state_dict"], dict):
+            state_dict = ckpt["model_state_dict"]
+        elif "model" in ckpt and isinstance(ckpt["model"], dict):
+            state_dict = ckpt["model"]
+        elif all(isinstance(k, str) for k in ckpt.keys()):
+            # Looks like a raw state_dict.
+            state_dict = ckpt
+
+        try:
+            num_classes = int(ckpt.get("num_classes", num_classes))
+        except Exception:
+            pass
+        try:
+            _img_size = int(ckpt.get("img_size", _img_size))
+        except Exception:
+            pass
+    else:
+        state_dict = ckpt
+
+    if not isinstance(state_dict, dict) or not state_dict:
+        raise ValueError("Invalid model checkpoint: missing state_dict")
 
     model = timm.create_model("efficientnet_b3", pretrained=False, num_classes=num_classes)
-    model.load_state_dict(ckpt["state_dict"])
+
+    # Handle DataParallel / DDP prefixes (module.)
+    try:
+        if any(str(k).startswith("module.") for k in state_dict.keys()):
+            state_dict = {str(k).replace("module.", "", 1): v for k, v in state_dict.items()}
+    except Exception:
+        pass
+
+    # Load weights permissively (keeps desktop functional across minor training changes).
+    try:
+        model.load_state_dict(state_dict, strict=True)
+    except Exception as e:
+        try:
+            missing, unexpected = model.load_state_dict(state_dict, strict=False)
+            print(f"WARNING: strict state_dict load failed: {e}")
+            if missing:
+                print(f"WARNING: missing keys: {missing[:10]}{'...' if len(missing) > 10 else ''}")
+            if unexpected:
+                print(f"WARNING: unexpected keys: {unexpected[:10]}{'...' if len(unexpected) > 10 else ''}")
+        except Exception:
+            raise
     model.eval()
 
     _model = model
@@ -150,7 +224,7 @@ def _predict_from_pil(image: Image.Image) -> Tuple[str, float, bytes, str, str]:
         label = DR_STAGES[class_idx.item()]
         conf = float(confidence.item())
 
-    cam = _GradCAM(model, getattr(model, "conv_head", None) or list(model.modules())[-1])
+    cam = _GradCAM(model, _pick_gradcam_layer(model))
     try:
         heatmap = cam(input_tensor, class_idx.item())
     finally:
@@ -166,9 +240,9 @@ def _predict_from_pil(image: Image.Image) -> Tuple[str, float, bytes, str, str]:
 
 
 def predict(image_path: str) -> Tuple[str, float, Optional[bytes], Optional[str], Optional[str]]:
-    img = Image.open(image_path)
-    label, conf, heatmap_bytes, ct, ext = _predict_from_pil(img)
-    return label, conf, heatmap_bytes, ct, ext
+    with Image.open(image_path) as img:
+        label, conf, heatmap_bytes, ct, ext = _predict_from_pil(img)
+        return label, conf, heatmap_bytes, ct, ext
 
 
 def predict_from_url(image_url: str) -> Tuple[str, float, Optional[bytes], Optional[str], Optional[str]]:
@@ -177,7 +251,6 @@ def predict_from_url(image_url: str) -> Tuple[str, float, Optional[bytes], Optio
     with httpx.Client(timeout=60.0, follow_redirects=True) as client:
         resp = client.get(image_url)
         resp.raise_for_status()
-        img = Image.open(io.BytesIO(resp.content))
-    label, conf, heatmap_bytes, ct, ext = _predict_from_pil(img)
-    return label, conf, heatmap_bytes, ct, ext
-
+        with Image.open(io.BytesIO(resp.content)) as img:
+            label, conf, heatmap_bytes, ct, ext = _predict_from_pil(img)
+            return label, conf, heatmap_bytes, ct, ext

@@ -161,6 +161,12 @@ async def create_report(
 
         prediction, confidence, heatmap_bytes, heatmap_content_type, heatmap_ext = predict_dr_stage(local_image_path)
     except Exception as e:
+        try:
+            import traceback
+
+            traceback.print_exc()
+        except Exception:
+            pass
         if os.path.exists(local_image_path):
             os.remove(local_image_path)
         raise HTTPException(

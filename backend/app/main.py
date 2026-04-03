@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.api import health, auth, patients, reports, notifications, preferences, profile, admin, doctor_assistant, inference, sync
+from app.api import health, auth, patients, reports, notifications, preferences, profile, admin, doctor_assistant, inference, sync, diagnostics
 from app.api import image_cache
 from pathlib import Path
 from app.db.database import engine, Base
@@ -77,4 +77,5 @@ app.include_router(doctor_assistant.router)
 app.include_router(inference.router)
 app.include_router(sync.router)
 app.include_router(image_cache.router)
+app.include_router(diagnostics.router)
 

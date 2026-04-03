@@ -51,6 +51,12 @@ async def predict(file: UploadFile = File(...)):
 
         prediction, confidence, heatmap_bytes, _ct, _ext = predict_dr_stage(local_image_path)
     except Exception as e:
+        try:
+            import traceback
+
+            traceback.print_exc()
+        except Exception:
+            pass
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"AI prediction failed: {e}")
     finally:
         try:
@@ -74,4 +80,3 @@ async def predict_url(req: PredictUrlRequest):
 
     heatmap_b64 = base64.b64encode(heatmap_bytes or b"").decode("ascii") if heatmap_bytes else None
     return {"prediction": prediction, "confidence": confidence, "heatmap_png_base64": heatmap_b64}
-
