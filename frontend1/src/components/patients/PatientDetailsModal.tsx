@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Card from "../ui/Card";
 import Button from "../ui/Button";
 import { getPatient, type PatientResponse } from "../../services/patients";
-import { listPatientReports, type ReportResponse } from "../../services/reports";
+import { generateImageExplanation, listPatientReports, type ReportResponse } from "../../services/reports";
 import { resolveBackendImageUrl } from "../../services/apiBase";
 
 function formatPercent(confidence: number) {
@@ -19,6 +19,8 @@ export default function PatientDetailsModal(props: {
   const [patient, setPatient] = useState<PatientResponse | null>(null);
   const [reports, setReports] = useState<ReportResponse[]>([]);
   const [reportModal, setReportModal] = useState<ReportResponse | null>(null);
+  const [imageExplainLoading, setImageExplainLoading] = useState(false);
+  const [imageExplainError, setImageExplainError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -256,6 +258,46 @@ export default function PatientDetailsModal(props: {
                     </a>
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-4 rounded-xl bg-surface-container-lowest border border-outline/10 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">AI Image Explanation</div>
+                  <button
+                    type="button"
+                    className="text-[11px] px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors disabled:opacity-50"
+                    disabled={imageExplainLoading}
+                    onClick={async () => {
+                      if (!reportModal) return;
+                      setImageExplainError(null);
+                      setImageExplainLoading(true);
+                      try {
+                        const data = await generateImageExplanation(reportModal.id, Boolean(reportModal.image_explanation));
+                        setReportModal((prev) => (prev ? { ...prev, ...data } : prev));
+                      } catch (e: any) {
+                        setImageExplainError(e?.response?.data?.detail || e?.message || "Failed to generate image explanation");
+                      } finally {
+                        setImageExplainLoading(false);
+                      }
+                    }}
+                  >
+                    {imageExplainLoading ? "Generating..." : reportModal.image_explanation ? "Refresh" : "Generate"}
+                  </button>
+                </div>
+
+                {imageExplainError && (
+                  <div className="mt-3 rounded-xl bg-error-container/30 text-error px-4 py-3 text-sm">{imageExplainError}</div>
+                )}
+
+                {reportModal.image_explanation ? (
+                  <div className="mt-3 text-sm text-on-surface-variant leading-relaxed whitespace-pre-line">
+                    {reportModal.image_explanation}
+                  </div>
+                ) : (
+                  <div className="mt-3 text-sm text-on-surface-variant">
+                    No image explanation yet.
+                  </div>
+                )}
               </div>
             </Card>
           </div>

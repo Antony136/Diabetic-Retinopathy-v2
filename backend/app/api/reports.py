@@ -9,6 +9,7 @@ from app.models.user_preference import UserPreference
 from app.schemas.report import ReportCreate, ReportResponse
 from app.api.auth import get_current_user
 from app.services.storage_service import storage_service
+from app.services import image_explanation_service
 from pathlib import Path
 from urllib.parse import urlparse
 import httpx
@@ -16,6 +17,7 @@ import os
 import tempfile
 import uuid
 from datetime import datetime, timedelta
+from pathlib import PurePosixPath
 
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -84,6 +86,37 @@ def get_or_create_preferences(db: Session, user_id: int) -> UserPreference:
     db.commit()
     db.refresh(pref)
     return pref
+
+
+def _read_local_upload_bytes(url_path: str) -> bytes:
+    """
+    Reads a /uploads/<name> URL from the local uploads directory.
+    """
+    uploads_dir = Path((os.getenv("UPLOADS_DIR") or "uploads").strip() or "uploads")
+    name = PurePosixPath(url_path).name
+    fs_path = uploads_dir / name
+    if not fs_path.exists():
+        raise FileNotFoundError(f"Local upload not found: {name}")
+    b = fs_path.read_bytes()
+    if not b:
+        raise ValueError("Local upload is empty")
+    return b
+
+
+async def _fetch_bytes_for_url(path_or_url: str) -> bytes:
+    s = (path_or_url or "").strip()
+    if not s:
+        raise ValueError("Empty URL")
+    if s.startswith("/uploads/"):
+        return _read_local_upload_bytes(s)
+    if s.startswith("http://") or s.startswith("https://"):
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            r = await client.get(s)
+            r.raise_for_status()
+            if not r.content:
+                raise ValueError("Remote content empty")
+            return r.content
+    raise ValueError("Unsupported path")
 
 
 @router.post("/cache-url")
@@ -201,6 +234,24 @@ async def create_report(
         if not heatmap_url:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Heatmap storage failed")
 
+    image_observations_raw: str | None = None
+    image_explanation: str | None = None
+    if heatmap_bytes:
+        try:
+            hm_img = image_explanation_service.load_heatmap_image_from_bytes(heatmap_bytes)
+            feats = image_explanation_service.extract_heatmap_features(hm_img)
+            obs = image_explanation_service.derive_observations(feats)
+            image_observations_raw = image_explanation_service.pack_observations(obs)
+            # Best-effort LLM explanation. Skip on failure.
+            image_explanation = await image_explanation_service.generate_image_explanation(
+                diagnosis=prediction,
+                confidence=float(confidence),
+                observations=obs,
+                cache_key=f"imgexp:{prediction}:{round(float(confidence),4)}:{hash(tuple(obs))}",
+            )
+        except Exception as e:
+            print(f"WARNING: image explanation generation failed: {e}")
+
     new_report = Report(
         patient_id=patient_id,
         client_uuid=(client_uuid or "").strip() or None,
@@ -210,6 +261,8 @@ async def create_report(
         prediction=prediction,
         confidence=confidence,
         source="sync_local",
+        image_observations=image_observations_raw,
+        image_explanation=image_explanation,
     )
 
     db.add(new_report)
@@ -286,6 +339,8 @@ async def import_report(
     prediction: str = Form(...),
     confidence: float = Form(...),
     description: str | None = Form(None),
+    image_observations: str | None = Form(None),
+    image_explanation: str | None = Form(None),
     created_at: str | None = Form(None),
     updated_at: str | None = Form(None),
     file: UploadFile | None = File(None),
@@ -371,6 +426,8 @@ async def import_report(
         prediction=prediction,
         confidence=float(confidence),
         description=description,
+        image_observations=image_observations,
+        image_explanation=image_explanation,
         created_at=created_dt,
         updated_at=updated_dt,
         source="sync_import",
@@ -521,6 +578,8 @@ def get_all_reports(
             "prediction": report.prediction,
             "confidence": report.confidence,
             "description": getattr(report, "description", None),
+            "image_observations": getattr(report, "image_observations", None),
+            "image_explanation": getattr(report, "image_explanation", None),
             "created_at": report.created_at,
             "patient_name": patient_name,
         }
@@ -580,11 +639,67 @@ def get_patient_reports(
             "prediction": report.prediction,
             "confidence": report.confidence,
             "description": getattr(report, "description", None),
+            "image_observations": getattr(report, "image_observations", None),
+            "image_explanation": getattr(report, "image_explanation", None),
             "created_at": report.created_at,
             "patient_name": patient.name,
         }
         result.append(r_dict)
     return result
+
+
+@router.post("/{report_id}/image-explanation")
+async def generate_report_image_explanation(
+    report_id: int,
+    force: bool = Query(False, description="Re-generate even if already present"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Generate (or refresh) the image-based explanation for a report using its heatmap.
+    Best-effort and safe for offline use (uses local /uploads when available).
+    """
+    report = (
+        db.query(Report)
+        .join(Patient, Patient.id == Report.patient_id)
+        .filter(Report.id == report_id, Patient.doctor_id == current_user.id)
+        .first()
+    )
+    if not report:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+
+    if getattr(report, "image_explanation", None) and not force:
+        return {
+            "image_observations": getattr(report, "image_observations", None),
+            "image_explanation": getattr(report, "image_explanation", None),
+        }
+
+    if not report.heatmap_url:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Report has no heatmap to explain")
+
+    try:
+        hm_bytes = await _fetch_bytes_for_url(str(report.heatmap_url))
+        hm_img = image_explanation_service.load_heatmap_image_from_bytes(hm_bytes)
+        feats = image_explanation_service.extract_heatmap_features(hm_img)
+        obs = image_explanation_service.derive_observations(feats)
+        packed = image_explanation_service.pack_observations(obs)
+        explanation = await image_explanation_service.generate_image_explanation(
+            diagnosis=str(report.prediction),
+            confidence=float(report.confidence or 0.0),
+            observations=obs,
+            cache_key=f"imgexp:report:{report.id}:{hash(tuple(obs))}",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate image explanation: {e}")
+
+    report.image_observations = packed
+    report.image_explanation = explanation
+    db.commit()
+
+    return {
+        "image_observations": packed,
+        "image_explanation": explanation,
+    }
 
 
 @router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)

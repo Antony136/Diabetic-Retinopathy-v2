@@ -117,6 +117,11 @@ def run_migrations(engine: Engine):
             ddl_list2.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
         if not _has_column(engine, "reports", "source"):
             ddl_list2.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS source VARCHAR NULL")
+        # Explainable AI (image reasoning)
+        if not _has_column(engine, "reports", "image_observations"):
+            ddl_list2.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS image_observations TEXT NULL")
+        if not _has_column(engine, "reports", "image_explanation"):
+            ddl_list2.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS image_explanation TEXT NULL")
         if ddl_list2:
             with engine.begin() as conn:
                 if dialect == "postgresql":

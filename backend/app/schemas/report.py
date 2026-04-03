@@ -11,6 +11,8 @@ class ReportCreate(BaseModel):
     prediction: str
     confidence: float
     description: Optional[str] = None
+    image_observations: Optional[str] = None
+    image_explanation: Optional[str] = None
 
 class ReportUpdate(BaseModel):
     prediction: str
@@ -28,6 +30,8 @@ class ReportResponse(BaseModel):
     prediction: str
     confidence: float
     description: Optional[str] = None
+    image_observations: Optional[str] = None
+    image_explanation: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     source: Optional[str] = None
