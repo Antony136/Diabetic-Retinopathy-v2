@@ -120,6 +120,8 @@ export async function runSync() {
     form.append("prediction", r.prediction);
     form.append("confidence", String(r.confidence));
     if (r.description) form.append("description", r.description);
+    if (r.image_observations) form.append("image_observations", r.image_observations);
+    if (r.image_explanation) form.append("image_explanation", r.image_explanation);
     if (r.created_at) form.append("created_at", r.created_at);
     if (r.updated_at) form.append("updated_at", r.updated_at);
 

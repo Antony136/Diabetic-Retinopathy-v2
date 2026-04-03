@@ -7,6 +7,8 @@ export interface ReportResponse {
   heatmap_url: string;
   prediction: string;
   confidence: number; // backend uses 0..1
+  image_observations?: string | null;
+  image_explanation?: string | null;
   created_at: string;
 }
 
@@ -39,5 +41,14 @@ export async function createManualReport(params: {
   description?: string;
 }) {
   const { data } = await api.post<ReportResponse>("/reports/manual", params);
+  return data;
+}
+
+export async function generateImageExplanation(reportId: number, force = false) {
+  const { data } = await api.post<{ image_observations: string | null; image_explanation: string | null }>(
+    `/reports/${reportId}/image-explanation`,
+    null,
+    { params: { force: force ? "1" : "0" } }
+  );
   return data;
 }

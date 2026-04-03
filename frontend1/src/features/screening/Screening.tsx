@@ -10,6 +10,7 @@ import {
 } from "../../services/patients";
 import {
   createReport,
+  generateImageExplanation,
   type ReportResponse,
 } from "../../services/reports";
 import { severityFromStage, stageDescription, getTreatmentWindow, getLesionRegion } from "./mockAnalysis";
@@ -62,6 +63,8 @@ export default function Screening() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [report, setReport] = useState<ReportRow | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [imageExplainLoading, setImageExplainLoading] = useState(false);
+  const [imageExplainError, setImageExplainError] = useState<string | null>(null);
 
   const patientsById = useMemo(
     () => new Map(patients.map((p) => [p.id, p])),
@@ -138,6 +141,7 @@ export default function Screening() {
 
   async function onRunAnalysis() {
     setAnalysisError(null);
+    setImageExplainError(null);
     if (!selectedPatientId) return setAnalysisError("Please select (or create) a patient first.");
     if (!file) return setAnalysisError("Please upload an image first.");
 
@@ -160,6 +164,21 @@ export default function Screening() {
       setAnalysisError(message);
     } finally {
       setIsAnalyzing(false);
+    }
+  }
+
+  async function onGenerateImageExplanation(force = false) {
+    if (!report) return;
+    setImageExplainError(null);
+    setImageExplainLoading(true);
+    try {
+      const data = await generateImageExplanation(report.id, force);
+      setReport((prev) => (prev ? { ...prev, ...data } : prev));
+    } catch (error: any) {
+      const message = error?.response?.data?.detail || error?.message || "Failed to generate image explanation";
+      setImageExplainError(String(message));
+    } finally {
+      setImageExplainLoading(false);
     }
   }
 
@@ -563,6 +582,35 @@ export default function Screening() {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent" />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">AI Image Explanation</span>
+                    <button
+                      type="button"
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors disabled:opacity-50"
+                      disabled={!report || imageExplainLoading}
+                      onClick={() => onGenerateImageExplanation(Boolean(report?.image_explanation))}
+                      title="Generate or refresh image explanation"
+                    >
+                      {imageExplainLoading ? "Generating..." : report?.image_explanation ? "Refresh" : "Generate"}
+                    </button>
+                  </div>
+
+                  {imageExplainError && (
+                    <div className="rounded-xl bg-error-container/30 text-error px-4 py-3 text-sm">{imageExplainError}</div>
+                  )}
+
+                  {report.image_explanation ? (
+                    <div className="rounded-xl border border-outline/10 bg-surface-container-lowest p-4 text-sm text-on-surface-variant leading-relaxed whitespace-pre-line">
+                      {report.image_explanation}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-outline/10 bg-surface-container-lowest p-4 text-sm text-on-surface-variant">
+                      No image explanation yet. Click Generate to create one using the heatmap.
+                    </div>
+                  )}
                 </div>
               </div>
             )}
