@@ -19,7 +19,8 @@ class StorageService:
         filename = Path(remote_filename).name
         filename = unquote(filename)
         # Keep spaces to avoid URL/DB mismatch (StaticFiles decodes %20 -> space).
-        filename = re.sub(r"[^A-Za-z0-9_.()\\- ]", "_", filename).strip("_ ")
+        # NOTE: Put '-' at the end of the character class to avoid regex "bad character range" issues.
+        filename = re.sub(r"[^A-Za-z0-9_.() -]", "_", filename).strip("_ ")
         if not filename:
             filename = f"{uuid.uuid4().hex}.bin"
 
