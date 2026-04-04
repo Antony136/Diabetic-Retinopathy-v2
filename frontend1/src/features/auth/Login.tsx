@@ -72,23 +72,23 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title="Establish Connection"
-      subtitle="Initiate contact with the Retina network. Provide your credentials below."
+      title="User Login"
+      subtitle="Access the Retina intelligence platform for diabetic retinopathy screening."
       footer={
         <>
-          No account?{" "}
+          New user?{" "}
           <button
             type="button"
             onClick={() => navigate("/register")}
             className="text-primary-bright hover:text-primary-bright/80 font-mono tracking-wider transition-colors"
           >
-            REGISTER
+            Register
           </button>
         </>
       }
     >
       {/* GDSC Notice */}
-      <div className="mb-8 p-5 border border-border rounded-lg bg-white/[0.02] space-y-3">
+      <div className="mb-8 p-5 border border-border rounded-lg bg-surface/50 space-y-3">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-primary-bright" />
           <span className="font-mono font-bold text-xs tracking-[0.2em] uppercase text-text-variant">SYSTEM_NOTICE</span>
@@ -125,16 +125,14 @@ export default function Login() {
           </a>
         </div>
       </div>
-
       <form onSubmit={onSubmit} className="space-y-6">
-        {/* Email field - template style with bottom border only */}
         <div className="space-y-2">
-          <label className="block text-xs font-mono text-text-variant uppercase tracking-[0.2em]">
-            COMMUNICATION_RELAY
+          <label className="block text-sm font-medium text-text-secondary">
+            Username / Email
           </label>
           <input
-            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-border font-mono text-text-variant placeholder:text-text-variant focus:border-primary-bright/50 focus:ring-0 transition-colors outline-none text-sm"
-            placeholder="Secure channel address..."
+            className="block w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-variant focus:border-primary-bright/50 focus:ring-1 focus:ring-primary-bright/50 transition-all outline-none text-sm"
+            placeholder="Enter your email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -143,14 +141,13 @@ export default function Login() {
           />
         </div>
 
-        {/* Password field */}
         <div className="space-y-2">
-          <label className="block text-xs font-mono text-text-variant uppercase tracking-[0.2em]">
-            ACCESS_KEY
+          <label className="block text-sm font-medium text-text-secondary">
+            Password
           </label>
           <input
-            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-border font-mono text-text-variant placeholder:text-text-variant focus:border-primary-bright/50 focus:ring-0 transition-colors outline-none text-sm"
-            placeholder="Enter passphrase..."
+            className="block w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-variant focus:border-primary-bright/50 focus:ring-1 focus:ring-primary-bright/50 transition-all outline-none text-sm"
+            placeholder="Enter your password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -160,18 +157,18 @@ export default function Login() {
         </div>
 
         {error && (
-          <div className="font-mono text-xs text-red-400 border border-red-400/20 bg-red-400/5 px-4 py-3 tracking-wider uppercase">
-            [ERROR] {error}
+          <div className="text-xs text-red-400 border border-red-400/20 bg-red-400/5 px-4 py-3 rounded-lg">
+            Error: {error}
           </div>
         )}
 
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full mt-4"
-          icon={isSubmitting ? "progress_activity" : "send"}
+          className="w-full mt-4 py-4"
+          icon={isSubmitting ? "progress_activity" : "login"}
         >
-          {isSubmitting ? "AUTHENTICATING..." : "TRANSMIT"}
+          {isSubmitting ? "Logging in..." : "Login"}
         </Button>
       </form>
     </AuthLayout>
