@@ -46,11 +46,11 @@ function getInitials(name: string) {
 }
 
 function getSeverityStyles(prediction?: string) {
-  if (!prediction) return "bg-surface-container-high text-on-surface-variant";
-  if (["Severe", "Proliferative DR"].includes(prediction)) return "bg-error-container/20 text-error";
-  if (["Moderate", "Mild"].includes(prediction)) return "bg-tertiary-container/20 text-tertiary-dim";
-  if (prediction === "No DR") return "bg-primary-container/20 text-primary";
-  return "bg-surface-container-high text-on-surface-variant";
+  if (!prediction) return "bg-surface-container-high text-text-variant border border-border";
+  if (["Severe", "Proliferative DR"].includes(prediction)) return "bg-high-risk/10 text-high-risk border border-high-risk/30";
+  if (["Moderate"].includes(prediction)) return "bg-medium-risk/10 text-medium-risk border border-medium-risk/30";
+  if (["Mild", "No DR"].includes(prediction)) return "bg-low-risk/10 text-low-risk border border-low-risk/30";
+  return "bg-surface-container-high text-text-variant border border-border";
 }
 
 export default function Records() {
@@ -232,11 +232,11 @@ export default function Records() {
 
   // 1. STATS CALCULATION
   const severityCounts = [
-    { name: 'No DR', value: patients.filter(p => p.latest_prediction === 'No DR').length, color: '#3b82f6' },
-    { name: 'Mild', value: patients.filter(p => p.latest_prediction === 'Mild').length, color: '#0ea5e9' },
-    { name: 'Moderate', value: patients.filter(p => p.latest_prediction === 'Moderate').length, color: '#8b5cf6' },
-    { name: 'Severe', value: patients.filter(p => p.latest_prediction === 'Severe').length, color: '#f43f5e' },
-    { name: 'Proliferative DR', value: patients.filter(p => p.latest_prediction === 'Proliferative DR').length, color: '#e11d48' },
+    { name: 'No DR', value: patients.filter(p => p.latest_prediction === 'No DR').length, color: '#10B981' }, /* low-risk */
+    { name: 'Mild', value: patients.filter(p => p.latest_prediction === 'Mild').length, color: '#059669' }, /* low-risk alt */
+    { name: 'Moderate', value: patients.filter(p => p.latest_prediction === 'Moderate').length, color: '#D97706' }, /* medium-risk */
+    { name: 'Severe', value: patients.filter(p => p.latest_prediction === 'Severe').length, color: '#B26357' }, /* high-risk */
+    { name: 'Proliferative DR', value: patients.filter(p => p.latest_prediction === 'Proliferative DR').length, color: '#991b1b' }, /* extreme */
   ].filter(s => s.value > 0);
 
   // 2. CSV EXPORT

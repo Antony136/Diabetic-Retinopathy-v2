@@ -13,7 +13,7 @@ export default function Card({ children, className = "", ...rest }: CardProps) {
 
   return (
     <motion.div 
-      className={`bg-surface backdrop-blur-md border border-border rounded-xl hover:border-primary-bright/50 hover:shadow-[0_0_15px_var(--glow)] transition-colors duration-300 ${className}`} 
+      className={`bg-surface relative z-10 overflow-hidden shadow-lg shadow-black/5 dark:shadow-black/40 border border-border rounded-xl transition-all duration-300 hover:border-primary/40 hover:shadow-xl hover:-translate-y-0.5 ${className}`} 
       style={tiltStyle}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}

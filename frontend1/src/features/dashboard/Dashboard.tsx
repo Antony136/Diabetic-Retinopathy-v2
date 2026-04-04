@@ -294,20 +294,18 @@ function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string
 
 import FadeInReveal from "../../components/ui/FadeInReveal";
 
-function StatCard({ label, value, hint, icon, index = 0 }: { label: string; value: string; hint?: string; icon: string, index?: number }) {
+function StatCard({ label, value, hint, icon, index = 0, colorClass = "text-primary-bright" }: { label: string; value: string; hint?: string; icon: string, index?: number, colorClass?: string }) {
   return (
     <FadeInReveal delay={index * 0.1}>
-      <Card className="p-6 space-y-3 relative overflow-hidden group">
-        {/* Glow effect overlay */}
-        <div className="absolute inset-0 bg-primary-bright/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <Card className="p-6 space-y-3 relative group">
         
         <div className="flex items-center justify-between relative z-10">
           <span className="text-text-variant font-mono text-xs uppercase tracking-widest">{label}</span>
-          <span className="material-symbols-outlined text-primary-bright/70 text-xl group-hover:text-primary-bright group-hover:shadow-[0_0_10px_#C87CFF] transition-all">{icon}</span>
+          <span className={`material-symbols-outlined text-xl transition-all ${colorClass} opacity-70 group-hover:opacity-100 group-hover:drop-shadow-md`}>{icon}</span>
         </div>
         <div className="flex items-baseline gap-2 relative z-10">
-          <span className="text-3xl font-mono font-bold text-text-primary group-hover:glow-text-primary transition-all">{value}</span>
-          {hint && <span className="text-text-variant text-xs font-mono">{hint}</span>}
+          <span className="text-3xl font-mono font-bold text-text-primary group-hover:opacity-90 transition-all">{value}</span>
+          {hint && <span className={`text-xs font-mono mb-1 ${colorClass} opacity-90`}>{hint}</span>}
         </div>
       </Card>
     </FadeInReveal>
@@ -447,12 +445,12 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
-          <StatCard label="Patients" value={formatCompact(stats.patientCount)} icon="group" index={1} />
+          <StatCard label="Patients" value={formatCompact(stats.patientCount)} icon="group" index={1} colorClass="text-records" />
           <StatCard label="Total Reports" value={formatCompact(stats.reportCount)} icon="summarize" index={2} />
           <StatCard label="Reports Today" value={formatCompact(stats.todayCount)} icon="today" index={3} />
-          <StatCard label="High Priority" value={formatCompact(stats.highPriority)} hint="(4–5)" icon="priority_high" index={4} />
-          <StatCard label="Avg Confidence" value={`${(stats.avgConfidence * 100).toFixed(1)}%`} icon="analytics" index={5} />
-          <StatCard label="Last Analysis" value={stats.lastReportAt ? stats.lastReportAt.toLocaleTimeString() : "—"} hint={stats.lastReportAt ? stats.lastReportAt.toLocaleDateString() : undefined} icon="schedule" index={6} />
+          <StatCard label="High Priority" value={formatCompact(stats.highPriority)} hint="(LVL 4–5)" icon="priority_high" index={4} colorClass="text-high-risk" />
+          <StatCard label="Avg Confidence" value={`${(stats.avgConfidence * 100).toFixed(1)}%`} icon="analytics" index={5} colorClass="text-low-risk" />
+          <StatCard label="Last Analysis" value={stats.lastReportAt ? stats.lastReportAt.toLocaleTimeString() : "—"} hint={stats.lastReportAt ? stats.lastReportAt.toLocaleDateString() : undefined} icon="schedule" index={6} colorClass="text-text-variant" />
         </div>
 
         <FadeInReveal delay={0.5} className="lg:col-span-5 flex flex-col items-center justify-center">
@@ -547,7 +545,11 @@ export default function Dashboard() {
                       <td className="py-4 pr-4">{r.prediction}</td>
                       <td className="py-4 pr-4 text-center text-primary-bright/80 font-bold">{formatPercent(r.confidence)}</td>
                       <td className={`py-4 pr-4 text-center font-bold text-[10px] tracking-widest`}>
-                        <span className={`px-2 py-1 border rounded-non ${r.priority_score >= 4 ? 'border-error text-error shadow-[0_0_10px_rgba(255,0,0,0.3)]' : 'border-primary-bright text-primary-bright'}`}>LVL_{r.priority_score}</span>
+                        <span className={`px-2 py-1 border rounded-md ${
+                          r.priority_score >= 4 ? 'border-high-risk text-high-risk bg-high-risk/10' : 
+                          r.priority_score === 3 ? 'border-medium-risk text-medium-risk bg-medium-risk/10' : 
+                          'border-low-risk text-low-risk bg-low-risk/10'
+                        }`}>LVL_{r.priority_score}</span>
                       </td>
                       <td className="py-4 text-right text-xs text-text-variant">
                         {new Date(r.created_at).toLocaleString()}

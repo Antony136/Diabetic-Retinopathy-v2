@@ -10,11 +10,11 @@ interface ButtonProps extends Omit<HTMLMotionProps<"button">, "onAnimationStart"
 
 const variantClasses: Record<string, string> = {
   primary:
-    "bg-[#321c43] text-white font-mono uppercase tracking-widest border border-[#522f6d] hover:bg-[#3d2352] hover:border-[#653a85]",
+    "bg-primary text-white font-mono uppercase tracking-widest border border-primary-bright/50 hover:bg-primary-bright hover:shadow-[0_0_15px_var(--glow)] shadow-md shadow-primary/20",
   secondary:
-    "bg-transparent text-white/70 font-mono uppercase tracking-widest border border-white/10 hover:bg-white/5 hover:text-white hover:border-white/20",
+    "bg-surface text-text-primary font-mono uppercase tracking-widest border border-border hover:bg-border/20 shadow-sm shadow-black/5 dark:shadow-black/20",
   ghost:
-    "bg-transparent text-text-secondary font-mono uppercase tracking-widest hover:text-text-primary hover:bg-text-primary/5",
+    "bg-transparent text-text-secondary font-mono uppercase tracking-widest hover:text-text-primary hover:bg-surface/50",
 };
 
 export default function Button({

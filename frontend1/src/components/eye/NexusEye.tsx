@@ -83,7 +83,6 @@ export default function NexusEye({ size = 400 }: { size?: number }) {
       <svg
         viewBox="0 0 400 300"
         className="w-full h-full"
-        style={{ filter: "drop-shadow(0 0 30px rgba(200,124,255,0.2))" }}
       >
         <defs>
           <radialGradient id="nxIrisGrad" cx="50%" cy="50%" r="50%">

@@ -26,15 +26,17 @@ function Toggle(props: ToggleProps) {
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${
-        value ? "bg-[#321c43] border border-[#522f6d] shadow-[0_0_10px_rgba(200,124,255,0.3)]" : "bg-surface-container-high border border-border"
+      className={`w-12 h-6 rounded-full relative transition-all duration-300 outline-none ${
+        value 
+          ? "bg-primary border border-primary-bright/50 shadow-[0_0_10px_var(--glow)] opacity-100" 
+          : "bg-surface border border-border hover:border-text-variant opacity-80"
       }`}
       aria-label={label}
       aria-pressed={value}
     >
       <div
-        className={`absolute top-1 w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${
-          value ? "bg-[#050505] translate-x-6" : "bg-text-secondary translate-x-1"
+        className={`absolute top-[3px] w-4 h-4 rounded-full shadow-md transition-transform duration-300 ${
+          value ? "bg-text-primary translate-x-7" : "bg-text-variant translate-x-[3px]"
         }`}
       />
     </button>

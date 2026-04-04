@@ -33,6 +33,10 @@ module.exports = {
         outline: "var(--outline)",
         border: "var(--border)",
         glow: "var(--glow)",
+        "high-risk": "var(--high-risk)",
+        "medium-risk": "var(--medium-risk)",
+        "low-risk": "var(--low-risk)",
+        "records": "var(--records)",
       },
       fontFamily: {
         headline: ["Inter", "sans-serif"],

@@ -176,23 +176,23 @@ export default function Triage() {
     {
       title: "Critical",
       count: categorizedData.Critical.length.toString().padStart(2, '0'),
-      barColor: "bg-error",
-      badgeClass: "bg-error-container text-on-error-container",
+      barColor: "bg-high-risk",
+      badgeClass: "bg-high-risk/10 border border-high-risk/30 text-high-risk",
       cards: categorizedData.Critical.map(r => ({
         id: r.id, // Using report ID as unique key
         patientId: r.patient_id,
         label: "Imminent Threat",
-        labelColor: "text-error",
+        labelColor: "text-high-risk",
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
         insight: `AI detected ${r.prediction} with ${(r.confidence * 100).toFixed(1)}% confidence.`,
         timeAgo: timeAgo(r.created_at),
         footer: (
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-error" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <div className="flex items-center gap-2 border border-high-risk/20 px-2 rounded-md bg-high-risk/5">
+            <span className="material-symbols-outlined text-high-risk text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               priority_high
             </span>
-            <span className="text-xs font-bold text-error">Tier 1</span>
+            <span className="text-[10px] uppercase font-mono font-bold text-high-risk tracking-widest">Tier 1</span>
           </div>
         )
       }))
@@ -200,21 +200,21 @@ export default function Triage() {
     {
       title: "High Risk",
       count: categorizedData["High Risk"].length.toString().padStart(2, '0'),
-      barColor: "bg-tertiary",
-      badgeClass: "bg-tertiary-container text-on-tertiary-container",
+      barColor: "bg-medium-risk",
+      badgeClass: "bg-medium-risk/10 border border-medium-risk/30 text-medium-risk",
       cards: categorizedData["High Risk"].map(r => ({
         id: r.id,
         patientId: r.patient_id,
         label: "Monitoring Needed",
-        labelColor: "text-tertiary",
+        labelColor: "text-medium-risk",
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
         insight: `AI detected ${r.prediction} with ${(r.confidence * 100).toFixed(1)}% confidence.`,
         timeAgo: timeAgo(r.created_at),
         footer: (
-          <div className="bg-primary-container/10 px-3 py-1 rounded-full flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-[10px] font-bold text-primary">AI ANALYZED</span>
+          <div className="bg-medium-risk/10 border border-medium-risk/20 px-3 py-1 rounded-full flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-medium-risk animate-pulse" />
+            <span className="text-[10px] font-bold text-medium-risk font-mono uppercase tracking-widest">AI ANALYZED</span>
           </div>
         )
       }))
@@ -222,20 +222,20 @@ export default function Triage() {
     {
       title: "Moderate",
       count: categorizedData.Moderate.length.toString().padStart(2, '0'),
-      barColor: "bg-primary",
-      badgeClass: "bg-primary-container text-on-primary-container",
+      barColor: "bg-low-risk",
+      badgeClass: "bg-low-risk/10 border border-low-risk/30 text-low-risk",
       cards: categorizedData.Moderate.map(r => ({
         id: r.id,
         patientId: r.patient_id,
         label: "Follow-Up",
-        labelColor: "text-primary",
+        labelColor: "text-low-risk",
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
         insight: `AI detected ${r.prediction} with ${(r.confidence * 100).toFixed(1)}% confidence.`,
         timeAgo: timeAgo(r.created_at),
         footer: (
-          <span className="text-xs text-on-surface-variant font-label flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">schedule</span>
+          <span className="text-[10px] font-bold font-mono tracking-widest uppercase text-text-variant flex items-center gap-1 border border-border px-2 py-1 bg-surface/20 rounded-md">
+            <span className="material-symbols-outlined text-[12px] opacity-70">schedule</span>
              Review Suggested
           </span>
         )
@@ -244,20 +244,20 @@ export default function Triage() {
     {
       title: "Stable",
       count: categorizedData.Stable.length.toString().padStart(2, '0'),
-      barColor: "bg-outline",
-      badgeClass: "bg-surface-container-high text-on-surface-variant",
+      barColor: "bg-border",
+      badgeClass: "bg-surface border border-border text-text-variant shadow-sm shadow-black/5",
       cards: categorizedData.Stable.map(r => ({
         id: r.id,
         patientId: r.patient_id,
         label: "Routine Clear",
-        labelColor: "text-on-surface-variant",
+        labelColor: "text-text-variant",
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
         insight: `No acute findings (${(r.confidence * 100).toFixed(1)}% conf).`,
         timeAgo: timeAgo(r.created_at),
         footer: (
-          <div className="flex items-center gap-1 text-primary text-xs font-bold">
-            <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md text-low-risk text-[10px] font-mono font-bold tracking-widest uppercase bg-low-risk/10 border border-low-risk/20">
+            <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               check_circle
             </span>
             STABLE
@@ -366,7 +366,7 @@ export default function Triage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40"
               />
             </label>
             <label className="flex flex-col gap-2">
@@ -375,7 +375,7 @@ export default function Triage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40"
               />
             </label>
             <button
@@ -574,7 +574,7 @@ export default function Triage() {
                     <select
                       value={selectedPatientId || ""}
                       onChange={(e) => setSelectedPatientId(Number(e.target.value))}
-                      className="w-full bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary appearance-none transition-shadow"
+                      className="w-full bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 appearance-none transition-shadow"
                       required
                     >
                       <option value="" disabled>Select patient...</option>
@@ -593,7 +593,7 @@ export default function Triage() {
                     required
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary w-full"
+                    className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 w-full"
                   />
                   <div className="grid grid-cols-2 gap-4">
                     <input
@@ -604,12 +604,12 @@ export default function Triage() {
                       required
                       value={newAge || ""}
                       onChange={(e) => setNewAge(Number(e.target.value))}
-                      className="bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                      className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40"
                     />
                     <select
                       value={newGender}
                       onChange={(e) => setNewGender(e.target.value)}
-                      className="bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary appearance-none"
+                      className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 appearance-none"
                     >
                       <option>Male</option>
                       <option>Female</option>
@@ -620,14 +620,14 @@ export default function Triage() {
                     placeholder="Phone Number"
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
-                    className="bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40"
                   />
                   <textarea
                     placeholder="Address"
                     rows={2}
                     value={newAddress}
                     onChange={(e) => setNewAddress(e.target.value)}
-                    className="bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary resize-none"
+                    className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 resize-none"
                   />
                 </div>
               )}
@@ -639,7 +639,7 @@ export default function Triage() {
                   <select
                     value={severity}
                     onChange={(e) => setSeverity(e.target.value)}
-                    className="w-full bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary appearance-none"
+                    className="w-full bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 appearance-none"
                     required
                   >
                     <option value="Critical">Critical (Severe/Proliferative)</option>
@@ -656,7 +656,7 @@ export default function Triage() {
                     rows={3}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-surface-container-highest text-on-surface px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-primary resize-none"
+                    className="w-full bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 resize-none"
                   />
                 </div>
               </div>
