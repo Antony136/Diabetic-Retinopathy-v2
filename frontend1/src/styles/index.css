@@ -5,12 +5,12 @@
     color-scheme: light;
     
     /* === LIGHT MODE SURFACES === */
-    --background: #f0f0f5;
-    --background-secondary: #e8e8f0;
+    --background:#f0edee;
+    --background-secondary: #b8ccf0;
     --surface: #ffffff;
-    --surface-bright: #fafafe;
-    --surface-container: #f4f4fa;
-    --surface-container-high: #ebebf5;
+    --surface-bright: #f0f7ff;
+    --surface-container: #e6efff;
+    --surface-container-high: #dae5f9;
 
     /* === TEXT === */
     --text-primary: #0f172a;
@@ -51,13 +51,13 @@
   .dark {
     color-scheme: dark;
 
-    /* === DARK MODE SURFACES (deep purple-gray, no pure black) === */
-    --background: #0d0b14;
-    --background-secondary: #130f1f;
-    --surface: rgba(22, 17, 36, 0.80);
-    --surface-bright: #1e1730;
-    --surface-container: #18132a;
-    --surface-container-high: #221b38;
+    /* === DARK MODE SURFACES === */
+    --background: #13293d;
+    --background-secondary: #0b1a29;
+    --surface: rgba(30, 58, 86, 0.85);
+    --surface-bright: #244463;
+    --surface-container: #1b354e;
+    --surface-container-high: #2a4c6e;
 
     /* === TEXT === */
     --text-primary: #e8e4f4;

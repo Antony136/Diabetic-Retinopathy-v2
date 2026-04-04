@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useMemo, type FormEvent } from "react";
 import { getTriageCases } from "../../services/api";
 import { listPatients, createPatient, type PatientResponse } from "../../services/patients";
 import { createManualReport } from "../../services/reports";
@@ -57,6 +57,16 @@ export default function Triage() {
   
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isPatientOpen, setIsPatientOpen] = useState(false);
+  const [isSeverityOpen, setIsSeverityOpen] = useState(false);
+
+  const filteredPatients = useMemo(() => {
+    if (!searchQuery) return patients;
+    const lower = searchQuery.toLowerCase();
+    return patients.filter((p) => p.name.toLowerCase().includes(lower) || p.id.toString().includes(lower));
+  }, [patients, searchQuery]);
 
   const { adaptiveMode, setAdaptiveMode } = useScreeningMode();
 
@@ -562,82 +572,120 @@ export default function Triage() {
 
       {/* Manual Entry Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-surface/80 p-4 pt-20 pb-12 transition-opacity">
-          <div className="bg-surface-container rounded-3xl w-full max-w-xl max-h-full flex flex-col shadow-2xl">
-            <div className="flex justify-between items-center p-5 border-b border-outline/10">
-              <h2 className="text-xl font-headline font-bold text-on-surface">Add Manual Triage Entry</h2>
-              <button onClick={() => setShowModal(false)} className="text-on-surface-variant hover:text-on-surface p-1 rounded-full hover:bg-surface-container-highest transition-colors">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-all duration-300">
+          <div className="bg-surface-container rounded-[2rem] w-full max-w-xl max-h-[90vh] flex flex-col shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden ring-1 ring-white/5">
+            <div className="flex justify-between items-center p-6 border-b border-outline/10 bg-surface/50 backdrop-blur-sm">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-primary/10 text-primary">
+                  <span className="material-symbols-outlined text-[20px]">add_notes</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-headline font-bold text-on-surface leading-none">Manual Triage Entry</h2>
+                  <p className="text-[10px] text-text-variant font-mono uppercase tracking-widest mt-1">NEXUS_INTERNAL_OVERRIDE</p>
+                </div>
+              </div>
+              <button onClick={() => setShowModal(false)} className="text-on-surface-variant hover:text-on-surface p-2 rounded-xl hover:bg-surface-container-highest transition-all active:scale-95">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             
-            <form onSubmit={handleSubmitManualEntry} className="overflow-y-auto p-5 flex flex-col gap-5">
+            <form onSubmit={handleSubmitManualEntry} className="overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar">
               {errorMsg && (
-                <div className="bg-error-container/20 text-error px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-2">
-                  <span className="material-symbols-outlined">error</span>
+                <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                  <span className="material-symbols-outlined text-lg">error</span>
                   {errorMsg}
                 </div>
               )}
 
               {/* Patient Selection Segmented Buttons */}
-              <div>
-                <label className="block text-sm font-label font-bold text-on-surface-variant mb-2 uppercase tracking-wide">Patient Selection</label>
-                <div className="flex bg-surface-container-highest p-1 rounded-xl">
+              <div className="space-y-3">
+                <label className="block text-[11px] font-mono font-bold text-text-variant uppercase tracking-[0.2em]">Data Origin</label>
+                <div className="flex bg-black/20 p-1.5 rounded-[1.25rem] border border-white/5">
                   <button
                     type="button"
                     onClick={() => setPatientMode("existing")}
-                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${
+                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-300 ${
                       patientMode === "existing"
-                        ? "bg-primary text-on-primary shadow-sm"
-                        : "text-on-surface-variant hover:text-on-surface"
+                        ? "bg-primary text-black shadow-lg shadow-primary/20 scale-[1.02]"
+                        : "text-text-variant hover:text-text-primary"
                     }`}
                   >
-                    Existing Patient
+                    EXISTING_RECORD
                   </button>
                   <button
                     type="button"
                     onClick={() => setPatientMode("new")}
-                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${
+                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-300 ${
                       patientMode === "new"
-                        ? "bg-primary text-on-primary shadow-sm"
-                        : "text-on-surface-variant hover:text-on-surface"
+                        ? "bg-primary text-black shadow-lg shadow-primary/20 scale-[1.02]"
+                        : "text-text-variant hover:text-text-primary"
                     }`}
                   >
-                    New Patient
+                    NEW_ADMISSION
                   </button>
                 </div>
               </div>
 
               {/* Patient Fields */}
               {patientMode === "existing" ? (
-                <div>
-                  <label className="block text-sm font-label font-bold text-on-surface-variant mb-2">Select Account</label>
-                  {patients.length === 0 ? (
-                    <p className="text-sm text-on-surface-variant bg-surface-container-high p-4 rounded-xl">No existing patients found. Please add a new one.</p>
-                  ) : (
-                    <select
-                      value={selectedPatientId || ""}
-                      onChange={(e) => setSelectedPatientId(Number(e.target.value))}
-                      className="w-full bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 appearance-none transition-shadow"
-                      required
-                    >
-                      <option value="" disabled>Select patient...</option>
-                      {patients.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} (ID: {p.id})
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                <div className="flex flex-col gap-2 relative z-[110]">
+                  <label className="block text-[11px] font-mono font-bold text-text-variant uppercase tracking-[0.2em] mb-1">Verify Patient Account</label>
+                  <ul className="menu w-full relative">
+                    <li className={`item w-full ${isPatientOpen ? 'is-open' : ''}`}>
+                      <div className="link w-full bg-surface-container-high border border-outline/30 !py-3.5 !px-5 rounded-2xl">
+                        <input
+                          type="text"
+                          placeholder="Search patient name or ID..."
+                          value={searchQuery}
+                          onFocus={() => setIsPatientOpen(true)}
+                          onBlur={() => setTimeout(() => setIsPatientOpen(false), 200)}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setIsPatientOpen(true);
+                            if (selectedPatientId) setSelectedPatientId(null);
+                          }}
+                          className="w-full bg-transparent outline-none text-text-primary placeholder-text-variant font-bold text-sm"
+                        />
+                        <span className="material-symbols-outlined text-outline text-[20px]">search</span>
+                      </div>
+                      <ul className="submenu w-full border-t-0 shadow-2xl custom-scrollbar max-h-48 overflow-y-auto bg-surface-container rounded-b-2xl border border-outline/30">
+                        {filteredPatients.length === 0 ? (
+                          <li className="submenu-item py-6 text-center text-text-variant text-xs font-mono uppercase tracking-widest border-0 opacity-50">No nexus matches</li>
+                        ) : (
+                          filteredPatients.map((p) => (
+                            <li className="submenu-item" key={p.id}>
+                              <button
+                                type="button"
+                                className="submenu-link"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setSelectedPatientId(p.id);
+                                  setSearchQuery(p.name);
+                                  setIsPatientOpen(false);
+                                }}
+                              >
+                                <span className="font-bold text-text-primary">{p.name}</span> 
+                                <span className="opacity-40 text-[10px] font-mono ml-2 mt-0.5">#{p.id.toString().padStart(4, '0')}</span>
+                              </button>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    </li>
+                  </ul>
                 </div>
               ) : (
-                <div className="flex flex-col gap-4 bg-surface-container-high p-5 rounded-2xl border border-outline/5">
+                <div className="flex flex-col gap-4 bg-surface-container-high/40 p-5 rounded-[2rem] border border-white/5 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary-bright animate-pulse" />
+                    <span className="text-[10px] font-mono font-bold text-text-variant uppercase tracking-widest">Entry Fields</span>
+                  </div>
                   <input
                     placeholder="Full Name *"
                     required
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 w-full"
+                    className="bg-surface-container-low border border-white/5 text-text-primary px-5 py-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 w-full text-sm font-medium transition-all"
                   />
                   <div className="grid grid-cols-2 gap-4">
                     <input
@@ -648,81 +696,126 @@ export default function Triage() {
                       required
                       value={newAge || ""}
                       onChange={(e) => setNewAge(Number(e.target.value))}
-                      className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40"
+                      className="bg-surface-container-low border border-white/5 text-text-primary px-5 py-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-medium transition-all"
                     />
-                    <select
-                      value={newGender}
-                      onChange={(e) => setNewGender(e.target.value)}
-                      className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 appearance-none"
-                    >
-                      <option>Male</option>
-                      <option>Female</option>
-                      <option>Other</option>
-                    </select>
+                    <div className="relative group">
+                       <select
+                        value={newGender}
+                        onChange={(e) => setNewGender(e.target.value)}
+                        className="w-full bg-surface-container-low border border-white/5 text-text-primary px-5 py-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-medium appearance-none cursor-pointer transition-all"
+                      >
+                        <option>Male</option>
+                        <option>Female</option>
+                        <option>Other</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-[18px]">expand_more</span>
+                    </div>
                   </div>
                   <input
                     placeholder="Phone Number"
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
-                    className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40"
+                    className="bg-surface-container-low border border-white/5 text-text-primary px-5 py-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-medium transition-all"
                   />
                   <textarea
-                    placeholder="Address"
+                    placeholder="Physical Address"
                     rows={2}
                     value={newAddress}
                     onChange={(e) => setNewAddress(e.target.value)}
-                    className="bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+                    className="bg-surface-container-low border border-white/5 text-text-primary px-5 py-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-medium resize-none transition-all"
                   />
                 </div>
               )}
 
               {/* Triage Details */}
-              <div className="flex flex-col gap-4 border-t border-outline/10 pt-6">
-                <div>
-                  <label className="block text-sm font-label font-bold text-on-surface-variant mb-2">Severity Level *</label>
-                  <select
-                    value={severity}
-                    onChange={(e) => setSeverity(e.target.value)}
-                    className="w-full bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 appearance-none"
-                    required
-                  >
-                    <option value="Critical">Critical (Severe/Proliferative)</option>
-                    <option value="High Risk">High Risk (Moderate)</option>
-                    <option value="Moderate">Moderate (Mild)</option>
-                    <option value="Stable">Stable (No DR)</option>
-                  </select>
+              <div className="flex flex-col gap-5 border-t border-outline/10 pt-6">
+                <div className="flex flex-col gap-2 relative z-[100]">
+                  <label className="block text-[11px] font-mono font-bold text-text-variant uppercase tracking-[0.2em] mb-1">Diagnostic Priority *</label>
+                  <ul className="menu w-full relative">
+                    <li className={`item w-full ${isSeverityOpen ? 'is-open' : ''}`}>
+                      <button
+                        type="button"
+                        className="link w-full bg-surface-container-high border border-outline/30 !py-3.5 !px-5 rounded-2xl flex justify-between items-center transition-all"
+                        onClick={() => setIsSeverityOpen(!isSeverityOpen)}
+                        onBlur={() => setTimeout(() => setIsSeverityOpen(false), 200)}
+                      >
+                        <div className="flex items-center gap-3">
+                           <div className={`w-2.5 h-2.5 rounded-full ${
+                             severity === 'Critical' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' :
+                             severity === 'High Risk' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' :
+                             severity === 'Moderate' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' :
+                             'bg-slate-400'
+                           }`} />
+                           <span className="text-sm font-bold text-text-primary">
+                             {severity === 'Critical' ? 'CRITICAL_URGENT' : 
+                              severity === 'High Risk' ? 'SEVERE_MONITOR' : 
+                              severity === 'Moderate' ? 'MODERATE_REVIEW' : 'STABLE_CLEAR'}
+                           </span>
+                        </div>
+                        <span className="material-symbols-outlined text-outline text-[20px]">expand_more</span>
+                      </button>
+                      <ul className="submenu w-full border-t-0 shadow-2xl custom-scrollbar bg-surface-container rounded-b-2xl border border-outline/30">
+                        {[
+                          { val: "Critical", label: "CRITICAL_URGENT", sub: "Proliferative / Severe Stage" },
+                          { val: "High Risk", label: "SEVERE_MONITOR", sub: "Significant Pathologies" },
+                          { val: "Moderate", label: "MODERATE_REVIEW", sub: "Mild NPDR Findings" },
+                          { val: "Stable", label: "STABLE_CLEAR", sub: "Routine Checkup Only" }
+                        ].map((opt) => (
+                          <li className="submenu-item" key={opt.val}>
+                            <button
+                              type="button"
+                              className="submenu-link !py-3"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setSeverity(opt.val);
+                                setIsSeverityOpen(false);
+                              }}
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-bold text-sm text-text-primary">{opt.label}</span>
+                                <span className="text-[10px] text-text-variant font-mono opacity-60 uppercase">{opt.sub}</span>
+                              </div>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  </ul>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-label font-bold text-on-surface-variant mb-2">Description / Findings</label>
+                  <label className="block text-[11px] font-mono font-bold text-text-variant uppercase tracking-[0.2em] mb-2">Internal Notes</label>
                   <textarea
-                    placeholder="Provide diagnostic notes or reasons for manual triage..."
+                    placeholder="Explain clinical findings for manual triage..."
                     rows={3}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-surface border border-border text-text-primary px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+                    className="w-full bg-surface-container-low border border-white/5 text-text-primary px-5 py-4 rounded-[1.5rem] outline-none focus:ring-2 focus:ring-primary/20 text-sm font-medium resize-none transition-all placeholder:text-text-variant/40"
                   />
                 </div>
               </div>
 
               {/* Footer Actions */}
-              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-outline/10">
+              <div className="flex items-center justify-between gap-4 mt-4 pt-6 border-t border-outline/10 px-1">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-6 py-2.5 rounded-xl font-bold text-on-surface hover:bg-surface-container-high transition-colors"
+                  className="flex-1 py-3.5 rounded-2xl font-mono text-[11px] font-bold uppercase tracking-widest text-text-variant hover:bg-white/5 hover:text-text-primary transition-all active:scale-95 border border-white/5"
                 >
-                  Cancel
+                  ABORT_ENTRY
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || (patientMode === "existing" && !selectedPatientId)}
-                  className="bg-primary text-on-primary px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  className="flex-[2] bg-primary text-black py-4 rounded-2xl font-mono text-[11px] font-extrabold uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:brightness-110 active:scale-95 disabled:opacity-30 disabled:grayscale transition-all shadow-lg shadow-primary/20"
                 >
                   {submitting ? (
-                    <div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" />
+                    <div className="w-5 h-5 rounded-full border-2 border-black border-t-transparent animate-spin" />
                   ) : (
-                    "Save Entry"
+                    <>
+                      COMMIT_TO_DATABASE
+                      <span className="material-symbols-outlined text-[18px]">database</span>
+                    </>
                   )}
                 </button>
               </div>
