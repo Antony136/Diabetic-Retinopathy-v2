@@ -53,29 +53,36 @@ export default function PatientDetailsModal(props: {
   if (!patientId) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-start justify-center bg-surface/80 p-4 pt-20 pb-12">
-      <Card className="w-full max-w-4xl p-0 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline/10 bg-surface-container-low">
+    <div className="fixed inset-0 z-[120] flex items-start justify-center p-4 pt-20 pb-12">
+      {/* Dark backdrop */}
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-label="Close backdrop"
+      />
+      <Card className="relative w-full max-w-4xl p-0 overflow-hidden max-h-[80vh] flex flex-col shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0" style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)' }}>
           <div>
-            <div className="text-lg font-headline font-bold text-on-surface">
+            <div className="text-lg font-bold text-white">
               {patient ? patient.name : "Patient details"}
             </div>
-            <div className="text-xs text-on-surface-variant">
-              {patient ? `ID #${patient.id}` : `ID #${patientId}`}
+            <div className="text-xs text-white/70 font-mono">
+              {patient ? `ID #RET-${patient.id.toString().padStart(4,'0')}` : `ID #${patientId}`}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-on-surface-variant hover:text-on-surface p-2 rounded-full hover:bg-surface-container-high transition-colors"
+            className="text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors"
             aria-label="Close"
-            title="Close"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           {loading && (
             <div className="flex items-center gap-3 text-on-surface-variant">
               <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -91,24 +98,25 @@ export default function PatientDetailsModal(props: {
 
           {patient && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="rounded-xl border border-outline/10 bg-surface-container-lowest p-4">
-                <div className="text-xs uppercase tracking-wider text-on-surface-variant font-bold mb-2">Demographics</div>
-                <div className="text-sm text-on-surface-variant">Age: {patient.age ?? "—"}</div>
-                <div className="text-sm text-on-surface-variant">Gender: {patient.gender ?? "—"}</div>
-                <div className="text-sm text-on-surface-variant">Created: {new Date(patient.created_at).toLocaleString()}</div>
+              <div className="rounded-xl p-4" style={{ background: 'linear-gradient(135deg, #4f46e5, #2563eb)', boxShadow: '0 4px 14px #4f46e555' }}>
+                <div className="text-[10px] uppercase tracking-widest text-white/70 font-bold font-mono mb-2">Demographics</div>
+                <div className="text-sm text-white/90">Age: {patient.age ?? "—"}</div>
+                <div className="text-sm text-white/90">Gender: {patient.gender ?? "—"}</div>
+                <div className="text-sm text-white/90">Created: {new Date(patient.created_at).toLocaleString()}</div>
               </div>
-              <div className="rounded-xl border border-outline/10 bg-surface-container-lowest p-4">
-                <div className="text-xs uppercase tracking-wider text-on-surface-variant font-bold mb-2">Contact</div>
-                <div className="text-sm text-on-surface-variant">Phone: {patient.phone || "—"}</div>
-                <div className="text-sm text-on-surface-variant">Address: {patient.address || "—"}</div>
+              <div className="rounded-xl p-4" style={{ background: 'linear-gradient(135deg, #0d9488, #0f766e)', boxShadow: '0 4px 14px #0d948855' }}>
+                <div className="text-[10px] uppercase tracking-widest text-white/70 font-bold font-mono mb-2">Contact</div>
+                <div className="text-sm text-white/90">Phone: {patient.phone || "—"}</div>
+                <div className="text-sm text-white/90">Address: {patient.address || "—"}</div>
               </div>
-              <div className="rounded-xl border border-outline/10 bg-surface-container-lowest p-4">
-                <div className="text-xs uppercase tracking-wider text-on-surface-variant font-bold mb-2">Reports</div>
-                <div className="text-sm text-on-surface-variant">Total: {sortedReports.length}</div>
+              <div className="rounded-xl p-4" style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', boxShadow: '0 4px 14px #7c3aed55' }}>
+                <div className="text-[10px] uppercase tracking-widest text-white/70 font-bold font-mono mb-2">Reports</div>
+                <div className="text-sm text-white/90">Total: {sortedReports.length}</div>
                 <div className="mt-3">
                   <Button
                     type="button"
                     disabled={!sortedReports[0]}
+                    className="!bg-white/20 !text-white !border-white/30 hover:!bg-white/30 !text-xs !py-1.5 !px-3"
                     onClick={() => {
                       const r = sortedReports[0];
                       if (!r) return;

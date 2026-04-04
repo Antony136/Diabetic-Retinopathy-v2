@@ -45,12 +45,14 @@ function getInitials(name: string) {
   return name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
 }
 
-function getSeverityStyles(prediction?: string) {
-  if (!prediction) return "bg-surface-container-high text-text-variant border border-border";
-  if (["Severe", "Proliferative DR"].includes(prediction)) return "bg-high-risk/10 text-high-risk border border-high-risk/30";
-  if (["Moderate"].includes(prediction)) return "bg-medium-risk/10 text-medium-risk border border-medium-risk/30";
-  if (["Mild", "No DR"].includes(prediction)) return "bg-low-risk/10 text-low-risk border border-low-risk/30";
-  return "bg-surface-container-high text-text-variant border border-border";
+function getSeverityStyles(prediction?: string): string {
+  if (!prediction) return "bg-surface-container text-text-variant border border-border";
+  if (["Proliferative DR"].includes(prediction)) return "bg-[#8b2e22] text-white border-0 shadow-[0_2px_8px_rgba(178,99,87,0.5)]";
+  if (["Severe"].includes(prediction)) return "bg-[#B26357] text-white border-0 shadow-[0_2px_8px_rgba(178,99,87,0.4)]";
+  if (["Moderate"].includes(prediction)) return "bg-[#C4812A] text-white border-0 shadow-[0_2px_8px_rgba(196,129,42,0.4)]";
+  if (["Mild"].includes(prediction)) return "bg-[#4A8C6F] text-white border-0 shadow-[0_2px_8px_rgba(74,140,111,0.4)]";
+  if (["No DR"].includes(prediction)) return "bg-[#1d4ed8] text-white border-0 shadow-[0_2px_8px_rgba(29,78,216,0.4)]";
+  return "bg-surface-container text-text-variant border border-border";
 }
 
 export default function Records() {
@@ -232,11 +234,11 @@ export default function Records() {
 
   // 1. STATS CALCULATION
   const severityCounts = [
-    { name: 'No DR', value: patients.filter(p => p.latest_prediction === 'No DR').length, color: '#10B981' }, /* low-risk */
-    { name: 'Mild', value: patients.filter(p => p.latest_prediction === 'Mild').length, color: '#059669' }, /* low-risk alt */
-    { name: 'Moderate', value: patients.filter(p => p.latest_prediction === 'Moderate').length, color: '#D97706' }, /* medium-risk */
-    { name: 'Severe', value: patients.filter(p => p.latest_prediction === 'Severe').length, color: '#B26357' }, /* high-risk */
-    { name: 'Proliferative DR', value: patients.filter(p => p.latest_prediction === 'Proliferative DR').length, color: '#991b1b' }, /* extreme */
+    { name: 'No DR', value: patients.filter(p => p.latest_prediction === 'No DR').length, color: '#1d4ed8' },
+    { name: 'Mild', value: patients.filter(p => p.latest_prediction === 'Mild').length, color: '#4A8C6F' },
+    { name: 'Moderate', value: patients.filter(p => p.latest_prediction === 'Moderate').length, color: '#C4812A' },
+    { name: 'Severe', value: patients.filter(p => p.latest_prediction === 'Severe').length, color: '#B26357' },
+    { name: 'Proliferative DR', value: patients.filter(p => p.latest_prediction === 'Proliferative DR').length, color: '#8b2e22' },
   ].filter(s => s.value > 0);
 
   // 2. CSV EXPORT
@@ -563,19 +565,19 @@ export default function Records() {
 
             {/* Stats Summary Card */}
             <div className="space-y-4">
-              <div className="p-4 bg-surface-container-high rounded-xl border border-outline/5">
-                <div className="text-on-surface-variant text-sm font-label mb-1">Total Screenings</div>
-                <div className="text-3xl font-headline font-extrabold text-primary">{patients.length}</div>
+              <div className="p-4 rounded-xl" style={{ background: 'linear-gradient(135deg,#4f46e5,#2563eb)', boxShadow: '0 4px 14px #4f46e555' }}>
+                <div className="text-white/70 text-xs font-mono uppercase tracking-widest mb-1">Total Screenings</div>
+                <div className="text-3xl font-bold text-white">{patients.length}</div>
               </div>
-              <div className="p-4 bg-error-container/10 rounded-xl border border-error/5">
-                <div className="text-error/80 text-sm font-label mb-1">Critical Cases (High Risk)</div>
-                <div className="text-3xl font-headline font-extrabold text-error">
+              <div className="p-4 rounded-xl" style={{ background: 'linear-gradient(135deg,#B26357,#8b2e22)', boxShadow: '0 4px 14px #B2635755' }}>
+                <div className="text-white/70 text-xs font-mono uppercase tracking-widest mb-1">Critical Cases</div>
+                <div className="text-3xl font-bold text-white">
                   {patients.filter(p => ["Severe", "Proliferative DR"].includes(p.latest_prediction || '')).length}
                 </div>
               </div>
-              <div className="p-4 bg-primary-container/10 rounded-xl border border-primary/5">
-                <div className="text-primary/80 text-sm font-label mb-1">Stable / Clear</div>
-                <div className="text-3xl font-headline font-extrabold text-primary">
+              <div className="p-4 rounded-xl" style={{ background: 'linear-gradient(135deg,#059669,#065f46)', boxShadow: '0 4px 14px #05966955' }}>
+                <div className="text-white/70 text-xs font-mono uppercase tracking-widest mb-1">Stable / Clear</div>
+                <div className="text-3xl font-bold text-white">
                   {patients.filter(p => !p.latest_prediction || p.latest_prediction === 'No DR' || p.latest_prediction === 'Mild').length}
                 </div>
               </div>
@@ -596,15 +598,19 @@ export default function Records() {
           </div>
           
           <div className="space-y-4">
-            <button 
+            <button
               onClick={handleGenerateSummaryPDF}
-              className="w-full py-4 bg-primary text-on-primary font-headline font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98]">
+              className="w-full py-3.5 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:brightness-110"
+              style={{ background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', boxShadow: '0 4px 16px rgba(124,58,237,0.4)' }}
+            >
               <span className="material-symbols-outlined text-[20px]">print</span>
               Full Summary (PDF)
             </button>
-            <button 
+            <button
               onClick={handleExportCSV}
-              className="w-full py-4 bg-surface-container-highest text-on-surface font-headline font-bold border border-outline/10 rounded-xl flex items-center justify-center gap-2 hover:bg-surface-container transition-all active:scale-[0.98]">
+              className="w-full py-3.5 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:brightness-110"
+              style={{ background: 'linear-gradient(135deg,#0d9488,#0f766e)', boxShadow: '0 4px 16px rgba(13,148,136,0.4)' }}
+            >
               <span className="material-symbols-outlined text-[20px]">csv</span>
               Dataset Export (CSV)
             </button>

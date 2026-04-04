@@ -172,97 +172,69 @@ export default function Triage() {
     Stable: reports.filter(r => getCategory(r.prediction) === "Stable"),
   };
 
+  // Column color config: gradient, card left-border color, card bg tint
+  const columnMeta: Record<string, { gradFrom: string; gradTo: string; cardBorder: string; cardBg: string; labelChip: string }> = {
+    Critical:   { gradFrom: '#B26357', gradTo: '#8b2e22', cardBorder: '#B26357', cardBg: 'rgba(178,99,87,0.07)',   labelChip: 'bg-[#B26357] text-white' },
+    'High Risk':{ gradFrom: '#C4812A', gradTo: '#92400e', cardBorder: '#C4812A', cardBg: 'rgba(196,129,42,0.07)',  labelChip: 'bg-[#C4812A] text-white' },
+    Moderate:   { gradFrom: '#4A8C6F', gradTo: '#065f46', cardBorder: '#4A8C6F', cardBg: 'rgba(74,140,111,0.07)', labelChip: 'bg-[#4A8C6F] text-white' },
+    Stable:     { gradFrom: '#334155', gradTo: '#1e293b', cardBorder: '#475569', cardBg: 'rgba(71,85,105,0.05)',   labelChip: 'bg-[#334155] text-white' },
+  };
+
   const triageColumns = [
     {
       title: "Critical",
-      count: categorizedData.Critical.length.toString().padStart(2, '0'),
-      barColor: "bg-high-risk",
-      badgeClass: "bg-high-risk/10 border border-high-risk/30 text-high-risk",
+      count: categorizedData.Critical.length,
+      label: "Imminent Threat",
+      icon: "priority_high",
       cards: categorizedData.Critical.map(r => ({
-        id: r.id, // Using report ID as unique key
+        id: r.id,
         patientId: r.patient_id,
-        label: "Imminent Threat",
-        labelColor: "text-high-risk",
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
-        insight: `AI detected ${r.prediction} with ${(r.confidence * 100).toFixed(1)}% confidence.`,
+        insight: `${r.prediction} — ${(r.confidence * 100).toFixed(1)}% confidence`,
         timeAgo: timeAgo(r.created_at),
-        footer: (
-          <div className="flex items-center gap-2 border border-high-risk/20 px-2 rounded-md bg-high-risk/5">
-            <span className="material-symbols-outlined text-high-risk text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              priority_high
-            </span>
-            <span className="text-[10px] uppercase font-mono font-bold text-high-risk tracking-widest">Tier 1</span>
-          </div>
-        )
       }))
     },
     {
       title: "High Risk",
-      count: categorizedData["High Risk"].length.toString().padStart(2, '0'),
-      barColor: "bg-medium-risk",
-      badgeClass: "bg-medium-risk/10 border border-medium-risk/30 text-medium-risk",
+      count: categorizedData["High Risk"].length,
+      label: "Monitoring Needed",
+      icon: "warning",
       cards: categorizedData["High Risk"].map(r => ({
         id: r.id,
         patientId: r.patient_id,
-        label: "Monitoring Needed",
-        labelColor: "text-medium-risk",
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
-        insight: `AI detected ${r.prediction} with ${(r.confidence * 100).toFixed(1)}% confidence.`,
+        insight: `${r.prediction} — ${(r.confidence * 100).toFixed(1)}% confidence`,
         timeAgo: timeAgo(r.created_at),
-        footer: (
-          <div className="bg-medium-risk/10 border border-medium-risk/20 px-3 py-1 rounded-full flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-medium-risk animate-pulse" />
-            <span className="text-[10px] font-bold text-medium-risk font-mono uppercase tracking-widest">AI ANALYZED</span>
-          </div>
-        )
       }))
     },
     {
       title: "Moderate",
-      count: categorizedData.Moderate.length.toString().padStart(2, '0'),
-      barColor: "bg-low-risk",
-      badgeClass: "bg-low-risk/10 border border-low-risk/30 text-low-risk",
+      count: categorizedData.Moderate.length,
+      label: "Follow-Up",
+      icon: "schedule",
       cards: categorizedData.Moderate.map(r => ({
         id: r.id,
         patientId: r.patient_id,
-        label: "Follow-Up",
-        labelColor: "text-low-risk",
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
-        insight: `AI detected ${r.prediction} with ${(r.confidence * 100).toFixed(1)}% confidence.`,
+        insight: `${r.prediction} — ${(r.confidence * 100).toFixed(1)}% confidence`,
         timeAgo: timeAgo(r.created_at),
-        footer: (
-          <span className="text-[10px] font-bold font-mono tracking-widest uppercase text-text-variant flex items-center gap-1 border border-border px-2 py-1 bg-surface/20 rounded-md">
-            <span className="material-symbols-outlined text-[12px] opacity-70">schedule</span>
-             Review Suggested
-          </span>
-        )
       }))
     },
     {
       title: "Stable",
-      count: categorizedData.Stable.length.toString().padStart(2, '0'),
-      barColor: "bg-border",
-      badgeClass: "bg-surface border border-border text-text-variant shadow-sm shadow-black/5",
+      count: categorizedData.Stable.length,
+      label: "Routine Clear",
+      icon: "check_circle",
       cards: categorizedData.Stable.map(r => ({
         id: r.id,
         patientId: r.patient_id,
-        label: "Routine Clear",
-        labelColor: "text-text-variant",
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
-        insight: `No acute findings (${(r.confidence * 100).toFixed(1)}% conf).`,
+        insight: `No acute findings — ${(r.confidence * 100).toFixed(1)}% conf.`,
         timeAgo: timeAgo(r.created_at),
-        footer: (
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md text-low-risk text-[10px] font-mono font-bold tracking-widest uppercase bg-low-risk/10 border border-low-risk/20">
-            <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              check_circle
-            </span>
-            STABLE
-          </div>
-        )
       }))
     }
   ];
@@ -422,97 +394,144 @@ export default function Triage() {
                     return rank(sb) - rank(sa) || +new Date(b.created_at) - +new Date(a.created_at);
                   })
                   .slice(0, 250)
-                  .map((r) => (
-                    <tr key={r.id} className="text-sm hover:bg-surface-container-high transition-colors">
-                      <td className="py-4 pr-4 font-semibold">
+                  .map((r) => {
+                    const cat = getCategory(r.prediction);
+                    const badgeStyle: React.CSSProperties = cat === 'Critical'
+                      ? { background: '#B26357', color: '#fff' }
+                      : cat === 'High Risk'
+                      ? { background: '#C4812A', color: '#fff' }
+                      : cat === 'Moderate'
+                      ? { background: '#4A8C6F', color: '#fff' }
+                      : { background: '#334155', color: '#fff' };
+                    const viewBg = cat === 'Critical' ? '#B26357' : cat === 'High Risk' ? '#C4812A' : cat === 'Moderate' ? '#4A8C6F' : '#334155';
+                    return (
+                    <tr key={r.id} className="text-sm border-t border-border/40 hover:bg-surface-container transition-colors">
+                      <td className="px-4 py-3.5 font-semibold">
                         <button
                           type="button"
                           onClick={() => setPatientModalId(r.patient_id)}
-                          className="hover:text-primary transition-colors text-left"
-                          title="View patient details"
+                          className="hover:text-primary-bright transition-colors text-left text-text-primary"
                         >
                           {r.patient_name || `Patient #${r.patient_id}`}
                         </button>
-                        <div className="text-xs text-on-surface-variant">#{r.patient_id}</div>
+                        <div className="text-[11px] text-text-variant font-mono">#RET-{r.patient_id.toString().padStart(4,'0')}</div>
                       </td>
-                      <td className="py-4 pr-4 text-on-surface-variant">{r.prediction}</td>
-                      <td className="py-4 pr-4 text-center text-on-surface-variant">{(r.confidence * 100).toFixed(1)}%</td>
-                      <td className="py-4 pr-4 text-right text-on-surface-variant">{new Date(r.created_at).toLocaleString()}</td>
-                      <td className="py-4 text-right">
+                      <td className="px-4 py-3.5">
+                        <span
+                          className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold"
+                          style={badgeStyle}
+                        >
+                          {r.prediction}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-center font-bold" style={{ color: 'var(--primary)' }}>
+                        {(r.confidence * 100).toFixed(1)}%
+                      </td>
+                      <td className="px-4 py-3.5 text-right text-text-variant text-[11px] font-mono">{new Date(r.created_at).toLocaleString()}</td>
+                      <td className="px-4 py-3.5 text-right">
                         <button
                           type="button"
-                          className="px-3 py-1 rounded-lg bg-surface-container-high text-on-surface-variant text-xs font-bold hover:text-primary transition-colors"
+                          className="px-3 py-1 rounded-lg text-white text-xs font-bold transition-all hover:brightness-110 active:scale-95"
+                          style={{ background: `${viewBg}cc` }}
                           onClick={() => setPatientModalId(r.patient_id)}
                         >
-                          View
+                          View →
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
               </tbody>
             </table>
           </div>
         </Card>
       ) : (
-        /* Kanban Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
-          {triageColumns.map((col) => (
-            <div key={col.title} className="flex flex-col gap-4">
-              {/* Column header */}
-              <div className="flex items-center justify-between px-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-6 ${col.barColor} rounded-full`} />
-                  <h2 className="font-headline text-lg font-bold text-on-surface">{col.title}</h2>
+        /* Kanban Grid — bold full-color columns */
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-start">
+          {triageColumns.map((col) => {
+            const meta = columnMeta[col.title]!;
+            return (
+              <div key={col.title} className="flex flex-col gap-3">
+                {/* Bold gradient column header */}
+                <div
+                  className="flex items-center justify-between px-4 py-3 rounded-xl"
+                  style={{
+                    background: `linear-gradient(135deg, ${meta.gradFrom} 0%, ${meta.gradTo} 100%)`,
+                    boxShadow: `0 3px 12px ${meta.gradFrom}55`,
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="material-symbols-outlined text-white text-[18px]"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      {col.icon}
+                    </span>
+                    <h2 className="font-mono font-bold text-sm uppercase tracking-widest text-white">{col.title}</h2>
+                  </div>
+                  <span className="bg-white/20 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                    {col.count}
+                  </span>
                 </div>
-                <span className={`${col.badgeClass} px-2 py-0.5 rounded-md text-xs font-bold`}>{col.count}</span>
-              </div>
 
-              {/* Cards */}
-              <div className={`space-y-4 ${col.title === "Stable" ? "opacity-70" : ""}`}>
-                {col.cards.map((card) => (
-                  <div
-                    key={card.id}
-                    className="bg-surface-container-low p-5 rounded-xl hover:bg-surface-container-high transition-all duration-300 group"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div className={`text-xs font-label ${card.labelColor} uppercase tracking-widest font-bold`}>
-                        {card.label}
+                {/* Cards */}
+                <div className={`space-y-3 ${col.title === "Stable" ? "opacity-60" : ""}`}>
+                  {col.cards.length === 0 && (
+                    <div className="text-center text-text-variant text-xs font-mono py-6 border border-dashed border-border rounded-xl">
+                      No patients
+                    </div>
+                  )}
+                  {col.cards.map((card) => (
+                    <div
+                      key={card.id}
+                      className="relative overflow-hidden rounded-xl p-4 transition-all duration-200 group hover:-translate-y-0.5"
+                      style={{
+                        background: meta.cardBg,
+                        borderLeft: `3px solid ${meta.cardBorder}`,
+                        backgroundColor: `var(--surface)`,
+                        backgroundImage: `linear-gradient(135deg, ${meta.cardBg} 0%, transparent 100%)`,
+                        boxShadow: `0 2px 8px rgba(0,0,0,0.08), 2px 0 0 ${meta.cardBorder} inset`,
+                      }}
+                    >
+                      {/* Label chip */}
+                      <div className="mb-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-widest ${meta.labelChip}`}>
+                          {col.label}
+                        </span>
                       </div>
-                    </div>
-                    <h3 className="font-headline text-xl font-semibold mb-1">
-                      <button
-                        type="button"
-                        onClick={() => setPatientModalId(card.patientId)}
-                        className="hover:text-primary transition-colors text-left"
-                        title="View patient details"
-                      >
-                        {card.name}
-                      </button>
-                    </h3>
-                    <p className="text-xs text-on-surface-variant font-label mb-4">ID: {card.pid}</p>
-                    <div className="bg-surface-container-lowest p-3 rounded-lg mb-4 outline outline-1 outline-outline/10">
-                      {card.label !== "Routine Clear" && <p className="text-xs text-on-surface-variant mb-1">AI INSIGHT</p>}
-                      <p className="text-sm font-body">{card.insight}</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-6 pt-4">
-                      {card.footer}
-                      <div className="flex items-center gap-3">
+
+                      <h3 className="font-semibold text-text-primary text-base mb-0.5 group-hover:text-primary-bright transition-colors">
                         <button
                           type="button"
                           onClick={() => setPatientModalId(card.patientId)}
-                          className="px-3 py-1 rounded-lg bg-surface-container-high text-on-surface-variant text-xs font-bold hover:text-primary transition-colors"
-                          title="View"
+                          className="text-left"
                         >
-                          View
+                          {card.name}
                         </button>
-                        <span className="text-xs text-on-surface-variant font-label">{card.timeAgo}</span>
+                      </h3>
+                      <p className="text-[11px] text-text-variant font-mono mb-3">{card.pid}</p>
+
+                      <p className="text-xs text-text-secondary bg-surface/60 rounded-lg px-3 py-2 border border-border/40 mb-3">
+                        {card.insight}
+                      </p>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-text-variant font-mono">{card.timeAgo}</span>
+                        <button
+                          type="button"
+                          onClick={() => setPatientModalId(card.patientId)}
+                          className="text-[11px] font-bold px-3 py-1 rounded-lg text-white transition-all hover:brightness-110 active:scale-95"
+                          style={{ background: `${meta.gradFrom}cc` }}
+                        >
+                          View →
+                        </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
