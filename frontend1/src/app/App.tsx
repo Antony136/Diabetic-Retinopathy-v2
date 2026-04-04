@@ -21,7 +21,7 @@ function AppChrome() {
     location.hash.startsWith("#/register");
 
   return (
-    <div className="min-h-screen font-body selection:bg-primary-bright/30 relative text-text-primary">
+    <div className="min-h-screen w-full font-body selection:bg-primary-bright/30 relative text-text-primary pl-24 flex flex-col">
       <CustomCursor />
       <ParticleBackground />
       {!isAuthRoute && <Navbar />}

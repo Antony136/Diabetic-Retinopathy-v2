@@ -14,7 +14,7 @@ export default function Card({ children, className = "", ...rest }: CardProps) {
   return (
     <motion.div
       className={`
-        bg-surface relative z-10 overflow-hidden rounded-xl
+        bg-surface relative z-10 rounded-xl
         border border-border
         shadow-[0_1px_3px_rgba(0,0,0,0.06),0_4px_16px_rgba(0,0,0,0.08)]
         dark:shadow-[0_1px_4px_rgba(0,0,0,0.3),0_6px_24px_rgba(0,0,0,0.4)]

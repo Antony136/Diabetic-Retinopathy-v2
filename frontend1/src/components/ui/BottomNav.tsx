@@ -9,17 +9,17 @@ export default function BottomNav() {
   const items = role === "admin" ? ADMIN_NAV_ITEMS : DOCTOR_NAV_ITEMS;
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 p-1.5 mb-6 bg-surface/80 backdrop-blur-xl rounded-none mx-auto w-fit border border-border font-mono text-[10px] font-medium tracking-widest uppercase">
+    <nav className="fixed top-[73px] bottom-0 left-0 z-50 flex flex-col items-center gap-2 py-8 bg-surface-container-lowest/80 backdrop-blur-2xl border-r border-border font-mono text-[10px] font-bold tracking-widest uppercase w-24">
       {items.map((item) => {
         const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
         return (
           <NavLink
             key={item.path}
             to={item.path}
-            className={`flex flex-col items-center justify-center px-5 py-2.5 transition-all duration-300 ease-out border ${
+            className={`relative flex flex-col items-center justify-center w-full py-5 transition-all duration-300 ease-out active:scale-[0.85] ${
               isActive
-                ? "border-primary-bright/50 text-primary-bright bg-primary-bright/10 shadow-[0_0_15px_var(--glow)]"
-                : "border-transparent text-text-variant hover:text-text-primary hover:border-border"
+                ? "text-primary-bright bg-primary-bright/10 shadow-[inset_4px_0_0_#8b5cf6]"
+                : "text-text-variant hover:text-text-primary hover:bg-surface-container-high/50"
             }`}
           >
             <span

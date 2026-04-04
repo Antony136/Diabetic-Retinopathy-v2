@@ -61,6 +61,7 @@ export default function Records() {
   const [patientModalId, setPatientModalId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState("All Severities");
+  const [isSeverityOpen, setIsSeverityOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
@@ -373,22 +374,38 @@ export default function Records() {
             />
           </div>
         </div>
-        <div className="md:col-span-4 flex gap-4">
-          <div className="relative w-full">
-            <select 
-              className="appearance-none w-full bg-surface-container-low border-none rounded-xl px-4 py-4 pr-10 font-label text-on-surface-variant focus:ring-1 focus:ring-primary/40 outline-none"
-              value={severity}
-              onChange={(e) => setSeverity(e.target.value)}
-            >
-              <option>All Severities</option>
-              <option>Critical</option>
-              <option>Moderate</option>
-              <option>Stable</option>
-            </select>
-            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-              <span className="material-symbols-outlined text-outline">filter_list</span>
-            </div>
-          </div>
+        <div className="md:col-span-4 flex gap-4 relative z-[100]">
+          <ul className="menu w-full">
+            <li className={`item w-full ${isSeverityOpen ? 'is-open' : ''}`}>
+              <button 
+                type="button" 
+                className="link w-full bg-surface-container-low border border-outline/10 rounded-xl px-5 py-4 flex justify-between cursor-pointer"
+                onClick={() => setIsSeverityOpen(!isSeverityOpen)}
+                onBlur={() => setTimeout(() => setIsSeverityOpen(false), 200)}
+              >
+                <span className="font-bold text-on-surface-variant text-sm">{severity}</span>
+                <span className="material-symbols-outlined shrink-0 pointer-events-none ml-2 text-outline">filter_list</span>
+              </button>
+              
+              <ul className="submenu w-full border-t-0 shadow-2xl custom-scrollbar bg-surface-container rounded-b-xl border border-outline/10">
+                {["All Severities", "Critical", "Moderate", "Stable"].map((opt) => (
+                  <li className="submenu-item" key={opt}>
+                    <button
+                      type="button"
+                      className="submenu-link text-sm font-bold text-text-primary text-left bg-transparent"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setSeverity(opt);
+                        setIsSeverityOpen(false);
+                      }}
+                    >
+                      {opt}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          </ul>
         </div>
       </div>
 

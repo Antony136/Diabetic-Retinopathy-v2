@@ -48,6 +48,8 @@ export default function Screening() {
 
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const [newName, setNewName] = useState("");
   const [newAge, setNewAge] = useState<number>(35);
@@ -73,6 +75,15 @@ export default function Screening() {
     () => new Map(patients.map((p) => [p.id, p])),
     [patients],
   );
+  
+  const filteredPatients = useMemo(() => {
+    if (!searchQuery) return patients;
+    const lowerQuery = searchQuery.toLowerCase();
+    return patients.filter((p) =>
+      p.name.toLowerCase().includes(lowerQuery) || p.id.toString().includes(lowerQuery)
+    );
+  }, [patients, searchQuery]);
+
   const selectedPatient = selectedPatientId
     ? patientsById.get(selectedPatientId)
     : undefined;
@@ -145,7 +156,7 @@ export default function Screening() {
   async function onRunAnalysis() {
     setAnalysisError(null);
     setImageExplainError(null);
-    if (!selectedPatientId) return setAnalysisError("Please select (or create) a patient first.");
+    if (!selectedPatientId) return setAnalysisError("No patient selected.");
     if (!file) return setAnalysisError("Please upload an image first.");
 
     setIsAnalyzing(true);
@@ -337,7 +348,7 @@ export default function Screening() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
                     mode === "existing"
                       ? "bg-primary/20 border-primary/30 text-primary"
-                      : "border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high"
+                      : "border-outline/30 text-text-variant hover:bg-surface-container-high"
                   }`}
                 >
                   Existing
@@ -348,7 +359,7 @@ export default function Screening() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
                     mode === "new"
                       ? "bg-primary/20 border-primary/30 text-primary"
-                      : "border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high"
+                      : "border-outline/30 text-text-variant hover:bg-surface-container-high"
                   }`}
                 >
                   New
@@ -364,31 +375,59 @@ export default function Screening() {
 
             {mode === "existing" ? (
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                <div className="md:col-span-8">
+                <div className="md:col-span-8 relative z-[100]">
                   <label className="block text-sm font-label text-on-surface-variant mb-2">
-                    Select patient
+                    Search & Select Patient
                   </label>
-                  <div className="relative">
-                    <select
-                      className="appearance-none w-full bg-surface-container-low border border-outline/10 rounded-xl px-4 py-3 pr-10 font-label text-on-surface-variant focus:ring-1 focus:ring-primary/40 outline-none"
-                      value={selectedPatientId ?? ""}
-                      onChange={(e) => setSelectedPatientId(Number(e.target.value))}
-                      disabled={patientsLoading || patients.length === 0}
-                    >
-                      {patients.length === 0 ? (
-                        <option value="">No patients yet</option>
-                      ) : (
-                        patients.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} (#{p.id})
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                      <span className="material-symbols-outlined text-outline">expand_more</span>
-                    </div>
-                  </div>
+                  <ul className="menu w-full">
+                    <li className={`item w-full ${isDropdownOpen ? 'is-open' : ''}`}>
+                      <div className="link w-full">
+                        <input
+                          type="text"
+                          placeholder={patientsLoading ? "Loading patients..." : "Type patient name or ID..."}
+                          value={searchQuery}
+                          onFocus={() => setIsDropdownOpen(true)}
+                          onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setIsDropdownOpen(true);
+                            if (selectedPatientId) setSelectedPatientId(null);
+                          }}
+                          disabled={patientsLoading}
+                          className="w-full bg-transparent outline-none text-white placeholder-white/80 font-bold"
+                        />
+                        <svg viewBox="0 0 360 360" xmlSpace="preserve" className="shrink-0 pointer-events-none">
+                          <g id="SVGRepo_iconCarrier">
+                            <path id="XMLID_225_" d="M325.607,79.046H34.393C15.401,79.046,0,94.448,0,113.439v133.122c0,18.991,15.401,34.393,34.393,34.393 h291.214c18.991,0,34.393-15.402,34.393-34.393V113.439C360,94.448,344.599,79.046,325.607,79.046z M300,165.733H193.303V133.2h106.697V165.733z M240.231,230.147H102.766V197.618h137.465V230.147z"></path>
+                          </g>
+                        </svg>
+                      </div>
+                      <ul className="submenu w-full border-t-0 shadow-2xl custom-scrollbar">
+                        {filteredPatients.length === 0 ? (
+                          <li className="submenu-item py-4 text-center text-text-variant text-sm">
+                            No matching patients found.
+                          </li>
+                        ) : (
+                          filteredPatients.map((p) => (
+                            <li className="submenu-item" key={p.id}>
+                              <button
+                                type="button"
+                                className="submenu-link"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setSelectedPatientId(p.id);
+                                  setSearchQuery(p.name);
+                                  setIsDropdownOpen(false);
+                                }}
+                              >
+                                <span className="font-bold text-text-primary">{p.name}</span> <span className="opacity-50 text-xs">(#{p.id})</span>
+                              </button>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    </li>
+                  </ul>
                 </div>
                 <div className="md:col-span-4">
                   <Button
@@ -424,9 +463,9 @@ export default function Screening() {
                         Gender
                       </label>
                       <select className={inputClass} value={newGender} onChange={(e) => setNewGender(e.target.value)}>
-                        <option>Male</option>
-                        <option>Female</option>
-                        <option>Other</option>
+                        <option className="bg-surface text-secondary-bright font-extrabold py-2">Male</option>
+                        <option className="bg-surface text-secondary-bright font-extrabold py-2">Female</option>
+                        <option className="bg-surface text-secondary-bright font-extrabold py-2">Other</option>
                       </select>
                     </div>
                   </div>

@@ -459,21 +459,20 @@ export default function Dashboard() {
             </h1>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
-            <div className="flex flex-col pr-4 border-r border-white/10">
-              <span className="text-[10px] text-text-variant font-mono uppercase tracking-widest mb-1">Adaptive Screening Mode</span>
-              <span className="text-xs text-text-primary font-mono font-bold">{adaptiveMode === 'high_sensitivity' ? 'SENSITIVITY_PRIORITY' : 'EFFICIENCY_TRIAGE'}</span>
+          <div className="flex flex-col sm:flex-row items-center gap-4 bg-[#7c98b3] p-3 rounded-xl border-2 border-white/10 shadow-lg shadow-black/20">
+            <div className="flex flex-col pr-4 border-r border-white/20">
+              <span className="text-[11px] text-[#0d1b2a] font-mono uppercase font-black tracking-[0.2em]">Adaptive Mode</span>
             </div>
-            <div className="flex bg-black/40 p-1 rounded-xl gap-1">
+            <div className="flex bg-black/40 p-1.5 rounded-xl gap-1 shadow-inner shadow-black/50">
               <button 
                 onClick={() => setAdaptiveMode('standard')}
-                className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold transition-all tracking-widest ${adaptiveMode === 'standard' ? 'bg-primary-bright text-black shadow-[0_0_15px_rgba(200,124,255,0.4)]' : 'text-text-variant hover:text-text-primary'}`}
+                className={`px-5 py-2.5 rounded-lg text-[10px] font-mono font-black transition-all duration-300 tracking-[0.1em] ${adaptiveMode === 'standard' ? 'bg-white text-black shadow-[0_4px_15px_rgba(255,255,255,0.25)] scale-105' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
               >
                 STANDARD
               </button>
               <button 
                 onClick={() => setAdaptiveMode('high_sensitivity')}
-                className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold transition-all tracking-widest ${adaptiveMode === 'high_sensitivity' ? 'bg-secondary-bright text-black shadow-[0_0_15px_rgba(255,100,200,0.4)]' : 'text-text-variant hover:text-text-primary'}`}
+                className={`px-5 py-2.5 rounded-lg text-[10px] font-mono font-black transition-all duration-300 tracking-[0.1em] ${adaptiveMode === 'high_sensitivity' ? 'bg-white text-[#d40000] shadow-[0_4px_15px_rgba(255,255,255,0.25)] scale-105' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
               >
                 HIGH_SENSITIVITY
               </button>
