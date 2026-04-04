@@ -123,10 +123,59 @@ def generate_explanation(decision: str, override_applied: bool) -> str:
     else:
         return "Low risk — continue routine screening."
 
+def validate_image_file(image_path: str):
+    """
+    Reject non-supported formats (GIF) and enforce JPG/PNG.
+    """
+    ext = os.path.splitext(image_path)[1].lower()
+    if ext not in [".jpg", ".jpeg", ".png"]:
+        return False, "Invalid image. Please upload a retinal fundus image (JPG/PNG only)."
+    
+    try:
+        with Image.open(image_path) as img:
+            if img.format not in ["JPEG", "PNG"]:
+                return False, "Invalid image. Please upload a retinal fundus image (JPG/PNG only)."
+            
+            # Heuristic check: reasonable brightness and color dominance
+            # Convert to RGB to ensure 3 channels
+            rgb_img = img.convert("RGB")
+            # Downscale for fast heuristic calculation
+            small_img = rgb_img.resize((64, 64))
+            pixels = list(small_img.getdata())
+            
+            # 1. Brightness Check (Average intensity)
+            avg_brightness = sum(sum(p) for p in pixels) / (len(pixels) * 3)
+            # Fundus images are typically not pure black or extremely overexposed white
+            if avg_brightness < 20 or avg_brightness > 220:
+                return False, "Invalid image. Please upload a retinal fundus image (JPG/PNG only)."
+            
+            # 2. Retinal Color Dominance (Red should be higher than Blue/Green)
+            avg_r = sum(p[0] for p in pixels) / len(pixels)
+            avg_g = sum(p[1] for p in pixels) / len(pixels)
+            avg_b = sum(p[2] for p in pixels) / len(pixels)
+            
+            # Most fundus images are reddish/orange. If green/blue is dominant, it's likely not a fundus.
+            if avg_r < avg_g or avg_r < avg_b:
+                return False, "Invalid image. Please upload a retinal fundus image (JPG/PNG only)."
+                
+    except Exception:
+        return False, "Invalid image. Please upload a retinal fundus image (JPG/PNG only)."
+        
+    return True, None
+
 def run_inference(image_path: str, mode: str, model=None) -> Dict[str, Any]:
     """
-    Orchestrate full prediction pipeline for a single image with safety overrides.
+    Orchestrate full prediction pipeline with strict input validation.
+    1. Check file type/format
+    2. Check heuristics (brightness/color)
+    3. Run model
+    4. Apply confidence filter
     """
+    # 0. Initial Validation
+    is_valid, err_msg = validate_image_file(image_path)
+    if not is_valid:
+        raise ValueError(err_msg)
+
     if model is None:
         model = load_model(MODEL_PATH)
         
@@ -135,6 +184,10 @@ def run_inference(image_path: str, mode: str, model=None) -> Dict[str, Any]:
     
     grade_idx = torch.argmax(probs).item()
     confidence = torch.max(probs).item()
+
+    # 4. Secondary Confidence Filter: If low probability, probably not a fundus
+    if confidence < 0.6:
+        raise ValueError("Invalid image. Please upload a retinal fundus image (JPG/PNG only).")
     
     # Core Logic Steps
     risk_score = compute_risk(probs)

@@ -111,10 +111,14 @@ export default function Screening() {
 
       for (const item of Array.from(items)) {
         if (item.type.includes("image")) {
+          // Strict Rejection: GIFs (often used for testing or animations) are forbidden.
+          if (item.type.includes("gif")) {
+            setAnalysisError("Invalid image. Please upload a retinal fundus image (JPG/PNG only).");
+            break;
+          }
           const pastedFile = item.getAsFile();
           if (pastedFile) {
             onPickFile(pastedFile);
-            // Show a subtle toast or visual feedback in a real app, but here we just update state
             break;
           }
         }
@@ -163,6 +167,20 @@ export default function Screening() {
       setImagePreview(null);
       return;
     }
+
+    // Strict Validation: Only allow JPG/JPEG/PNG (No GIF)
+    const validExtensions = [".jpg", ".jpeg", ".png"];
+    const filename = picked.name.toLowerCase();
+    const hasValidExt = validExtensions.some((ext) => filename.endsWith(ext));
+    const hasValidMime = ["image/jpeg", "image/jpg", "image/png"].includes(picked.type);
+
+    if (!hasValidExt || !hasValidMime) {
+      setFile(null);
+      setImagePreview(null);
+      setAnalysisError("Invalid image. Please upload a retinal fundus image (JPG/PNG only).");
+      return;
+    }
+
     setFile(picked);
     const dataUrl = await readFileAsDataUrl(picked);
     setImagePreview(dataUrl);
@@ -575,7 +593,18 @@ export default function Screening() {
             </div>
             {analysisError && (
               <div className="px-6 pb-6 -mt-3">
-                <div className="rounded-xl bg-error-container/30 text-error px-4 py-3 text-sm">{analysisError}</div>
+                <div className={`rounded-xl px-4 py-3 text-sm flex items-center gap-3 border transition-all duration-500 ${
+                  analysisError.includes("retinal fundus image")
+                    ? "bg-primary/5 border-primary/20 text-text-primary animate-in fade-in slide-in-from-top-2"
+                    : "bg-error/5 border-error/20 text-error"
+                }`}>
+                  <span className={`material-symbols-outlined text-lg ${
+                    analysisError.includes("retinal fundus image") ? "text-primary" : "text-error"
+                  }`}>
+                    {analysisError.includes("retinal fundus image") ? "info_i" : "error"}
+                  </span>
+                  <span className="font-medium tracking-tight">{analysisError}</span>
+                </div>
               </div>
             )}
           </section>

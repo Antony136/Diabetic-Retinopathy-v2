@@ -75,100 +75,67 @@ export default function Login() {
       title="User Login"
       subtitle="Access the Retina intelligence platform for diabetic retinopathy screening."
       footer={
-        <>
-          New user?{" "}
-          <button
-            type="button"
-            onClick={() => navigate("/register")}
-            className="text-primary-bright hover:text-primary-bright/80 font-mono tracking-wider transition-colors"
-          >
-            Register
-          </button>
-        </>
+        <div className="flex flex-col items-center gap-4">
+          <p className="text-text-variant text-sm font-mono tracking-widest">
+            New to the platform?{" "}
+            <button
+              type="button"
+              onClick={() => navigate("/register")}
+              className="text-primary-bright hover:text-primary-bright/80 font-bold transition-colors ml-2"
+            >
+              Register
+            </button>
+          </p>
+        </div>
       }
     >
-      {/* GDSC Notice */}
-      <div className="mb-8 p-5 border border-border rounded-lg bg-surface/50 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-primary-bright" />
-          <span className="font-mono font-bold text-xs tracking-[0.2em] uppercase text-text-variant">SYSTEM_NOTICE</span>
-        </div>
-        
-        <p className="text-xs font-mono text-text-variant leading-relaxed">
-          GDSC Reviewers: Use these credentials for a quick preview.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="p-3 border border-border rounded-lg">
-            <p className="text-[10px] font-mono font-bold text-primary-bright uppercase tracking-widest mb-1">ADMIN_ACCESS</p>
-            <p className="text-xs font-mono text-text-variant">icebox1306@gmail.com</p>
-            <p className="text-xs font-mono text-text-variant">Pass: 123456</p>
+      <form onSubmit={onSubmit} className="space-y-8">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-bold tracking-wide text-text-primary uppercase font-mono">
+              Work Email
+            </label>
+            <input
+              className="block w-full px-5 py-4 bg-surface border border-border rounded-xl text-text-primary placeholder:text-text-variant/60 focus:border-primary-bright/50 focus:ring-1 focus:ring-primary-bright/50 transition-all outline-none text-sm font-body shadow-sm"
+              placeholder="name@clinical.org"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+            />
           </div>
-          <div className="p-3 border border-border rounded-lg">
-            <p className="text-[10px] font-mono font-bold text-secondary-bright uppercase tracking-widest mb-1">DOCTOR_ACCESS</p>
-            <p className="text-xs font-mono text-text-variant">doc@gmail.com</p>
-            <p className="text-xs font-mono text-text-variant">Pass: 123456</p>
-          </div>
-        </div>
-        
-        <div className="pt-2 border-t border-border">
-          <p className="text-[11px] font-mono text-text-variant leading-relaxed">
-            ML inference engine runs on <span className="text-primary-bright/70">Hugging Face Spaces</span>.
-          </p>
-          <a 
-            href="https://huggingface.co/spaces/jczdgyo/diabetic-retinopathy" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 border border-primary-bright/50 text-primary-bright text-[10px] font-mono font-bold hover:bg-primary-bright/10 transition-colors uppercase tracking-widest"
-          >
-            <span className="material-symbols-outlined text-xs">explore</span>
-            VIEW MODEL
-          </a>
-        </div>
-      </div>
-      <form onSubmit={onSubmit} className="space-y-6">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-text-secondary">
-            Username / Email
-          </label>
-          <input
-            className="block w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-variant focus:border-primary-bright/50 focus:ring-1 focus:ring-primary-bright/50 transition-all outline-none text-sm"
-            placeholder="Enter your email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-          />
-        </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-text-secondary">
-            Password
-          </label>
-          <input
-            className="block w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder:text-text-variant focus:border-primary-bright/50 focus:ring-1 focus:ring-primary-bright/50 transition-all outline-none text-sm"
-            placeholder="Enter your password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
+          <div className="space-y-2">
+            <label className="block text-sm font-bold tracking-wide text-text-primary uppercase font-mono">
+              Security Password
+            </label>
+            <input
+              className="block w-full px-5 py-4 bg-surface border border-border rounded-xl text-text-primary placeholder:text-text-variant/60 focus:border-primary-bright/50 focus:ring-1 focus:ring-primary-bright/50 transition-all outline-none text-sm font-body shadow-sm"
+              placeholder="••••••••"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </div>
         </div>
 
         {error && (
-          <div className="text-xs text-red-400 border border-red-400/20 bg-red-400/5 px-4 py-3 rounded-lg">
-            Error: {error}
+          <div className="text-xs text-red-100 border border-red-500/30 bg-red-500/10 px-5 py-4 rounded-xl flex items-center gap-3 backdrop-blur-sm">
+            <span className="material-symbols-outlined text-sm text-red-500">error</span>
+            <span className="font-medium">Error: {error}</span>
           </div>
         )}
 
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full mt-4 py-4"
+          className="w-full py-4 text-base font-bold shadow-lg shadow-primary/20"
           icon={isSubmitting ? "progress_activity" : "login"}
         >
-          {isSubmitting ? "Logging in..." : "Login"}
+          {isSubmitting ? "Authenticating..." : "Login to Workspace"}
         </Button>
       </form>
     </AuthLayout>
