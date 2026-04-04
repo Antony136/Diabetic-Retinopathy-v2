@@ -12,6 +12,7 @@ const Register = lazy(() => import("../features/auth/Register"));
 const Dashboard = lazy(() => import("../features/dashboard/Dashboard"));
 const Screening = lazy(() => import("../features/screening/Screening"));
 const Records = lazy(() => import("../features/records/Records"));
+const PatientTimeline = lazy(() => import("../features/timeline/PatientTimeline"));
 const Triage = lazy(() => import("../features/triage/Triage"));
 const Settings = lazy(() => import("../features/settings/Settings"));
 const Profile = lazy(() => import("../features/profile/Profile"));
@@ -102,6 +103,14 @@ export default function AppRoutes() {
           element={
             <RequireDoctor>
               <Records />
+            </RequireDoctor>
+          }
+        />
+        <Route
+          path="/timeline"
+          element={
+            <RequireDoctor>
+              <PatientTimeline />
             </RequireDoctor>
           }
         />

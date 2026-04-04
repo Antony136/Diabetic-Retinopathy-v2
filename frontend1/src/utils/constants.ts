@@ -4,6 +4,7 @@ export const DOCTOR_NAV_ITEMS = [
   { label: "Dashboard", icon: "grid_view", path: "/" },
   { label: "Screening", icon: "visibility", path: "/screening" },
   { label: "Records", icon: "folder_shared", path: "/records" },
+  { label: "Timeline", icon: "timeline", path: "/timeline" },
   { label: "Triage", icon: "medical_services", path: "/triage" },
   { label: "Assistant", icon: "chat", path: "/assistant" },
   { label: "Settings", icon: "settings", path: "/settings" },
