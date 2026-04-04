@@ -47,8 +47,8 @@ function SvgBars(props: { labels: string[]; values: number[]; yUnit?: string }) 
     >
       <defs>
         <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgb(200,124,255)" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="rgb(46,24,61)" stopOpacity="0.7" />
+          <stop offset="0%" stopColor="var(--primary-bright)" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.1" />
         </linearGradient>
       </defs>
 
@@ -188,9 +188,10 @@ function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string
     >
       <defs>
         <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="rgb(46,24,61)" stopOpacity="0.55" />
-          <stop offset="60%" stopColor="rgb(200,124,255)" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="rgb(200,124,255)" stopOpacity="0.35" />
+          <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.1" />
+          <stop offset="40%" stopColor="var(--primary-bright)" stopOpacity="0.9" />
+          <stop offset="70%" stopColor="var(--low-risk)" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="var(--secondary-bright)" stopOpacity="0.2" />
         </linearGradient>
       </defs>
       {[0, 0.25, 0.5, 0.75, 1].map((t) => {
@@ -252,7 +253,7 @@ function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string
         const y = paddingTop + (plotH * (max - v)) / span;
         return (
           <g key={i}>
-            <circle cx={x} cy={y} r="4.5" fill="rgb(200,124,255)" opacity={0.9} />
+            <circle cx={x} cy={y} r="4.5" fill="var(--low-risk)" opacity={0.9} />
           </g>
         );
       })}
@@ -295,22 +296,65 @@ function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string
 
 import FadeInReveal from "../../components/ui/FadeInReveal";
 
-function StatCard({ label, value, hint, icon, index = 0 }: { label: string; value: string; hint?: string; icon: string, index?: number }) {
+type StatCardProps = {
+  label: string;
+  value: string;
+  hint?: string;
+  icon: string;
+  index?: number;
+  /** Gradient stops e.g. ["#B26357","#8b2e22"] */
+  gradientFrom: string;
+  gradientTo: string;
+};
+
+function StatCard({
+  label,
+  value,
+  hint,
+  icon,
+  index = 0,
+  gradientFrom,
+  gradientTo,
+}: StatCardProps) {
   return (
-    <FadeInReveal delay={index * 0.1}>
-      <Card className="p-6 space-y-3 relative overflow-hidden group">
-        {/* Glow effect overlay */}
-        <div className="absolute inset-0 bg-primary-bright/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        
-        <div className="flex items-center justify-between relative z-10">
-          <span className="text-text-variant font-mono text-xs uppercase tracking-widest">{label}</span>
-          <span className="material-symbols-outlined text-primary-bright/70 text-xl group-hover:text-primary-bright group-hover:shadow-[0_0_10px_#C87CFF] transition-all">{icon}</span>
+    <FadeInReveal delay={index * 0.08}>
+      <div
+        className="
+          relative overflow-hidden rounded-2xl
+          transition-all duration-300 ease-out group
+          hover:-translate-y-1 hover:scale-[1.02]
+          cursor-default p-5
+        "
+        style={{
+          background: `linear-gradient(135deg, ${gradientFrom} 0%, ${gradientTo} 100%)`,
+          boxShadow: `0 4px 20px ${gradientFrom}55, 0 1px 4px rgba(0,0,0,0.2)`,
+        }}
+      >
+        {/* Glass sheen overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-transparent to-black/10 pointer-events-none rounded-2xl" />
+        {/* Specular glint top-left */}
+        <div className="absolute -top-6 -left-6 w-20 h-20 rounded-full bg-white/10 blur-xl pointer-events-none transition-transform duration-500 group-hover:scale-150" />
+
+        <div className="relative z-10 flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-white/70 font-mono text-[10px] uppercase tracking-[0.18em] mb-2.5">{label}</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-mono font-extrabold text-white drop-shadow">{value}</span>
+              {hint && (
+                <span className="text-[10px] font-mono text-white/75">{hint}</span>
+              )}
+            </div>
+          </div>
+          <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:bg-white/30">
+            <span
+              className="material-symbols-outlined text-xl text-white"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              {icon}
+            </span>
+          </div>
         </div>
-        <div className="flex items-baseline gap-2 relative z-10">
-          <span className="text-3xl font-mono font-bold text-text-primary group-hover:glow-text-primary transition-all">{value}</span>
-          {hint && <span className="text-text-variant text-xs font-mono">{hint}</span>}
-        </div>
-      </Card>
+      </div>
     </FadeInReveal>
   );
 }
@@ -469,14 +513,22 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
-          <StatCard label="Patients" value={formatCompact(stats.patientCount)} icon="group" index={1} />
-          <StatCard label="Total Reports" value={formatCompact(stats.reportCount)} icon="summarize" index={2} />
-          <StatCard label="Reports Today" value={formatCompact(stats.todayCount)} icon="today" index={3} />
-          <StatCard label="High Priority" value={formatCompact(stats.highPriority)} hint="(4–5)" icon="priority_high" index={4} />
-          <StatCard label="Avg Confidence" value={`${(stats.avgConfidence * 100).toFixed(1)}%`} icon="analytics" index={5} />
-          <StatCard label="Last Analysis" value={stats.lastReportAt ? stats.lastReportAt.toLocaleTimeString() : "—"} hint={stats.lastReportAt ? stats.lastReportAt.toLocaleDateString() : undefined} icon="schedule" index={6} />
+        <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+          {/* Indigo/Blue — Patients */}
+          <StatCard label="Patients" value={formatCompact(stats.patientCount)} icon="group" index={1} gradientFrom="#4f46e5" gradientTo="#2563eb" />
+          {/* Purple — Total Reports */}
+          <StatCard label="Total Reports" value={formatCompact(stats.reportCount)} icon="summarize" index={2} gradientFrom="#7c3aed" gradientTo="#5b21b6" />
+          {/* Teal — Reports Today */}
+          <StatCard label="Reports Today" value={formatCompact(stats.todayCount)} icon="today" index={3} gradientFrom="#0d9488" gradientTo="#0f766e" />
+          {/* Crimson — High Priority (semantic: high-risk #B26357) */}
+          <StatCard label="High Priority" value={formatCompact(stats.highPriority)} hint="(LVL 4–5)" icon="priority_high" index={4} gradientFrom="#B26357" gradientTo="#8b2e22" />
+          {/* Emerald — Avg Confidence (semantic: low-risk) */}
+          <StatCard label="Avg Confidence" value={`${(stats.avgConfidence * 100).toFixed(1)}%`} icon="analytics" index={5} gradientFrom="#059669" gradientTo="#065f46" />
+          {/* Amber — Last Analysis (semantic: medium-risk) */}
+          <StatCard label="Last Analysis" value={stats.lastReportAt ? stats.lastReportAt.toLocaleTimeString() : "—"} hint={stats.lastReportAt ? stats.lastReportAt.toLocaleDateString() : undefined} icon="schedule" index={6} gradientFrom="#C4812A" gradientTo="#92400e" />
         </div>
+
+
 
         <FadeInReveal delay={0.5} className="lg:col-span-5 flex flex-col items-center justify-center">
           <div className="w-full flex items-center justify-center py-6">
@@ -484,7 +536,7 @@ export default function Dashboard() {
           </div>
           <Card className="w-full p-6 group">
             <div className="flex items-center justify-between mb-3 relative z-10">
-              <div className="font-mono font-bold tracking-widest uppercase text-text-primary group-hover:glow-text-primary transition-all">REPORTS_TREND [14_DAYS]</div>
+              <div className="font-mono font-bold tracking-widest uppercase bg-gradient-to-r from-primary-bright to-secondary-bright text-transparent bg-clip-text group-hover:brightness-125 transition-all">REPORTS_TREND [14_DAYS]</div>
               <div className="text-xs text-text-variant font-mono tracking-widest">
                 {isLoading ? "CALCULATING…" : `${reportsLast14Days.reduce((a, b) => a + b, 0)} TOTAL`}
               </div>
@@ -507,7 +559,7 @@ export default function Dashboard() {
           <FadeInReveal delay={0.6}>
             <Card className="p-6">
               <div className="flex items-center justify-between mb-3">
-                <div className="font-mono font-bold tracking-widest uppercase text-text-primary">SEVERITY_DISTRIBUTION</div>
+                <div className="font-mono font-bold tracking-widest uppercase bg-gradient-to-r from-secondary-bright to-primary-bright text-transparent bg-clip-text">SEVERITY_DISTRIBUTION</div>
                 <div className="text-xs text-text-variant font-mono tracking-widest">{reports.length} REPORTS</div>
               </div>
               <div className="flex items-center justify-between text-[10px] text-text-variant mb-3 font-mono tracking-widest">
@@ -528,7 +580,7 @@ export default function Dashboard() {
           <FadeInReveal delay={0.7}>
             <Card className="p-6">
               <div className="flex items-center justify-between mb-3">
-                <div className="font-mono font-bold tracking-widest uppercase text-text-primary">CONFIDENCE_BINS</div>
+                <div className="font-mono font-bold tracking-widest uppercase bg-gradient-to-r from-high-risk to-medium-risk text-transparent bg-clip-text">CONFIDENCE_BINS</div>
                 <div className="text-xs text-text-variant font-mono tracking-widest">(%)</div>
               </div>
               <div className="flex items-center justify-between text-[10px] text-text-variant mb-3 font-mono tracking-widest">
@@ -543,44 +595,73 @@ export default function Dashboard() {
 
       <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
         <FadeInReveal delay={0.8} className="lg:col-span-12">
-          <Card className="p-6 overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-mono font-bold text-xl tracking-widest uppercase text-text-primary">SYSTEM_LOGS // RECENT_REPORTS</h2>
-              <div className="text-xs text-text-variant font-mono tracking-widest">
-                {isLoading ? "LOADING…" : "LATEST"}
+          <Card className="p-0 overflow-hidden">
+            {/* Card header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-low-risk animate-pulse" />
+                <h2 className="font-mono font-bold text-base tracking-widest uppercase text-text-primary">
+                  Recent Reports
+                </h2>
               </div>
+              <span className="text-[10px] text-text-variant font-mono tracking-widest uppercase px-2.5 py-1 border border-border rounded-full">
+                {isLoading ? "LOADING…" : "LIVE"}
+              </span>
             </div>
+
             <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="text-xs uppercase tracking-wider text-text-variant font-mono border-b border-border">
-                    <th className="py-3 pr-4">SUBJECT_ID</th>
-                    <th className="py-3 pr-4">PREDICTION_STATE</th>
-                    <th className="py-3 pr-4 text-center">CONFIDENCE</th>
-                    <th className="py-3 pr-4 text-center">PRIORITY</th>
-                    <th className="py-3 text-right">TIMESTAMP</th>
+                  <tr className="text-[10px] uppercase tracking-[0.12em] text-text-variant font-mono">
+                    <th className="px-6 py-3 font-semibold">Patient</th>
+                    <th className="px-4 py-3 font-semibold">Prediction</th>
+                    <th className="px-4 py-3 font-semibold text-center">Confidence</th>
+                    <th className="px-4 py-3 font-semibold text-center">Priority</th>
+                    <th className="px-6 py-3 font-semibold text-right">Time</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 font-mono text-sm">
-                  {recent.map((r) => (
-                    <tr key={r.id} className="hover:bg-white/5 transition-colors group cursor-pointer text-text-variant hover:text-text-primary">
-                      <td className="py-4 pr-4 font-bold tracking-widest group-hover:glow-text-primary transition-all">
-                        {patientNameById.get(r.patient_id) ?? `SUB_${r.patient_id}`}
+                <tbody className="font-mono text-sm">
+                  {recent.map((r, idx) => (
+                    <tr
+                      key={r.id}
+                      className={`
+                        group cursor-pointer border-t border-border/40
+                        transition-all duration-150
+                        hover:bg-surface-container
+                        ${idx % 2 === 0 ? "" : "bg-surface/40 dark:bg-surface/20"}
+                      `}
+                    >
+                      <td className="px-6 py-3.5 font-semibold text-text-primary group-hover:text-primary-bright transition-colors">
+                        {patientNameById.get(r.patient_id) ?? `Patient #${r.patient_id}`}
                       </td>
-                      <td className="py-4 pr-4">{r.prediction}</td>
-                      <td className="py-4 pr-4 text-center text-primary-bright/80 font-bold">{formatPercent(r.confidence)}</td>
-                      <td className={`py-4 pr-4 text-center font-bold text-[10px] tracking-widest`}>
-                        <span className={`px-2 py-1 border rounded-non ${r.priority_score >= 4 ? 'border-error text-error shadow-[0_0_10px_rgba(255,0,0,0.3)]' : 'border-primary-bright text-primary-bright'}`}>LVL_{r.priority_score}</span>
+                      <td className="px-4 py-3.5 text-text-secondary">{r.prediction}</td>
+                      <td className="px-4 py-3.5 text-center">
+                        <span className="font-bold" style={{ color: "var(--primary)" }}>
+                          {formatPercent(r.confidence)}
+                        </span>
                       </td>
-                      <td className="py-4 text-right text-xs text-text-variant">
+                      <td className="px-4 py-3.5 text-center">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${
+                            r.priority_score >= 4
+                              ? "badge-high-risk"
+                              : r.priority_score === 3
+                              ? "badge-medium-risk"
+                              : "badge-low-risk"
+                          }`}
+                        >
+                          LVL {r.priority_score}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5 text-right text-[11px] text-text-variant">
                         {new Date(r.created_at).toLocaleString()}
                       </td>
                     </tr>
                   ))}
                   {!isLoading && recent.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-10 text-center text-text-variant tracking-widest uppercase text-xs">
-                        {">"} TERMINAL_EMPTY // NO_LOGS_FOUND 
+                      <td colSpan={5} className="px-6 py-12 text-center text-text-variant tracking-widest uppercase text-xs">
+                        No reports found.
                       </td>
                     </tr>
                   )}
@@ -590,6 +671,7 @@ export default function Dashboard() {
           </Card>
         </FadeInReveal>
       </div>
+
     </main>
   );
 }

@@ -4,61 +4,95 @@
   :root {
     color-scheme: light;
     
-    /* Semantic Colors - Light Mode */
-    --background: #f8fafc;
-    --background-secondary: #f1f5f9;
+    /* === LIGHT MODE SURFACES === */
+    --background: #f0f0f5;
+    --background-secondary: #e8e8f0;
     --surface: #ffffff;
-    --surface-bright: #ffffff;
-    --surface-container: #f1f5f9;
-    --surface-container-high: #e2e8f0;
-    
-    /* Text */
+    --surface-bright: #fafafe;
+    --surface-container: #f4f4fa;
+    --surface-container-high: #ebebf5;
+
+    /* === TEXT === */
     --text-primary: #0f172a;
-    --text-secondary: #475569;
+    --text-secondary: #334155;
     --text-variant: #64748b;
     --text-on-primary: #ffffff;
     --text-on-secondary: #ffffff;
-    
-    /* Accents (using the neon purple/teal but adjusted for light mode if needed) */
-    --primary: #9333ea;
-    --primary-bright: #a855f7;
+
+    /* === BRAND ACCENTS === */
+    --primary: #7c3aed;
+    --primary-bright: #8b5cf6;
     --secondary: #0d9488;
     --secondary-bright: #14b8a6;
-    
-    --border: rgba(15, 23, 42, 0.1);
+
+    --border: rgba(15, 23, 42, 0.09);
     --outline: #cbd5e1;
-    --error: #ef4444;
-    --glow: rgba(147, 51, 234, 0.2);
+    --error: #dc2626;
+    --glow: rgba(124, 58, 237, 0.18);
+
+    /* === SEMANTIC / MEANING-BASED COLORS (from frontend1.md) === */
+    --high-risk: #B26357;
+    --high-risk-bg: rgba(178, 99, 87, 0.10);
+    --high-risk-border: rgba(178, 99, 87, 0.30);
+
+    --medium-risk: #C4812A;
+    --medium-risk-bg: rgba(196, 129, 42, 0.10);
+    --medium-risk-border: rgba(196, 129, 42, 0.30);
+
+    --low-risk: #4A8C6F;
+    --low-risk-bg: rgba(74, 140, 111, 0.10);
+    --low-risk-border: rgba(74, 140, 111, 0.30);
+
+    --records: #A9AFD1;
+    --records-bg: rgba(169, 175, 209, 0.12);
+    --records-border: rgba(169, 175, 209, 0.30);
   }
 
   .dark {
     color-scheme: dark;
 
-    /* Semantic Colors - Dark Mode (Default) */
-    --background: #050505;
-    --background-secondary: #0a0a0f;
-    --surface: rgba(5, 5, 5, 0.6);
-    --surface-bright: #12121a;
-    --surface-container: #110b1a;
-    --surface-container-high: #1a1228;
-    
-    /* Text */
-    --text-primary: #e2e8f0;
-    --text-secondary: #cbd5e1;
-    --text-variant: #94a3b8;
+    /* === DARK MODE SURFACES (deep purple-gray, no pure black) === */
+    --background: #0d0b14;
+    --background-secondary: #130f1f;
+    --surface: rgba(22, 17, 36, 0.80);
+    --surface-bright: #1e1730;
+    --surface-container: #18132a;
+    --surface-container-high: #221b38;
+
+    /* === TEXT === */
+    --text-primary: #e8e4f4;
+    --text-secondary: #c4bedd;
+    --text-variant: #8a82a8;
     --text-on-primary: #ffffff;
     --text-on-secondary: #ffffff;
-    
-    /* Accents */
-    --primary: #C87CFF; /* Bright glowing color */
-    --primary-bright: #C87CFF; 
-    --secondary: #183E31;
+
+    /* === BRAND ACCENTS === */
+    --primary: #C87CFF;
+    --primary-bright: #d09eff;
+    --secondary: #0f3028;
     --secondary-bright: #00FFC2;
-    
-    --border: rgba(255, 255, 255, 0.08); /* Fixed grid border contrast */
-    --outline: #334155;
-    --error: #ef4444;
-    --glow: rgba(200, 124, 255, 0.4);
+
+    --border: rgba(200, 124, 255, 0.08);
+    --outline: #2e2645;
+    --error: #f87171;
+    --glow: rgba(200, 124, 255, 0.25);
+
+    /* === SEMANTIC / MEANING-BASED COLORS (dark calibration) === */
+    --high-risk: #D4756A;
+    --high-risk-bg: rgba(212, 117, 106, 0.12);
+    --high-risk-border: rgba(212, 117, 106, 0.25);
+
+    --medium-risk: #E8A44A;
+    --medium-risk-bg: rgba(232, 164, 74, 0.12);
+    --medium-risk-border: rgba(232, 164, 74, 0.25);
+
+    --low-risk: #5DB88A;
+    --low-risk-bg: rgba(93, 184, 138, 0.12);
+    --low-risk-border: rgba(93, 184, 138, 0.25);
+
+    --records: #A9AFD1;
+    --records-bg: rgba(169, 175, 209, 0.10);
+    --records-border: rgba(169, 175, 209, 0.22);
   }
 
   body {
@@ -74,27 +108,59 @@
     font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
   }
 
+  /* Elevated glass surface */
   .glass-panel {
     background: var(--surface);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--border);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
   }
 
+  .dark .glass-panel {
+    box-shadow: 0 4px 30px rgba(0,0,0,0.35), 0 1px 6px rgba(0,0,0,0.2);
+  }
+
+  /* Typography glow effects */
   .glow-text-primary {
-    text-shadow: 0 0 10px var(--glow), 0 0 20px rgba(147, 51, 234, 0.3);
+    text-shadow: 0 0 12px var(--glow), 0 0 24px rgba(200, 124, 255, 0.2);
   }
 
   .glow-text-teal {
-    text-shadow: 0 0 10px rgba(20, 184, 166, 0.6), 0 0 20px rgba(20, 184, 166, 0.3);
+    text-shadow: 0 0 12px rgba(0, 255, 194, 0.4), 0 0 24px rgba(0, 255, 194, 0.2);
   }
 
   .glow-box-primary {
-    box-shadow: 0 0 20px var(--glow), 0 0 40px rgba(147, 51, 234, 0.05);
+    box-shadow: 0 0 20px var(--glow), 0 0 40px rgba(200, 124, 255, 0.06);
   }
 
   .pulse-glow {
-    box-shadow: 0 0 20px var(--glow);
+    box-shadow: 0 0 16px var(--glow);
+  }
+
+  /* Semantic badge utilities */
+  .badge-high-risk {
+    background: var(--high-risk-bg);
+    color: var(--high-risk);
+    border: 1px solid var(--high-risk-border);
+  }
+
+  .badge-medium-risk {
+    background: var(--medium-risk-bg);
+    color: var(--medium-risk);
+    border: 1px solid var(--medium-risk-border);
+  }
+
+  .badge-low-risk {
+    background: var(--low-risk-bg);
+    color: var(--low-risk);
+    border: 1px solid var(--low-risk-border);
+  }
+
+  .badge-records {
+    background: var(--records-bg);
+    color: var(--records);
+    border: 1px solid var(--records-border);
   }
 }
 
@@ -103,7 +169,7 @@
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
-/* ── Base ── */
+/* ── Body base ── */
 body {
   background-color: var(--background);
   color: var(--text-primary);
@@ -112,24 +178,17 @@ body {
   cursor: none;
 }
 
-:root {
-  color-scheme: light;
-}
-
-.dark {
-  color-scheme: dark;
-}
-
-/* Custom cursor hide */
+/* ── Custom cursor hide ── */
 a, button, input, textarea, select, [role="button"] {
   cursor: none;
 }
 
+/* ── Text selection ── */
 ::selection {
   background: var(--glow);
 }
 
-/* ── Disable animations/transitions globally ── */
+/* ── Disable animations globally ── */
 body.animations-off {
   cursor: auto !important;
 }
@@ -151,17 +210,12 @@ body.animations-off [role="button"] {
   scroll-behavior: auto !important;
 }
 
-/* ── SVG chart colors for new theme ── */
-svg .text-on-surface-variant {
-  color: var(--text-variant);
-}
-
 /* ── Material Symbols ── */
 .material-symbols-outlined {
   font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
 }
 
-/* ── Mechanical Eye (updated for new colors) ── */
+/* ── Eye container ── */
 .eye-container {
   position: relative;
   width: 320px;
@@ -203,24 +257,19 @@ svg .text-on-surface-variant {
 }
 
 /* ── No Scrollbar ── */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* ── Edge vignette glow like template ── */
+/* ── Ambient vignette (subtle purple edges) ── */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
   background: radial-gradient(
     ellipse at 50% 0%,
-    transparent 60%,
-    rgba(46, 24, 61, 0.3) 100%
+    transparent 55%,
+    rgba(46, 24, 61, 0.25) 100%
   );
 }

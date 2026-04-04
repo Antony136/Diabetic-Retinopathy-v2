@@ -25,17 +25,21 @@ function Toggle(props: ToggleProps) {
   return (
     <button
       type="button"
-      onClick={() => onChange(!value)}
-      className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${
-        value ? "bg-[#321c43] border border-[#522f6d] shadow-[0_0_10px_rgba(200,124,255,0.3)]" : "bg-surface-container-high border border-border"
-      }`}
+      role="switch"
+      aria-checked={value}
       aria-label={label}
-      aria-pressed={value}
+      onClick={() => onChange(!value)}
+      className="relative flex items-center w-11 h-6 rounded-full flex-shrink-0 transition-all duration-200 outline-none p-[2px] focus-visible:ring-2 focus-visible:ring-primary/50"
+      style={{
+        background: value ? "linear-gradient(135deg, var(--primary), var(--primary-bright))" : "var(--surface-container-high)",
+        boxShadow: value ? "0 0 10px rgba(200,124,255,0.4)" : "inset 0 1px 3px rgba(0,0,0,0.1)",
+      }}
     >
-      <div
-        className={`absolute top-1 w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${
-          value ? "bg-[#050505] translate-x-6" : "bg-text-secondary translate-x-1"
-        }`}
+      <span
+        className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200 ease-out ${value ? "translate-x-5" : "translate-x-0"}`}
+        style={{
+          background: value ? "#ffffff" : "var(--text-variant)",
+        }}
       />
     </button>
   );
@@ -452,12 +456,12 @@ export default function Settings() {
 
       <div className="space-y-8">
         {/* B. System Preferences */}
-        <Card className="p-8">
-          <h3 className="text-xl font-headline font-bold mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">display_settings</span>
-            System Preferences
-          </h3>
-          <div className="space-y-6">
+        <Card className="p-0 overflow-hidden border-0 shadow-lg">
+          <div className="px-8 py-5 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #4f46e5, #2563eb)' }}>
+            <span className="material-symbols-outlined text-white text-[24px]">display_settings</span>
+            <h3 className="text-xl font-bold text-white tracking-wide">System Preferences</h3>
+          </div>
+          <div className="p-8 space-y-6 bg-surface">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-bold text-on-surface">Dark Mode</p>
@@ -503,12 +507,12 @@ export default function Settings() {
         </Card>
 
         {/* C. Notifications Settings */}
-        <Card className="p-8">
-          <h3 className="text-xl font-headline font-bold mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">notifications</span>
-            Notification Preferences
-          </h3>
-          <div className="space-y-6">
+        <Card className="p-0 overflow-hidden border-0 shadow-lg">
+          <div className="px-8 py-5 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #0d9488, #0f766e)' }}>
+            <span className="material-symbols-outlined text-white text-[24px]">notifications</span>
+            <h3 className="text-xl font-bold text-white tracking-wide">Notification Preferences</h3>
+          </div>
+          <div className="p-8 space-y-6 bg-surface">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-bold text-on-surface">High-risk alerts</p>
@@ -565,12 +569,12 @@ export default function Settings() {
         </Card>
 
         {/* D. Report & Export */}
-        <Card className="p-8">
-          <h3 className="text-xl font-headline font-bold mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">print</span>
-            Report &amp; Export
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Card className="p-0 overflow-hidden border-0 shadow-lg">
+          <div className="px-8 py-5 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)' }}>
+            <span className="material-symbols-outlined text-white text-[24px]">print</span>
+            <h3 className="text-xl font-bold text-white tracking-wide">Report &amp; Export</h3>
+          </div>
+          <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 bg-surface">
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">PDF Paper Size</label>
               <select

@@ -620,8 +620,8 @@ export default function AdminDashboard() {
       </div>
 
       {error && (
-        <Card className="p-5 mb-8 border border-red-400/25 bg-red-500/10">
-          <div className="text-red-400 font-semibold">{error}</div>
+        <Card className="p-5 mb-8 border border-high-risk/20 bg-high-risk/10">
+          <div className="text-high-risk font-semibold">{error}</div>
           <div className="text-text-variant text-sm mt-1">Verify backend is running and you are an admin.</div>
         </Card>
       )}
@@ -693,7 +693,7 @@ export default function AdminDashboard() {
             <Card className="p-6 col-span-2 lg:col-span-1 border border-border bg-surface/80">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-xs uppercase tracking-widest text-text-variant font-bold">System Health</div>
-                <span className={`text-xs font-bold ${health?.ok ? "text-primary-bright" : "text-red-400"}`}>
+                <span className={`text-xs font-bold ${health?.ok ? "text-primary-bright" : "text-high-risk"}`}>
                   {health?.ok ? "✅ Healthy" : "⚠️ Degraded"}
                 </span>
               </div>
@@ -713,10 +713,10 @@ export default function AdminDashboard() {
           </div>
 
           <div className="lg:col-span-8 space-y-6">
-            <Card className="p-5 border border-red-400/20 bg-red-500/5">
+            <Card className="p-5 border border-high-risk/20 bg-high-risk/10">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-red-400 text-2xl">warning</span>
+                  <span className="material-symbols-outlined text-high-risk text-2xl">warning</span>
                   <div>
                     <div className="font-mono font-extrabold text-lg text-text-primary">
                       🚨 {stats.pendingCritical} critical cases need immediate attention
@@ -745,7 +745,7 @@ export default function AdminDashboard() {
                 <div className="font-mono font-bold text-xl">Reports (14 days)</div>
                 <div className="text-xs text-text-variant">
                   {reportsLast14Days.reduce((a, b) => a + b, 0)} total ·{" "}
-                  <span className={reportsWeekDelta.pct >= 0 ? "text-primary-bright" : "text-red-400"}>
+                  <span className={reportsWeekDelta.pct >= 0 ? "text-primary-bright" : "text-high-risk"}>
                     {reportsWeekDelta.pct >= 0 ? "↑" : "↓"} {Math.abs(reportsWeekDelta.pct).toFixed(0)}% vs last week
                   </span>
                 </div>
@@ -806,7 +806,7 @@ export default function AdminDashboard() {
                         <td className="py-4 pr-4 text-center">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-bold border ${
-                              d.is_active ? "border-primary-bright/50 text-primary-bright" : "border-red-400/30 text-red-400"
+                              d.is_active ? "border-primary-bright/50 text-primary-bright" : "border-high-risk/30 text-high-risk"
                             }`}
                           >
                             {d.is_active ? "Active" : "Inactive"}
@@ -829,7 +829,7 @@ export default function AdminDashboard() {
                 xLabel="DR stage (0–4)"
                 yLabel="Reports (count)"
                 yUnit="Reports"
-                colors={["#22c55e", "#a3e635", "#fbbf24", "#f97316", "#ef4444"]}
+                colors={["#10B981", "#059669", "#D97706", "#B26357", "#991b1b"]}
               />
             </Card>
             <Card className="p-6">
@@ -967,7 +967,7 @@ export default function AdminDashboard() {
                             onClick={() => onToggleDoctorActive(d.id, d.is_active === false)}
                             className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
                               d.is_active === false
-                                ? "border-red-400/30 text-red-400 hover:bg-error/10"
+                                ? "border-high-risk/30 text-high-risk hover:bg-high-risk/10"
                                 : "border-primary-bright/50 text-primary-bright hover:bg-primary/10"
                             }`}
                             title="Toggle active status"
@@ -1555,7 +1555,7 @@ export default function AdminDashboard() {
                   className="block w-full px-4 py-3 bg-surface/80 border border-border rounded-xl text-text-primary outline-none focus:ring-1 focus:ring-primary/40"
                   placeholder="Temporary password"
                 />
-                {createError && <div className="rounded-xl bg-red-500/10 text-red-400 px-4 py-3 text-sm">{createError}</div>}
+                {createError && <div className="rounded-xl bg-high-risk/10 text-high-risk px-4 py-3 text-sm">{createError}</div>}
               </div>
 
               <div className="mt-6 flex flex-col-reverse md:flex-row gap-3 md:justify-end">

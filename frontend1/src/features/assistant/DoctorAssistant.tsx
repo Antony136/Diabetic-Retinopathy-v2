@@ -82,16 +82,24 @@ export default function DoctorAssistant() {
 
   return (
     <div className="px-6 pt-24 pb-24 max-w-5xl mx-auto">
-      <div className="flex items-start justify-between gap-4 mb-6">
+      <div className="mb-10 flex items-start gap-4">
+        <div className="p-3 rounded-2xl" style={{ background: 'linear-gradient(135deg, #0d9488, #0f766e)', boxShadow: '0 8px 20px #0d948855' }}>
+          <span className="material-symbols-outlined text-[32px] text-white">magic_button</span>
+        </div>
         <div>
-          <h1 className="text-2xl font-bold text-on-surface">Doctor Assistant</h1>
-          <p className="text-on-surface-variant mt-1">
-            Ask patient-specific questions, summarize today’s reports, or get general DR guidance.
+          <h1 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">Doctor Assistant</h1>
+          <p className="text-on-surface-variant text-lg tracking-wide mt-1">
+            Ask patient-specific questions, summarize reports, or get general AI diagnostics guidance.
           </p>
         </div>
       </div>
 
-      <Card className="p-5">
+      <Card className="p-0 overflow-hidden shadow-xl border-y border-x border-border">
+        <div className="px-8 py-5 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #0d9488, #0f766e)' }}>
+          <span className="material-symbols-outlined text-white text-[24px]">forum</span>
+          <h3 className="text-xl font-bold text-white tracking-wide">Assistant Interface</h3>
+        </div>
+        <div className="p-8 bg-surface">
         <div className="flex flex-wrap gap-2 mb-4">
           <button
             type="button"
@@ -318,6 +326,7 @@ export default function DoctorAssistant() {
             )}
           </div>
         </form>
+        </div>
       </Card>
 
       {errorMsg && (
@@ -327,51 +336,64 @@ export default function DoctorAssistant() {
       )}
 
       {result && (
-        <Card className="mt-6 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+        <Card className="mt-8 p-0 overflow-hidden border-0 shadow-lg">
+           <div className="px-8 py-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #4f46e5, #2563eb)' }}>
+            <div className="flex items-center gap-3 text-white">
+              <span className="material-symbols-outlined text-white text-[22px]">auto_awesome</span>
+              <h3 className="text-lg font-bold tracking-wide">AI Analysis</h3>
+            </div>
+            {result.provider_used && (
+              <div className="text-xs bg-white/20 px-2 py-1 rounded font-mono font-bold text-white tracking-widest uppercase shadow-inner">
+                {result.provider_used}
+              </div>
+            )}
+          </div>
+          <div className="p-8 bg-surface">
+            <div className="flex flex-wrap items-center gap-3 mb-6">
               {result.priority && (
-                <span
-                  className={`px-2.5 py-1 rounded-full text-xs font-semibold ${priorityClasses(
-                    result.priority
-                  )}`}
-                >
+                <span className={`px-3 py-1.5 rounded-lg text-[11px] uppercase tracking-widest font-mono font-bold shadow-sm ${priorityClasses(result.priority)}`}>
                   Priority: {result.priority}
                 </span>
               )}
               {result.worsening_detected && (
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-fuchsia-500/15 text-fuchsia-200 border border-fuchsia-500/30">
+                <span className="px-3 py-1.5 rounded-lg text-[11px] uppercase tracking-widest font-mono font-bold bg-[#B26357] text-white shadow-sm shadow-[#B26357]/30">
                   Worsening detected
                 </span>
               )}
               {result.status === "error" && (
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-surface-container-high text-on-surface border border-outline/30">
+                <span className="px-3 py-1.5 rounded-lg text-[11px] uppercase tracking-widest font-mono font-bold bg-surface-container-high text-on-surface border border-outline/30">
                   Fallback: {result.fallback || "rule-based"}
                 </span>
               )}
             </div>
-            {result.provider_used && (
-              <div className="text-xs text-on-surface-variant">Provider: {result.provider_used}</div>
+
+            {result.summary && (
+              <p className="text-sm border border-border bg-surface-container/40 p-4 rounded-xl text-on-surface leading-relaxed mb-6">
+                {result.summary}
+              </p>
             )}
+
+            {result.priority_reason && (
+              <p className="mb-3 text-sm text-on-surface-variant flex gap-2">
+                <span className="font-bold font-mono text-[11px] uppercase tracking-widest px-2 py-0.5 rounded bg-surface-container border border-border shrink-0 mt-0.5 max-h-5 flex items-center">Reason</span> 
+                {result.priority_reason}
+              </p>
+            )}
+
+            {result.message && (
+              <p className="mb-4 text-sm text-on-surface-variant flex gap-2">
+                <span className="font-bold font-mono text-[11px] uppercase tracking-widest px-2 py-0.5 rounded bg-surface-container border border-border shrink-0 mt-0.5 max-h-5 flex items-center">System msg</span>
+                {result.message}
+              </p>
+            )}
+
+            <div className="mt-6 pt-6 border-t border-border">
+              <div className="text-xs font-mono font-bold uppercase tracking-widest text-text-variant mb-3">Response</div>
+              <pre className="whitespace-pre-wrap text-[15px] font-body leading-[1.8] text-on-surface">
+                {result.answer || "(no answer)"}
+              </pre>
+            </div>
           </div>
-
-          {result.summary && <p className="mt-4 text-on-surface-variant">{result.summary}</p>}
-
-          {result.priority_reason && (
-            <p className="mt-2 text-sm text-on-surface-variant">
-              <span className="font-semibold text-on-surface">Priority reason:</span> {result.priority_reason}
-            </p>
-          )}
-
-          {result.message && (
-            <p className="mt-3 text-sm text-on-surface-variant">
-              <span className="font-semibold text-on-surface">Backend:</span> {result.message}
-            </p>
-          )}
-
-          <pre className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-on-surface">
-            {result.answer || "(no answer)"}
-          </pre>
         </Card>
       )}
     </div>
