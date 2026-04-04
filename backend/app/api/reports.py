@@ -42,6 +42,70 @@ def _safe_suffix(filename: str | None) -> str | None:
     return None
 
 
+def _normalize_mode(mode: str | None) -> str:
+    m = (mode or "standard").strip().lower()
+    if m in ("standard", "high_sensitivity"):
+        return m
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Invalid mode. Use standard|high_sensitivity.",
+    )
+
+
+def _triage_from_grade(prediction: str, mode: str, confidence: float) -> dict:
+    """
+    Fallback triage for remote AI providers that don't return probabilities.
+    Keeps the API from 500'ing when the local checkpoint isn't available (e.g. Render).
+    """
+    grade = (prediction or "").strip()
+
+    # Map stage -> approximate risk score (0..1) for downstream UI.
+    score_map = {
+        "No DR": 0.05,
+        "Mild": 0.45,
+        "Moderate": 0.65,
+        "Severe": 0.85,
+        "Proliferative DR": 0.95,
+    }
+    risk_score = float(score_map.get(grade, 0.5))
+
+    # Safety override is stage-based (clinically conservative).
+    override_applied = grade in ("Severe", "Proliferative DR")
+
+    # Mode affects referral threshold for early stages.
+    if override_applied:
+        decision = "Refer"
+    else:
+        if mode == "high_sensitivity":
+            decision = "Refer" if grade in ("Mild", "Moderate", "Severe", "Proliferative DR") else "Normal"
+        else:
+            decision = "Refer" if grade in ("Moderate", "Severe", "Proliferative DR") else "Normal"
+
+    if risk_score <= 0.3:
+        risk_level = "Low"
+    elif risk_score <= 0.6:
+        risk_level = "Moderate"
+    else:
+        risk_level = "High"
+
+    if override_applied:
+        explanation = "Critical DR stage detected — immediate referral required."
+    elif decision == "Refer":
+        explanation = "Early signs detected — follow-up recommended."
+    else:
+        explanation = "Low risk — continue routine screening."
+
+    return {
+        "risk_score": round(risk_score, 4),
+        "risk_level": risk_level,
+        "decision": decision,
+        "mode": mode,
+        "explanation": explanation,
+        "override_applied": bool(override_applied),
+        "confidence": float(confidence),
+    }
+
+
 def _write_temp_image(image_bytes: bytes, suffix: str) -> str:
     tmp_dir = Path(tempfile.gettempdir())
     tmp_path = tmp_dir / f"dr_{uuid.uuid4().hex}{suffix}"
@@ -154,6 +218,8 @@ async def create_report(
     Create a new report with image upload and AI prediction.
     Now supports dual-mode adaptive screening (standard vs high_sensitivity).
     """
+    mode = _normalize_mode(mode)
+
     patient_query = db.query(Patient).filter(Patient.id == patient_id)
     if getattr(current_user, "role", "doctor") != "admin":
         patient_query = patient_query.filter(Patient.doctor_id == current_user.id)
@@ -193,24 +259,42 @@ async def create_report(
     local_image_path = _write_temp_image(image_bytes, suffix)
 
     try:
-        # Use the newly implemented dual-mode screening service
-        from app.services.dual_mode_service import run_inference, load_model, MODEL_PATH
-        model = load_model(MODEL_PATH)
-        result = run_inference(local_image_path, mode, model=model)
-        
-        prediction = result["grade"]
-        confidence = result["confidence"]
-        risk_score = result["risk_score"]
-        risk_level = result["risk_level"]
-        decision = result["decision"]
-        adaptive_explanation = result["explanation"]
-        override_applied = result["override_applied"]
-        
-        # We still need the heatmap from the old service if dual_mode_service doesn't provide it
-        # Actually, local_ai_service already produces a heatmap, but run_inference doesn't return it currently.
-        # Let's use the local_ai_service logic for heatmap specifically if needed.
-        from app.services.local_ai_service import predict as local_predict
-        _, _, heatmap_bytes, heatmap_content_type, heatmap_ext = local_predict(local_image_path)
+        provider = (os.getenv("AI_PROVIDER") or "").strip().lower()
+        use_local = provider in ("local", "offline", "desktop")
+
+        if use_local:
+            # Local (desktop/offline) dual-mode screening using bundled checkpoint.
+            from app.services.dual_mode_service import run_inference, load_model, MODEL_PATH
+
+            model = load_model(MODEL_PATH)
+            result = run_inference(local_image_path, mode, model=model)
+
+            prediction = result["grade"]
+            confidence = float(result["confidence"])
+            risk_score = result["risk_score"]
+            risk_level = result["risk_level"]
+            decision = result["decision"]
+            adaptive_explanation = result["explanation"]
+            override_applied = result["override_applied"]
+
+            # Heatmap (best-effort) via local Grad-CAM pipeline.
+            from app.services.local_ai_service import predict as local_predict
+
+            _lbl, _conf, heatmap_bytes, heatmap_content_type, heatmap_ext = local_predict(local_image_path)
+            source = "sync_local"
+        else:
+            # Online/cloud: default to Hugging Face (or other remote provider) to avoid missing-checkpoint 500s.
+            from app.services.ai_service import predict_dr_stage
+
+            prediction, confidence, heatmap_bytes, heatmap_content_type, heatmap_ext = predict_dr_stage(local_image_path)
+            confidence = float(confidence)
+            triage = _triage_from_grade(prediction, mode, confidence)
+            risk_score = triage["risk_score"]
+            risk_level = triage["risk_level"]
+            decision = triage["decision"]
+            adaptive_explanation = triage["explanation"]
+            override_applied = triage["override_applied"]
+            source = "sync_remote"
         
     except ValueError as ve:
         # Catch strict validation (heuristics/confidence filter) from dual_mode_service
@@ -283,7 +367,7 @@ async def create_report(
         heatmap_url=heatmap_url,
         prediction=prediction,
         confidence=confidence,
-        source="sync_local",
+        source=source,
         image_observations=image_observations_raw,
         image_explanation=image_explanation,
         # New Additions
