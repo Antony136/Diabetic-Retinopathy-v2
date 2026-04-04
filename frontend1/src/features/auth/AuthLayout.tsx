@@ -30,7 +30,7 @@ export default function AuthLayout(props: AuthLayoutProps) {
           </div>
           
           <h2 className="text-6xl xl:text-7xl font-bold tracking-tight mb-8">
-            Protecting Vision with <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-bright to-primary">Precision AI</span>
+            Protecting Vision with <span className="text-primary-bright">Precision AI</span>
           </h2>
           
           <div className="max-w-xl space-y-6 text-text-secondary text-lg leading-relaxed">

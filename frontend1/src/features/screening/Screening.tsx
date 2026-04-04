@@ -108,6 +108,36 @@ export default function Screening() {
 
   useEffect(() => {
     refreshPatients();
+    
+    // Add global paste listener for fundus images
+    const handlePaste = (e: ClipboardEvent) => {
+      // Don't paste if we're in an input/textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+        return;
+      }
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of Array.from(items)) {
+        if (item.type.includes("image")) {
+          // Strict Rejection: GIFs (often used for testing or animations) are forbidden.
+          if (item.type.includes("gif")) {
+            setAnalysisError("Invalid image. Please upload a retinal fundus image (JPG/PNG only).");
+            break;
+          }
+          const pastedFile = item.getAsFile();
+          if (pastedFile) {
+            onPickFile(pastedFile);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -148,6 +178,20 @@ export default function Screening() {
       setImagePreview(null);
       return;
     }
+
+    // Strict Validation: Only allow JPG/JPEG/PNG (No GIF)
+    const validExtensions = [".jpg", ".jpeg", ".png"];
+    const filename = picked.name.toLowerCase();
+    const hasValidExt = validExtensions.some((ext) => filename.endsWith(ext));
+    const hasValidMime = ["image/jpeg", "image/jpg", "image/png"].includes(picked.type);
+
+    if (!hasValidExt || !hasValidMime) {
+      setFile(null);
+      setImagePreview(null);
+      setAnalysisError("Invalid image. Please upload a retinal fundus image (JPG/PNG only).");
+      return;
+    }
+
     setFile(picked);
     const dataUrl = await readFileAsDataUrl(picked);
     setImagePreview(dataUrl);
@@ -512,7 +556,7 @@ export default function Screening() {
               <span className="material-symbols-outlined text-primary text-3xl">upload_file</span>
             </div>
             <h3 className="font-headline text-xl font-bold mb-2">Upload Retinal Image</h3>
-            <p className="text-on-surface-variant text-sm text-center max-w-xs mb-5">Drag & drop or browse. PNG/JPG supported.</p>
+            <p className="text-on-surface-variant text-sm text-center max-w-xs mb-5">Drag & drop, browse, or paste (Ctrl+V). PNG/JPG supported.</p>
             <button type="button" className="bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold px-6 py-2.5 rounded-lg transition-transform active:scale-95 shadow-lg shadow-primary/10 hover:scale-[1.02]">
               Browse Files
             </button>
@@ -588,7 +632,18 @@ export default function Screening() {
             </div>
             {analysisError && (
               <div className="px-6 pb-6 -mt-3">
-                <div className="rounded-xl bg-error-container/30 text-error px-4 py-3 text-sm">{analysisError}</div>
+                <div className={`rounded-xl px-4 py-3 text-sm flex items-center gap-3 border transition-all duration-500 ${
+                  analysisError.includes("retinal fundus image")
+                    ? "bg-primary/5 border-primary/20 text-text-primary animate-in fade-in slide-in-from-top-2"
+                    : "bg-error/5 border-error/20 text-error"
+                }`}>
+                  <span className={`material-symbols-outlined text-lg ${
+                    analysisError.includes("retinal fundus image") ? "text-primary" : "text-error"
+                  }`}>
+                    {analysisError.includes("retinal fundus image") ? "info_i" : "error"}
+                  </span>
+                  <span className="font-medium tracking-tight">{analysisError}</span>
+                </div>
               </div>
             )}
           </section>

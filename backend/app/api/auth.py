@@ -170,7 +170,11 @@ def clear_local_data(
     """Clear local patient/report/notification data for cross-user isolation."""
     if getattr(current_user, "role", "doctor") != "admin":
         # Remove stale data from other doctors before sign-in or sign-out transitions.
-        db.query(Report).join(Patient, Patient.id == Report.patient_id).filter(Patient.doctor_id != current_user.id).delete(synchronize_session=False)
+        other_doctor_report_ids = db.query(Report.id).join(Patient, Patient.id == Report.patient_id).filter(Patient.doctor_id != current_user.id).all()
+        report_ids = [r.id for r in other_doctor_report_ids]
+        if report_ids:
+            db.query(Report).filter(Report.id.in_(report_ids)).delete(synchronize_session=False)
+
         db.query(Notification).filter(Notification.user_id != current_user.id).delete(synchronize_session=False)
         db.query(Patient).filter(Patient.doctor_id != current_user.id).delete(synchronize_session=False)
         db.query(UserPreference).filter(UserPreference.user_id != current_user.id).delete(synchronize_session=False)

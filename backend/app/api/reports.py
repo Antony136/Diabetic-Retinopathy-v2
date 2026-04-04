@@ -31,14 +31,15 @@ def get_db():
         db.close()
 
 
-def _safe_suffix(filename: str | None) -> str:
+def _safe_suffix(filename: str | None) -> str | None:
     try:
         suffix = Path(filename or "").suffix
     except Exception:
         suffix = ""
+    # Reject GIF and other non-supported formats
     if suffix.lower() in [".jpg", ".jpeg", ".png"]:
         return suffix.lower()
-    return ".png"
+    return None
 
 
 def _write_temp_image(image_bytes: bytes, suffix: str) -> str:
@@ -180,6 +181,13 @@ async def create_report(
         )
 
     suffix = _safe_suffix(getattr(file, "filename", None))
+    # Strict extension check before creating temp file
+    if suffix is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid image. Please upload a retinal fundus image (JPG/PNG only).",
+        )
+
     original_filename = _clean_filename(getattr(file, "filename", None), suffix)
     report_filename = _unique_report_filename(db, patient_id, original_filename)
     local_image_path = _write_temp_image(image_bytes, suffix)
@@ -204,6 +212,11 @@ async def create_report(
         from app.services.local_ai_service import predict as local_predict
         _, _, heatmap_bytes, heatmap_content_type, heatmap_ext = local_predict(local_image_path)
         
+    except ValueError as ve:
+        # Catch strict validation (heuristics/confidence filter) from dual_mode_service
+        if os.path.exists(local_image_path):
+            os.remove(local_image_path)
+        raise HTTPException(status_code=400, detail="Invalid image. Please upload a retinal fundus image (JPG/PNG only).")
     except Exception as e:
         try:
             import traceback
