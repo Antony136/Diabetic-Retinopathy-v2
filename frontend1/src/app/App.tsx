@@ -10,6 +10,7 @@ import CustomCursor from "../components/ui/CustomCursor";
 import ParticleBackground from "../components/ui/ParticleBackground";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { AnimationProvider, useAnimation } from "../contexts/AnimationContext";
+import { ScreeningModeProvider } from "../contexts/ScreeningModeContext";
 
 function AppChrome() {
   const location = useLocation();
@@ -69,7 +70,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <AnimationProvider>
-        <RootWithConfig />
+        <ScreeningModeProvider>
+          <RootWithConfig />
+        </ScreeningModeProvider>
       </AnimationProvider>
     </ThemeProvider>
   );

@@ -6,6 +6,7 @@ import { getMe, type UserResponse } from "../../services/auth";
 import { listPatients, type PatientResponse } from "../../services/patients";
 import { listReports, type ReportResponse } from "../../services/reports";
 import { severityFromStage } from "../screening/mockAnalysis";
+import { useScreeningMode } from "../../contexts/ScreeningModeContext";
 
 type ReportWithPriority = ReportResponse & { priority_score: 1 | 2 | 3 | 4 | 5 };
 
@@ -320,6 +321,7 @@ export default function Dashboard() {
   const [reports, setReports] = useState<ReportWithPriority[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { adaptiveMode, setAdaptiveMode } = useScreeningMode();
 
   const load = useCallback(async () => {
     setError(null);
@@ -417,7 +419,7 @@ export default function Dashboard() {
   return (
     <main className="min-h-screen pt-24 pb-32 px-6 md:px-12 max-w-7xl mx-auto relative z-10">
       <FadeInReveal delay={0}>
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10 border-b border-white/5 pb-8">
           <div>
             <h1 className="text-4xl font-mono font-extrabold text-text-primary tracking-[0.2em] uppercase glow-text-primary">
               {user ? `[USER_ID: ${user.name}]` : "DASHBOARD"}
@@ -426,10 +428,31 @@ export default function Dashboard() {
               {'// System Status: NORMAL_OPERATION'}
             </div>
           </div>
-          <div className="flex gap-3">
-            <Button variant="secondary" icon="refresh" onClick={load} disabled={isLoading}>
-              SYNC_DATA
-            </Button>
+
+          <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
+            <div className="flex flex-col pr-4 border-r border-white/10">
+              <span className="text-[10px] text-text-variant font-mono uppercase tracking-widest mb-1">Adaptive Screening Mode</span>
+              <span className="text-xs text-text-primary font-mono font-bold">{adaptiveMode === 'high_sensitivity' ? 'SENSITIVITY_PRIORITY' : 'EFFICIENCY_TRIAGE'}</span>
+            </div>
+            <div className="flex bg-black/40 p-1 rounded-xl gap-1">
+              <button 
+                onClick={() => setAdaptiveMode('standard')}
+                className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold transition-all tracking-widest ${adaptiveMode === 'standard' ? 'bg-primary-bright text-black shadow-[0_0_15px_rgba(200,124,255,0.4)]' : 'text-text-variant hover:text-text-primary'}`}
+              >
+                STANDARD
+              </button>
+              <button 
+                onClick={() => setAdaptiveMode('high_sensitivity')}
+                className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold transition-all tracking-widest ${adaptiveMode === 'high_sensitivity' ? 'bg-secondary-bright text-black shadow-[0_0_15px_rgba(255,100,200,0.4)]' : 'text-text-variant hover:text-text-primary'}`}
+              >
+                HIGH_SENSITIVITY
+              </button>
+            </div>
+            <div className="flex gap-3 ml-2">
+              <Button variant="secondary" icon="refresh" onClick={load} disabled={isLoading}>
+                SYNC
+              </Button>
+            </div>
           </div>
         </div>
       </FadeInReveal>
