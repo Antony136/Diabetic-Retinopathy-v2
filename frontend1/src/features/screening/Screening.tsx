@@ -97,6 +97,32 @@ export default function Screening() {
 
   useEffect(() => {
     refreshPatients();
+    
+    // Add global paste listener for fundus images
+    const handlePaste = (e: ClipboardEvent) => {
+      // Don't paste if we're in an input/textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+        return;
+      }
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of Array.from(items)) {
+        if (item.type.includes("image")) {
+          const pastedFile = item.getAsFile();
+          if (pastedFile) {
+            onPickFile(pastedFile);
+            // Show a subtle toast or visual feedback in a real app, but here we just update state
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -473,7 +499,7 @@ export default function Screening() {
               <span className="material-symbols-outlined text-primary text-3xl">upload_file</span>
             </div>
             <h3 className="font-headline text-xl font-bold mb-2">Upload Retinal Image</h3>
-            <p className="text-on-surface-variant text-sm text-center max-w-xs mb-5">Drag & drop or browse. PNG/JPG supported.</p>
+            <p className="text-on-surface-variant text-sm text-center max-w-xs mb-5">Drag & drop, browse, or paste (Ctrl+V). PNG/JPG supported.</p>
             <button type="button" className="bg-gradient-to-r from-primary to-primary-container text-on-primary-container font-bold px-6 py-2.5 rounded-lg transition-transform active:scale-95 shadow-lg shadow-primary/10 hover:scale-[1.02]">
               Browse Files
             </button>
