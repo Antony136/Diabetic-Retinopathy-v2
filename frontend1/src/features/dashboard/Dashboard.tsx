@@ -29,20 +29,20 @@ function SvgBars(props: { labels: string[]; values: number[]; yUnit?: string }) 
   const { labels, values, yUnit } = props;
   const width = 600;
   const height = 200;
-  const axisLeft = 46;
+  const axisLeft = 40;
   const axisBottom = 38;
   const paddingRight = 14;
-  const paddingTop = 14;
+  const paddingTop = 30;
   const plotW = width - axisLeft - paddingRight;
   const plotH = height - paddingTop - axisBottom;
 
   const max = Math.max(1, ...values);
-  const barW = plotW / values.length;
+  const barW = plotW / Math.max(1, values.length);
 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="w-full h-72 text-text-variant"
+      className="w-full h-[180px] text-text-variant"
     >
       <defs>
         <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
@@ -51,44 +51,37 @@ function SvgBars(props: { labels: string[]; values: number[]; yUnit?: string }) 
         </linearGradient>
       </defs>
 
-      {/* grid + y ticks */}
+      {/* tick labels only, no grid lines */}
       {[0, 0.25, 0.5, 0.75, 1].map((t) => {
         const y = paddingTop + plotH * (1 - t);
         const v = Math.round(max * t);
+        if (v === 0 && t > 0) return null; // skip duplicate 0
         return (
-          <g key={t}>
-            <line
-              x1={axisLeft}
-              x2={width - paddingRight}
-              y1={y}
-              y2={y}
-              stroke="currentColor"
-              strokeOpacity="0.16"
-              strokeWidth="1"
-            />
-            <text
-              x={axisLeft - 10}
-              y={y + 4}
-              textAnchor="end"
-              fontSize="16"
-              fill="currentColor"
-              fillOpacity="0.8"
-            >
-              {v}
-            </text>
-          </g>
+          <text
+            key={t}
+            x={axisLeft - 10}
+            y={y + 4}
+            textAnchor="end"
+            fontSize="14"
+            fontWeight="bold"
+            fill="currentColor"
+            fillOpacity="0.6"
+            className="font-mono"
+          >
+            {v}
+          </text>
         );
       })}
 
-      {/* axes */}
+      {/* clean axes */}
       <line
         x1={axisLeft}
         x2={axisLeft}
         y1={paddingTop}
         y2={paddingTop + plotH}
         stroke="currentColor"
-        strokeOpacity="0.35"
-        strokeWidth="1"
+        strokeOpacity="0.1"
+        strokeWidth="2"
       />
       <line
         x1={axisLeft}
@@ -96,8 +89,8 @@ function SvgBars(props: { labels: string[]; values: number[]; yUnit?: string }) 
         y1={paddingTop + plotH}
         y2={paddingTop + plotH}
         stroke="currentColor"
-        strokeOpacity="0.35"
-        strokeWidth="1"
+        strokeOpacity="0.1"
+        strokeWidth="2"
       />
 
       {values.map((v, i) => {
@@ -160,10 +153,10 @@ function SvgBars(props: { labels: string[]; values: number[]; yUnit?: string }) 
 function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string; xEndLabel?: string }) {
   const width = 620;
   const height = 200;
-  const axisLeft = 46;
+  const axisLeft = 40;
   const axisBottom = 38;
-  const paddingRight = 14;
-  const paddingTop = 14;
+  const paddingRight = 20;
+  const paddingTop = 30;
   const plotW = width - axisLeft - paddingRight;
   const plotH = height - paddingTop - axisBottom;
 
@@ -183,7 +176,7 @@ function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="w-full h-72 text-text-variant"
+      className="w-full h-[240px] mt-4 text-text-variant"
     >
       <defs>
         <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
@@ -193,41 +186,37 @@ function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string
           <stop offset="100%" stopColor="var(--secondary-bright)" stopOpacity="0.2" />
         </linearGradient>
       </defs>
+      {/* Ticks instead of gridlines */}
       {[0, 0.25, 0.5, 0.75, 1].map((t) => {
         const y = paddingTop + plotH * (1 - t);
         const v = Math.round(max * t);
+        if (v === 0 && t > 0) return null;
         return (
-          <g key={t}>
-            <line
-              x1={axisLeft}
-              x2={width - paddingRight}
-              y1={y}
-              y2={y}
-              stroke="currentColor"
-              strokeOpacity="0.16"
-              strokeWidth="1"
-            />
-            <text
-              x={axisLeft - 10}
-              y={y + 4}
-              textAnchor="end"
-              fontSize="16"
-              fill="currentColor"
-              fillOpacity="0.8"
-            >
-              {v}
-            </text>
-          </g>
+          <text
+            key={t}
+            x={axisLeft - 10}
+            y={y + 4}
+            textAnchor="end"
+            fontSize="14"
+            fontWeight="bold"
+            fill="currentColor"
+            fillOpacity="0.6"
+            className="font-mono"
+          >
+            {v}
+          </text>
         );
       })}
+      
+      {/* minimal axes */}
       <line
         x1={axisLeft}
         x2={axisLeft}
         y1={paddingTop}
         y2={paddingTop + plotH}
         stroke="currentColor"
-        strokeOpacity="0.35"
-        strokeWidth="1"
+        strokeOpacity="0.1"
+        strokeWidth="2"
       />
       <line
         x1={axisLeft}
@@ -235,8 +224,8 @@ function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string
         y1={paddingTop + plotH}
         y2={paddingTop + plotH}
         stroke="currentColor"
-        strokeOpacity="0.35"
-        strokeWidth="1"
+        strokeOpacity="0.1"
+        strokeWidth="2"
       />
 
       <polyline
@@ -464,11 +453,8 @@ export default function Dashboard() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
           <div>
             <h1 className="text-4xl font-mono font-extrabold text-text-primary tracking-[0.2em] uppercase glow-text-primary">
-              {user ? `[USER_ID: ${user.name}]` : "DASHBOARD"}
+              {user ? `WELCOME, DR. ${user.name.split('@')[0].toUpperCase()}` : "DASHBOARD"}
             </h1>
-            <div className="text-primary-bright/70 font-mono text-sm mt-2 uppercase tracking-widest">
-              {'// System Status: NORMAL_OPERATION'}
-            </div>
           </div>
           <div className="flex gap-3">
             <Button variant="secondary" icon="refresh" onClick={load} disabled={isLoading}>
@@ -489,40 +475,34 @@ export default function Dashboard() {
         </FadeInReveal>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
-          {/* Indigo/Blue — Patients */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+        <div className="lg:col-span-3 flex flex-col gap-4">
           <StatCard label="Patients" value={formatCompact(stats.patientCount)} icon="group" index={1} gradientFrom="#4f46e5" gradientTo="#2563eb" />
-          {/* Purple — Total Reports */}
           <StatCard label="Total Reports" value={formatCompact(stats.reportCount)} icon="summarize" index={2} gradientFrom="#7c3aed" gradientTo="#5b21b6" />
-          {/* Teal — Reports Today */}
           <StatCard label="Reports Today" value={formatCompact(stats.todayCount)} icon="today" index={3} gradientFrom="#0d9488" gradientTo="#0f766e" />
-          {/* Crimson — High Priority (semantic: high-risk #B26357) */}
           <StatCard label="High Priority" value={formatCompact(stats.highPriority)} hint="(LVL 4–5)" icon="priority_high" index={4} gradientFrom="#B26357" gradientTo="#8b2e22" />
-          {/* Emerald — Avg Confidence (semantic: low-risk) */}
           <StatCard label="Avg Confidence" value={`${(stats.avgConfidence * 100).toFixed(1)}%`} icon="analytics" index={5} gradientFrom="#059669" gradientTo="#065f46" />
-          {/* Amber — Last Analysis (semantic: medium-risk) */}
           <StatCard label="Last Analysis" value={stats.lastReportAt ? stats.lastReportAt.toLocaleTimeString() : "—"} hint={stats.lastReportAt ? stats.lastReportAt.toLocaleDateString() : undefined} icon="schedule" index={6} gradientFrom="#C4812A" gradientTo="#92400e" />
         </div>
 
 
 
-        <FadeInReveal delay={0.5} className="lg:col-span-5 flex flex-col items-center justify-center">
-          <div className="w-full flex items-center justify-center py-6">
+        <FadeInReveal delay={0.5} className="lg:col-span-5 flex flex-col gap-6">
+          <div className="w-full flex items-center justify-center pt-2">
             <NexusEye size={450} />
           </div>
-          <Card className="w-full p-6 group">
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <div className="font-mono font-bold tracking-widest uppercase bg-gradient-to-r from-primary-bright to-secondary-bright text-transparent bg-clip-text group-hover:brightness-125 transition-all">REPORTS_TREND [14_DAYS]</div>
-              <div className="text-xs text-text-variant font-mono tracking-widest">
-                {isLoading ? "CALCULATING…" : `${reportsLast14Days.reduce((a, b) => a + b, 0)} TOTAL`}
+          <Card className="w-full p-6 group flex flex-col justify-between shadow-lg shadow-black/20 border-outline/10 backdrop-blur-sm bg-surface/80">
+            <div>
+              <div className="flex items-center justify-between mb-2 relative z-10">
+                <div className="font-mono flex items-center gap-2 font-bold tracking-widest uppercase bg-gradient-to-r from-primary-bright to-secondary-bright text-transparent bg-clip-text group-hover:brightness-125 transition-all text-sm">
+                   REPORTS_TREND <span className="px-2 py-0.5 rounded-md border border-primary/40 text-[10px] text-text-primary">14 DAYS</span>
+                </div>
+                <div className="text-xs text-text-variant font-mono tracking-widest">
+                  {isLoading ? "CALCULATING…" : `${reportsLast14Days.reduce((a, b) => a + b, 0)} TOTAL`}
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-between text-xs text-text-variant mb-3 font-mono tracking-widest relative z-10">
-              <span>X: DAYS</span>
-              <span>Y: COUNT</span>
-            </div>
-            <div className="relative z-10">
+            <div className="relative z-10 w-full mb-2">
               <SvgLine
                 values={reportsLast14Days}
                 yUnit="COUNT"
@@ -532,21 +512,22 @@ export default function Dashboard() {
             </div>
           </Card>
         </FadeInReveal>
-        <div className="lg:col-span-3 space-y-6">
-          <FadeInReveal delay={0.6}>
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="font-mono font-bold tracking-widest uppercase bg-gradient-to-r from-secondary-bright to-primary-bright text-transparent bg-clip-text">SEVERITY_DISTRIBUTION</div>
-                <div className="text-xs text-text-variant font-mono tracking-widest">{reports.length} REPORTS</div>
+
+        <div className="lg:col-span-4 flex flex-col gap-6">
+          <FadeInReveal delay={0.6} className="flex flex-col">
+            <Card className="p-6 flex flex-col shadow-lg shadow-black/20 border-outline/10 backdrop-blur-sm bg-surface/80 mt-12 md:mt-2">
+              <div className="flex items-center justify-between mb-4">
+                <div className="font-mono flex items-center gap-2 font-bold tracking-widest uppercase bg-gradient-to-r from-secondary-bright to-primary-bright text-transparent bg-clip-text text-sm">
+                   SEVERITY_DIST
+                </div>
+                <div className="text-[10px] font-bold px-2 py-0.5 rounded bg-surface border border-outline/30 text-text-variant font-mono tracking-widest uppercase">{reports.length} REPORTS</div>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-text-variant mb-3 font-mono tracking-widest">
-                <span>X: STAGE</span>
-                <span>Y: COUNT</span>
+              <div className="w-full pb-4">
+                <SvgBars labels={["0", "1", "2", "3", "4"]} values={severityDist.counts} yUnit="" />
               </div>
-              <SvgBars labels={["0", "1", "2", "3", "4"]} values={severityDist.counts} yUnit="COUNT" />
-              <div className="grid grid-cols-5 gap-2 mt-2 text-[10px] text-text-variant font-mono tracking-widest uppercase">
+              <div className="grid grid-cols-5 gap-2 mt-4 text-[10px] text-text-variant font-mono tracking-widest uppercase pb-2">
                 {["No DR", "Mild", "Mod", "Sev", "Prolif"].map((t) => (
-                  <div key={t} className="text-center">
+                  <div key={t} className="text-center font-bold">
                     {t}
                   </div>
                 ))}
@@ -554,17 +535,16 @@ export default function Dashboard() {
             </Card>
           </FadeInReveal>
 
-          <FadeInReveal delay={0.7}>
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="font-mono font-bold tracking-widest uppercase bg-gradient-to-r from-high-risk to-medium-risk text-transparent bg-clip-text">CONFIDENCE_BINS</div>
-                <div className="text-xs text-text-variant font-mono tracking-widest">(%)</div>
+          <FadeInReveal delay={0.7} className="flex flex-col">
+            <Card className="p-6 flex flex-col shadow-lg shadow-black/20 border-outline/10 backdrop-blur-sm bg-surface/80">
+              <div className="flex items-center justify-between mb-4">
+                <div className="font-mono flex items-center gap-2 font-bold tracking-widest uppercase bg-gradient-to-r from-high-risk to-medium-risk text-transparent bg-clip-text text-sm">
+                  CONFIDENCE_BINS
+                </div>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-text-variant mb-3 font-mono tracking-widest">
-                <span>X: PERCENT</span>
-                <span>Y: COUNT</span>
+              <div className="w-full pb-2">
+                <SvgBars labels={confidenceHistogram.labels} values={confidenceHistogram.counts} yUnit="" />
               </div>
-              <SvgBars labels={confidenceHistogram.labels} values={confidenceHistogram.counts} yUnit="COUNT" />
             </Card>
           </FadeInReveal>
         </div>
