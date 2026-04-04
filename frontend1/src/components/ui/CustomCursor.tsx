@@ -5,6 +5,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
  * Renders a fading polyline trail with a bright head dot.
  */
 
+import { useAnimation } from "../../contexts/AnimationContext";
+
 interface TrailPoint {
   x: number;
   y: number;
@@ -12,6 +14,7 @@ interface TrailPoint {
 }
 
 export default function CustomCursor() {
+  const { animationsEnabled } = useAnimation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const trailRef = useRef<TrailPoint[]>([]);
   const mouseRef = useRef({ x: -100, y: -100 });
@@ -135,11 +138,11 @@ export default function CustomCursor() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  return (
+  return animationsEnabled ? (
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-[9999]"
       style={{ width: "100vw", height: "100vh" }}
     />
-  );
+  ) : null;
 }

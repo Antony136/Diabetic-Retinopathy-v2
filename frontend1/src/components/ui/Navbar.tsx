@@ -95,11 +95,11 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[60] bg-black/40 backdrop-blur-md border-b border-white/5 font-mono">
+    <header className="fixed top-0 left-0 right-0 z-[60] bg-surface/80 backdrop-blur-md border-b border-border font-mono">
       <div className="flex justify-between items-center w-full px-8 py-4">
         {/* Logo - matching NEXUS template style */}
         <div
-          className="text-lg font-bold text-white tracking-[0.3em] cursor-pointer hover:text-[#C87CFF] transition-colors duration-300 uppercase"
+          className="text-lg font-bold text-text-primary tracking-[0.3em] cursor-pointer hover:text-primary-bright transition-colors duration-300 uppercase"
           onClick={() => navigate(role === "admin" ? "/admin/overview" : "/")}
         >
           {APP_NAME}
@@ -114,8 +114,8 @@ export default function Navbar() {
             </div>
           )}
           {hasLocalBackend && (
-            <div className="text-[10px] font-mono tracking-widest uppercase text-white/30">
-              SYNC: {syncStatus === "synced" ? <span className="text-[#5efdba]">OK</span> : syncStatus === "failed" ? <span className="text-red-400">FAIL</span> : <span className="text-white/50">{syncStatus.toUpperCase()}</span>}
+            <div className="text-[10px] font-mono tracking-widest uppercase text-text-secondary">
+              SYNC: {syncStatus === "synced" ? <span className="text-secondary-bright">OK</span> : syncStatus === "failed" ? <span className="text-error">FAIL</span> : <span className="text-text-variant">{syncStatus.toUpperCase()}</span>}
             </div>
           )}
           {backendStatus && !backendStatus.ready && (
@@ -146,7 +146,7 @@ export default function Navbar() {
                 localStorage.setItem("retina_use_cloud_backend", next ? "1" : "0");
               }}
               disabled={!online}
-              className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300 disabled:opacity-20"
+              className="text-text-secondary hover:text-primary-bright transition-colors duration-300 disabled:opacity-20"
               title={useCloudBackend ? "Using cloud backend" : "Using local backend"}
             >
               <span className="material-symbols-outlined text-lg">{useCloudBackend ? "cloud" : "cloud_off"}</span>
@@ -168,7 +168,7 @@ export default function Navbar() {
                 }
               }}
               disabled={syncBusy || !online}
-              className="text-white/30 hover:text-[#5efdba] transition-colors duration-300 disabled:opacity-20"
+              className="text-text-secondary hover:text-secondary-bright transition-colors duration-300 disabled:opacity-20"
               title={syncError ? `Sync error: ${syncError}` : "Sync"}
             >
               <span className="material-symbols-outlined text-lg">sync</span>
@@ -181,7 +181,7 @@ export default function Navbar() {
               try { await logoutUser(); } catch {}
               navigate("/login", { replace: true });
             }}
-            className="text-white/30 hover:text-red-400 transition-colors duration-300"
+            className="text-text-secondary hover:text-error transition-colors duration-300"
             title="Logout"
           >
             <span className="material-symbols-outlined text-lg">logout</span>
@@ -192,18 +192,18 @@ export default function Navbar() {
             <>
               <button
                 onClick={() => navigate("/notifications")}
-                className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300 relative"
+                className="text-text-secondary hover:text-primary-bright transition-colors duration-300 relative"
               >
                 <span className="material-symbols-outlined text-lg">notifications</span>
                 {unread > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-3 h-3 px-0.5 rounded-full bg-[#C87CFF] text-black text-[8px] leading-3 text-center font-bold">
+                  <span className="absolute -top-1 -right-1 min-w-3 h-3 px-0.5 rounded-full bg-primary-bright text-[#050505] text-[8px] leading-3 text-center font-bold">
                     {unread > 99 ? "99+" : unread}
                   </span>
                 )}
               </button>
               <button
                 onClick={() => navigate("/profile")}
-                className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300"
+                className="text-text-secondary hover:text-primary-bright transition-colors duration-300"
               >
                 <span className="material-symbols-outlined text-lg">account_circle</span>
               </button>
@@ -213,24 +213,24 @@ export default function Navbar() {
             <>
               <button
                 onClick={() => navigate("/admin/notifications")}
-                className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300 relative"
+                className="text-text-secondary hover:text-primary-bright transition-colors duration-300 relative"
               >
                 <span className="material-symbols-outlined text-lg">notifications</span>
                 {unread > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-3 h-3 px-0.5 rounded-full bg-[#C87CFF] text-black text-[8px] leading-3 text-center font-bold">
+                  <span className="absolute -top-1 -right-1 min-w-3 h-3 px-0.5 rounded-full bg-primary-bright text-[#050505] text-[8px] leading-3 text-center font-bold">
                     {unread > 99 ? "99+" : unread}
                   </span>
                 )}
               </button>
               <button
                 onClick={() => navigate("/admin/settings")}
-                className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300"
+                className="text-text-secondary hover:text-primary-bright transition-colors duration-300"
               >
                 <span className="material-symbols-outlined text-lg">settings</span>
               </button>
               <button
                 onClick={() => navigate("/admin/profile")}
-                className="text-white/30 hover:text-[#C87CFF] transition-colors duration-300"
+                className="text-text-secondary hover:text-primary-bright transition-colors duration-300"
               >
                 <span className="material-symbols-outlined text-lg">account_circle</span>
               </button>

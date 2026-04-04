@@ -490,9 +490,9 @@ export default function Screening() {
                   />
                   {isAnalyzing && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10">
+                      <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-surface/80 backdrop-blur-md border border-border">
                         <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                        <span className="text-sm font-bold text-white">Analyzing…</span>
+                        <span className="text-sm font-bold text-text-primary">Analyzing…</span>
                       </div>
                     </div>
                   )}

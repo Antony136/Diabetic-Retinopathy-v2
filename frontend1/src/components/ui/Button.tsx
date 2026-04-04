@@ -10,11 +10,11 @@ interface ButtonProps extends Omit<HTMLMotionProps<"button">, "onAnimationStart"
 
 const variantClasses: Record<string, string> = {
   primary:
-    "bg-[#C87CFF] text-black font-bold uppercase tracking-widest hover:shadow-[0_0_25px_rgba(200,124,255,0.7)] border border-[#C87CFF] hover:bg-[#d99aff]",
+    "bg-[#321c43] text-white font-mono uppercase tracking-widest border border-[#522f6d] hover:bg-[#3d2352] hover:border-[#653a85]",
   secondary:
-    "bg-[#C87CFF]/10 text-[#C87CFF] border border-[#C87CFF]/50 font-bold uppercase tracking-widest hover:bg-[#C87CFF]/20 hover:shadow-[0_0_15px_rgba(200,124,255,0.3)] hover:border-[#C87CFF]/80",
+    "bg-transparent text-white/70 font-mono uppercase tracking-widest border border-white/10 hover:bg-white/5 hover:text-white hover:border-white/20",
   ghost:
-    "bg-transparent text-white/60 border border-white/20 font-bold uppercase tracking-widest hover:text-white hover:border-white/40 hover:bg-white/5",
+    "bg-transparent text-text-secondary font-mono uppercase tracking-widest hover:text-text-primary hover:bg-text-primary/5",
 };
 
 export default function Button({
@@ -28,7 +28,7 @@ export default function Button({
     <motion.button
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      className={`px-6 py-3 rounded-none font-mono text-xs flex items-center justify-center gap-3 transition-colors ${variantClasses[variant]} ${className}`}
+      className={`px-6 py-3 rounded-md font-mono text-sm flex items-center justify-center gap-3 transition-colors ${variantClasses[variant]} ${className}`}
       {...props}
     >
       {icon && (

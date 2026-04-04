@@ -64,11 +64,11 @@ function SvgBars(props: {
 
   return (
     <div>
-      <div className="flex items-center justify-between text-xs text-white/50 mb-3">
+      <div className="flex items-center justify-between text-xs text-text-variant mb-3">
         <span>X: {xLabel}</span>
         <span>Y: {yLabel}</span>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-72 text-white/50">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-72 text-text-variant">
         {[0, 0.25, 0.5, 0.75, 1].map((t) => {
           const y = paddingTop + plotH * (1 - t);
           const v = Math.round(max * t);
@@ -153,11 +153,11 @@ function SvgLine(props: { values: number[]; xLabel: string; yLabel: string; yUni
 
   return (
     <div>
-      <div className="flex items-center justify-between text-xs text-white/50 mb-3">
+      <div className="flex items-center justify-between text-xs text-text-variant mb-3">
         <span>X: {props.xLabel}</span>
         <span>Y: {props.yLabel}</span>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-72 text-white/50">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-72 text-text-variant">
         {[0, 0.25, 0.5, 0.75, 1].map((t) => {
           const y = paddingTop + plotH * (1 - t);
           const v = Math.round(min + (max - min) * t);
@@ -599,18 +599,18 @@ export default function AdminDashboard() {
       {/* Hero section with NEXUS Eye */}
       <div className="flex flex-col items-center justify-center mb-12">
         <NexusEye size={500} />
-        <h1 className="text-5xl font-mono font-extrabold text-white tracking-[0.2em] uppercase mt-6">
-          RETINA <span className="text-[#C87CFF] glow-text-primary">MAX</span>
+        <h1 className="text-5xl font-mono font-extrabold text-text-primary tracking-[0.2em] uppercase mt-6">
+          RETINA <span className="text-primary-bright glow-text-primary">MAX</span>
         </h1>
-        <p className="text-white/40 font-mono text-sm tracking-widest mt-3 uppercase">
+        <p className="text-text-variant font-mono text-sm tracking-widest mt-3 uppercase">
           Administrative command center
         </p>
       </div>
 
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
         <div>
-          <h2 className="text-2xl font-mono font-bold text-white tracking-widest uppercase">SYSTEM_OVERVIEW</h2>
-          <p className="text-white/40 font-mono text-sm tracking-wider mt-1">Centralized access to doctors, patients, and reports.</p>
+          <h2 className="text-2xl font-mono font-bold text-text-primary tracking-widest uppercase">SYSTEM_OVERVIEW</h2>
+          <p className="text-text-variant font-mono text-sm tracking-wider mt-1">Centralized access to doctors, patients, and reports.</p>
         </div>
         <div className="flex gap-3">
           <Button variant="secondary" icon="refresh" onClick={load} disabled={isLoading}>
@@ -622,7 +622,7 @@ export default function AdminDashboard() {
       {error && (
         <Card className="p-5 mb-8 border border-red-400/25 bg-red-500/10">
           <div className="text-red-400 font-semibold">{error}</div>
-          <div className="text-white/50 text-sm mt-1">Verify backend is running and you are an admin.</div>
+          <div className="text-text-variant text-sm mt-1">Verify backend is running and you are an admin.</div>
         </Card>
       )}
 
@@ -642,8 +642,8 @@ export default function AdminDashboard() {
             }}
             className={`px-4 py-2 rounded-full text-sm font-bold border transition-colors flex items-center gap-2 ${
               tab === t.id
-                ? "bg-[#C87CFF]/15 border-[#C87CFF]/30 text-[#C87CFF]"
-                : "border-white/20 text-white/50 hover:bg-white/5"
+                ? "bg-primary-bright/15 border-primary-bright/50 text-primary-bright"
+                : "border-border text-text-variant hover:bg-white/5"
             }`}
           >
             <span className="material-symbols-outlined text-base">{t.icon}</span>
@@ -656,56 +656,56 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4 grid grid-cols-2 lg:grid-cols-1 gap-6">
             <Card className="p-6">
-              <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Doctors</div>
+              <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Doctors</div>
               <div className="text-3xl font-mono font-extrabold mt-2">{formatCompact(stats.doctors)}</div>
             </Card>
             <Card className="p-6">
-              <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Active Doctors</div>
+              <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Active Doctors</div>
               <div className="text-3xl font-mono font-extrabold mt-2">{formatCompact(stats.activeDoctors)}</div>
-              <div className="text-xs text-white/50 mt-1">{formatCompact(stats.activeDoctorsToday)} active today</div>
+              <div className="text-xs text-text-variant mt-1">{formatCompact(stats.activeDoctorsToday)} active today</div>
             </Card>
             <Card className="p-6">
-              <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Patients</div>
+              <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Patients</div>
               <div className="text-3xl font-mono font-extrabold mt-2">{formatCompact(stats.patients)}</div>
             </Card>
             <Card className="p-6">
-              <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Reports</div>
+              <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Reports</div>
               <div className="text-3xl font-mono font-extrabold mt-2">{formatCompact(stats.reports)}</div>
             </Card>
             <Card className="p-6">
-              <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Todayâ€™s scans</div>
+              <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Today's scans</div>
               <div className="text-3xl font-mono font-extrabold mt-2">{formatCompact(stats.todayScans)}</div>
             </Card>
             <Card className="p-6">
-              <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Critical</div>
+              <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Critical</div>
               <div className="text-3xl font-mono font-extrabold mt-2">{formatCompact(stats.critical)}</div>
             </Card>
             <Card className="p-6">
-              <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Pending Critical Cases</div>
+              <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Pending Critical Cases</div>
               <div className="text-3xl font-mono font-extrabold mt-2">{formatCompact(stats.pendingCritical)}</div>
-              <div className="text-xs text-white/50 mt-1">last 24 hours</div>
+              <div className="text-xs text-text-variant mt-1">last 24 hours</div>
             </Card>
             <Card className="p-6 col-span-2 lg:col-span-1">
-              <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Avg confidence</div>
+              <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Avg confidence</div>
               <div className="text-3xl font-mono font-extrabold mt-2">{formatPercent(stats.avgConfidence)}</div>
-              <div className="text-xs text-white/50 mt-1">{formatCompact(lowConfidenceCount)} below 80%</div>
+              <div className="text-xs text-text-variant mt-1">{formatCompact(lowConfidenceCount)} below 80%</div>
             </Card>
-            <Card className="p-6 col-span-2 lg:col-span-1 border border-white/5 bg-black/40">
+            <Card className="p-6 col-span-2 lg:col-span-1 border border-border bg-surface/80">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-xs uppercase tracking-widest text-white/50 font-bold">System Health</div>
-                <span className={`text-xs font-bold ${health?.ok ? "text-[#C87CFF]" : "text-red-400"}`}>
-                  {health?.ok ? "âœ… Healthy" : "âš ï¸ Degraded"}
+                <div className="text-xs uppercase tracking-widest text-text-variant font-bold">System Health</div>
+                <span className={`text-xs font-bold ${health?.ok ? "text-primary-bright" : "text-red-400"}`}>
+                  {health?.ok ? "✅ Healthy" : "⚠️ Degraded"}
                 </span>
               </div>
-              <div className="text-sm text-white/50 space-y-1">
+              <div className="text-sm text-text-variant space-y-1">
                 <div className="flex items-center justify-between">
                   <span>Model status</span>
-                  <span className="text-white font-semibold">âœ… Active</span>
+                  <span className="text-text-primary font-semibold">✅ Active</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>API latency</span>
-                  <span className="text-white font-semibold">
-                    {health?.latencyMs != null ? `${health.latencyMs}ms` : "â€”"}
+                  <span className="text-text-primary font-semibold">
+                    {health?.latencyMs != null ? `${health.latencyMs}ms` : "—"}
                   </span>
                 </div>
               </div>
@@ -718,11 +718,11 @@ export default function AdminDashboard() {
                 <div className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-red-400 text-2xl">warning</span>
                   <div>
-                    <div className="font-mono font-extrabold text-lg text-white">
+                    <div className="font-mono font-extrabold text-lg text-text-primary">
                       🚨 {stats.pendingCritical} critical cases need immediate attention
                     </div>
-                    <div className="text-sm text-white/50 mt-1">
-                      Reports created in the last 24 hours with priority 4â€“5.
+                    <div className="text-sm text-text-variant mt-1">
+                      Reports created in the last 24 hours with priority 4–5.
                     </div>
                   </div>
                 </div>
@@ -743,16 +743,16 @@ export default function AdminDashboard() {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="font-mono font-bold text-xl">Reports (14 days)</div>
-                <div className="text-xs text-white/50">
-                  {reportsLast14Days.reduce((a, b) => a + b, 0)} total Â·{" "}
-                  <span className={reportsWeekDelta.pct >= 0 ? "text-[#C87CFF]" : "text-red-400"}>
-                    {reportsWeekDelta.pct >= 0 ? "â†‘" : "â†“"} {Math.abs(reportsWeekDelta.pct).toFixed(0)}% vs last week
+                <div className="text-xs text-text-variant">
+                  {reportsLast14Days.reduce((a, b) => a + b, 0)} total ·{" "}
+                  <span className={reportsWeekDelta.pct >= 0 ? "text-primary-bright" : "text-red-400"}>
+                    {reportsWeekDelta.pct >= 0 ? "↑" : "↓"} {Math.abs(reportsWeekDelta.pct).toFixed(0)}% vs last week
                   </span>
                 </div>
               </div>
               <SvgLine
                 values={reportsLast14Days}
-                xLabel="Days (old â†’ new)"
+                xLabel="Days (old → new)"
                 yLabel="Reports (count)"
                 yUnit="Reports"
                 xStartLabel="14d ago"
@@ -763,11 +763,11 @@ export default function AdminDashboard() {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="font-mono font-bold text-xl">Critical cases over time (14 days)</div>
-                <div className="text-xs text-white/50">Priority 4â€“5</div>
+                <div className="text-xs text-text-variant">Priority 4–5</div>
               </div>
               <SvgLine
                 values={criticalLast14Days}
-                xLabel="Days (old â†’ new)"
+                xLabel="Days (old → new)"
                 yLabel="High-risk (count)"
                 yUnit="Reports"
                 xStartLabel="14d ago"
@@ -778,12 +778,12 @@ export default function AdminDashboard() {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="font-mono font-bold text-xl">Reports by Doctor</div>
-                <div className="text-xs text-white/50">X: Doctor Â· Y: Reports</div>
+                <div className="text-xs text-text-variant">X: Doctor Â· Y: Reports</div>
               </div>
               <div className="overflow-x-auto no-scrollbar">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="text-xs uppercase tracking-wider text-white/50">
+                    <tr className="text-xs uppercase tracking-wider text-text-variant">
                       <th className="py-3 pr-4">Doctor</th>
                       <th className="py-3 pr-4 text-center">Reports</th>
                       <th className="py-3 pr-4 text-center">Status</th>
@@ -796,24 +796,24 @@ export default function AdminDashboard() {
                         <td className="py-4 pr-4 font-semibold">
                           <button
                             type="button"
-                            className="hover:text-[#C87CFF] transition-colors"
+                            className="hover:text-primary-bright transition-colors"
                             onClick={() => setDoctorModalId(d.id)}
                           >
                             {d.name}
                           </button>
                         </td>
-                        <td className="py-4 pr-4 text-center text-white/50">{d.reports}</td>
+                        <td className="py-4 pr-4 text-center text-text-variant">{d.reports}</td>
                         <td className="py-4 pr-4 text-center">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-bold border ${
-                              d.is_active ? "border-[#C87CFF]/30 text-[#C87CFF]" : "border-red-400/30 text-red-400"
+                              d.is_active ? "border-primary-bright/50 text-primary-bright" : "border-red-400/30 text-red-400"
                             }`}
                           >
                             {d.is_active ? "Active" : "Inactive"}
                           </span>
                         </td>
-                        <td className="py-4 text-right text-white/50">
-                          {d.lastActive ? new Date(d.lastActive).toLocaleString() : "â€”"}
+                        <td className="py-4 text-right text-text-variant">
+                          {d.lastActive ? new Date(d.lastActive).toLocaleString() : "—"}
                         </td>
                       </tr>
                     ))}
@@ -826,7 +826,7 @@ export default function AdminDashboard() {
               <SvgBars
                 labels={["0", "1", "2", "3", "4"]}
                 values={severityDist.counts}
-                xLabel="DR stage (0â€“4)"
+                xLabel="DR stage (0–4)"
                 yLabel="Reports (count)"
                 yUnit="Reports"
                 colors={["#22c55e", "#a3e635", "#fbbf24", "#f97316", "#ef4444"]}
@@ -835,19 +835,19 @@ export default function AdminDashboard() {
             <Card className="p-6">
               <div className="font-mono font-bold text-xl mb-4">Confidence Histogram</div>
               <SvgBars labels={confidenceHistogram.labels} values={confidenceHistogram.counts} xLabel="Confidence (%) bins" yLabel="Reports (count)" yUnit="Reports" />
-              <div className="text-xs text-white/50 mt-2">
-                Low confidence (&lt;80%): <span className="font-bold text-white">{lowConfidenceCount}</span> reports
+              <div className="text-xs text-text-variant mt-2">
+                Low confidence (&lt;80%): <span className="font-bold text-text-primary">{lowConfidenceCount}</span> reports
               </div>
             </Card>
             <Card className="p-6 overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <div className="font-mono font-bold text-xl">Recent High-Priority Cases</div>
-                <div className="text-xs text-white/50">Priority 4â€“5</div>
+                <div className="text-xs text-text-variant">Priority 4–5</div>
               </div>
               <div className="overflow-x-auto no-scrollbar">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="text-xs uppercase tracking-wider text-white/50">
+                    <tr className="text-xs uppercase tracking-wider text-text-variant">
                       <th className="py-3 pr-4">Report</th>
                       <th className="py-3 pr-4">Patient</th>
                       <th className="py-3 pr-4">Prediction</th>
@@ -865,15 +865,15 @@ export default function AdminDashboard() {
                       .map(({ r, p, pr }) => (
                         <tr key={r.id} className="text-sm hover:bg-white/5 transition-colors">
                           <td className="py-4 pr-4 font-semibold">#{r.id}</td>
-                          <td className="py-4 pr-4 text-white/50">{p?.name ?? `Patient #${r.patient_id}`}</td>
-                          <td className="py-4 pr-4 text-white/50">{r.prediction}</td>
-                          <td className="py-4 pr-4 text-center font-bold text-[#C87CFF]">{pr}/5</td>
-                          <td className="py-4 text-right text-white/50">{new Date(r.created_at).toLocaleString()}</td>
+                          <td className="py-4 pr-4 text-text-variant">{p?.name ?? `Patient #${r.patient_id}`}</td>
+                          <td className="py-4 pr-4 text-text-variant">{r.prediction}</td>
+                          <td className="py-4 pr-4 text-center font-bold text-primary-bright">{pr}/5</td>
+                          <td className="py-4 text-right text-text-variant">{new Date(r.created_at).toLocaleString()}</td>
                         </tr>
                       ))}
                     {!isLoading && reports.filter((r) => severityFromStage(r.prediction) >= 4).length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-10 text-center text-white/50">
+                        <td colSpan={5} className="py-10 text-center text-text-variant">
                           No high-priority cases yet.
                         </td>
                       </tr>
@@ -891,7 +891,7 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between mb-4">
             <div className="font-mono font-bold text-xl">Doctors</div>
             <div className="flex items-center gap-3">
-              <div className="text-xs text-white/50">{doctors.length} total</div>
+              <div className="text-xs text-text-variant">{doctors.length} total</div>
               <Button icon="person_add" onClick={() => setCreateOpen(true)}>
                 New Doctor
               </Button>
@@ -901,27 +901,27 @@ export default function AdminDashboard() {
             <input
               value={doctorSearch}
               onChange={(e) => setDoctorSearch(e.target.value)}
-              placeholder="Search name/emailâ€¦"
-              className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-1 focus:ring-primary/40"
+              placeholder="Search name/email…"
+              className="bg-surface/80 border border-border rounded-xl px-4 py-3 text-text-primary outline-none focus:ring-1 focus:ring-primary/40"
             />
             <select
               value={doctorStatus}
               onChange={(e) => setDoctorStatus(e.target.value as typeof doctorStatus)}
-              className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-1 focus:ring-primary/40"
+              className="bg-surface/80 border border-border rounded-xl px-4 py-3 text-text-primary outline-none focus:ring-1 focus:ring-primary/40"
             >
               <option value="all">All</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
-            <div className="text-sm text-white/50 flex items-center justify-between rounded-xl border border-white/10 bg-black/40 px-4 py-3">
+            <div className="text-sm text-text-variant flex items-center justify-between rounded-xl border border-border bg-surface/80 px-4 py-3">
               <span>Active doctors</span>
-              <span className="font-bold text-white">{stats.activeDoctors}</span>
+              <span className="font-bold text-text-primary">{stats.activeDoctors}</span>
             </div>
           </div>
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="text-xs uppercase tracking-wider text-white/50">
+                <tr className="text-xs uppercase tracking-wider text-text-variant">
                   <th className="py-3 pr-4">Name</th>
                   <th className="py-3 pr-4">Email</th>
                   <th className="py-3 pr-4 text-center">Status</th>
@@ -954,13 +954,13 @@ export default function AdminDashboard() {
                           <button
                             type="button"
                             onClick={() => setDoctorModalId(d.id)}
-                            className="hover:text-[#C87CFF] transition-colors"
+                            className="hover:text-primary-bright transition-colors"
                             title="View doctor activity"
                           >
                             {d.name}
                           </button>
                         </td>
-                        <td className="py-4 pr-4 text-white/50">{d.email}</td>
+                        <td className="py-4 pr-4 text-text-variant">{d.email}</td>
                         <td className="py-4 pr-4 text-center">
                           <button
                             type="button"
@@ -968,18 +968,18 @@ export default function AdminDashboard() {
                             className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
                               d.is_active === false
                                 ? "border-red-400/30 text-red-400 hover:bg-error/10"
-                                : "border-[#C87CFF]/30 text-[#C87CFF] hover:bg-primary/10"
+                                : "border-primary-bright/50 text-primary-bright hover:bg-primary/10"
                             }`}
                             title="Toggle active status"
                           >
                             {d.is_active === false ? "Inactive" : "Active"}
                           </button>
                         </td>
-                        <td className="py-4 pr-4 text-center text-white/50">
-                          {d.created_at ? new Date(d.created_at).toLocaleDateString() : "â€”"}
+                        <td className="py-4 pr-4 text-center text-text-variant">
+                          {d.created_at ? new Date(d.created_at).toLocaleDateString() : "—"}
                         </td>
-                        <td className="py-4 pr-4 text-center text-white/50">{pCount}</td>
-                        <td className="py-4 pr-4 text-center text-white/50">{rCount}</td>
+                        <td className="py-4 pr-4 text-center text-text-variant">{pCount}</td>
+                        <td className="py-4 pr-4 text-center text-text-variant">{rCount}</td>
                       </tr>
                     );
                   })}
@@ -993,19 +993,19 @@ export default function AdminDashboard() {
         <Card className="p-6 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <div className="font-mono font-bold text-xl">Patients</div>
-            <div className="text-xs text-white/50">{patients.length} total</div>
+            <div className="text-xs text-text-variant">{patients.length} total</div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
             <input
               value={patientSearch}
               onChange={(e) => setPatientSearch(e.target.value)}
-              placeholder="Search by name/phoneâ€¦"
-              className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-1 focus:ring-primary/40"
+              placeholder="Search by name/phone…"
+              className="bg-surface/80 border border-border rounded-xl px-4 py-3 text-text-primary outline-none focus:ring-1 focus:ring-primary/40"
             />
             <select
               value={patientDoctorFilter}
               onChange={(e) => setPatientDoctorFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
-              className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-1 focus:ring-primary/40"
+              className="bg-surface/80 border border-border rounded-xl px-4 py-3 text-text-primary outline-none focus:ring-1 focus:ring-primary/40"
             >
               <option value="all">All doctors</option>
               {doctors.map((d) => (
@@ -1018,7 +1018,7 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="text-xs uppercase tracking-wider text-white/50">
+                <tr className="text-xs uppercase tracking-wider text-text-variant">
                   <th className="py-3 pr-4">Name</th>
                   <th className="py-3 pr-4 text-center">Age</th>
                   <th className="py-3 pr-4">Gender</th>
@@ -1048,19 +1048,19 @@ export default function AdminDashboard() {
                           <button
                             type="button"
                             onClick={() => setPatientModalId(p.id)}
-                            className="hover:text-[#C87CFF] transition-colors"
+                            className="hover:text-primary-bright transition-colors"
                             title="View patient details"
                           >
                             {p.name}
                           </button>
                         </td>
-                        <td className="py-4 pr-4 text-center text-white/50">{p.age}</td>
-                        <td className="py-4 pr-4 text-white/50">{p.gender}</td>
+                        <td className="py-4 pr-4 text-center text-text-variant">{p.age}</td>
+                        <td className="py-4 pr-4 text-text-variant">{p.gender}</td>
                         <td className="py-4 pr-4">
                           <select
                             value={p.doctor_id}
                             onChange={(e) => onAssignPatient(p.id, Number(e.target.value))}
-                            className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:ring-1 focus:ring-primary/40"
+                            className="bg-surface/80 border border-border rounded-lg px-3 py-2 text-text-primary outline-none focus:ring-1 focus:ring-primary/40"
                           >
                             {doctors.map((d) => (
                               <option key={d.id} value={d.id}>
@@ -1069,10 +1069,10 @@ export default function AdminDashboard() {
                             ))}
                           </select>
                         </td>
-                        <td className="py-4 pr-4 text-right text-white/50">
-                          {last ? new Date(last.created_at).toLocaleString() : "â€”"}
+                        <td className="py-4 pr-4 text-right text-text-variant">
+                          {last ? new Date(last.created_at).toLocaleString() : "—"}
                         </td>
-                        <td className="py-4 text-right text-white/50">{new Date(p.created_at).toLocaleString()}</td>
+                        <td className="py-4 text-right text-text-variant">{new Date(p.created_at).toLocaleString()}</td>
                       </tr>
                     );
                   })}
@@ -1086,13 +1086,13 @@ export default function AdminDashboard() {
         <Card className="p-6 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <div className="font-mono font-bold text-xl">Reports</div>
-            <div className="text-xs text-white/50">{reports.length} total</div>
+            <div className="text-xs text-text-variant">{reports.length} total</div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             <select
               value={reportSort}
               onChange={(e) => setReportSort(e.target.value as typeof reportSort)}
-              className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-1 focus:ring-primary/40"
+              className="bg-surface/80 border border-border rounded-xl px-4 py-3 text-text-primary outline-none focus:ring-1 focus:ring-primary/40"
             >
               <option value="priority">Sort: Priority</option>
               <option value="date">Sort: Date</option>
@@ -1100,27 +1100,27 @@ export default function AdminDashboard() {
             <input
               value={reportSearch}
               onChange={(e) => setReportSearch(e.target.value)}
-              placeholder="Search patient/predictionâ€¦"
-              className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-1 focus:ring-primary/40"
+              placeholder="Search patient/prediction…"
+              className="bg-surface/80 border border-border rounded-xl px-4 py-3 text-text-primary outline-none focus:ring-1 focus:ring-primary/40"
             />
-            <div className="text-sm text-white/50 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3">
+            <div className="text-sm text-text-variant flex items-center justify-between gap-3 rounded-xl border border-border bg-surface/80 px-4 py-3">
               <div>
-                <div className="font-bold text-white/50">
+                <div className="font-bold text-text-variant">
                   {reportCriticalOnly ? "Critical only" : "High-risk"}
                 </div>
-                <div className="text-[11px] text-white/50 mt-0.5">
-                  {reportCriticalOnly ? "Filtering priority 4â€“5" : "Total critical cases"}
+                <div className="text-[11px] text-text-variant mt-0.5">
+                  {reportCriticalOnly ? "Filtering priority 4–5" : "Total critical cases"}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-white">{stats.critical}</span>
+                <span className="font-bold text-text-primary">{stats.critical}</span>
                 <button
                   type="button"
                   onClick={() => setReportCriticalOnly((v) => !v)}
                   className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
                     reportCriticalOnly
-                      ? "border-[#C87CFF]/30 text-[#C87CFF] hover:bg-primary/10"
-                      : "border-white/20 text-white/50 hover:bg-white/5"
+                      ? "border-primary-bright/50 text-primary-bright hover:bg-primary/10"
+                      : "border-border text-text-variant hover:bg-white/5"
                   }`}
                   title="Toggle critical-only filter"
                 >
@@ -1132,7 +1132,7 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="text-xs uppercase tracking-wider text-white/50">
+                <tr className="text-xs uppercase tracking-wider text-text-variant">
                   <th className="py-3 pr-4">Report</th>
                   <th className="py-3 pr-4">Patient</th>
                   <th className="py-3 pr-4">Prediction</th>
@@ -1165,21 +1165,21 @@ export default function AdminDashboard() {
                   .map(({ r, p, pr }) => (
                     <tr key={r.id} className="text-sm hover:bg-white/5 transition-colors">
                       <td className="py-4 pr-4 font-semibold">#{r.id}</td>
-                      <td className="py-4 pr-4 text-white/50">{p?.name ?? `Patient #${r.patient_id}`}</td>
-                      <td className="py-4 pr-4 text-white/50">{r.prediction}</td>
-                      <td className="py-4 pr-4 text-center text-white/50">{formatPercent(r.confidence)}</td>
-                      <td className="py-4 pr-4 text-center font-bold text-[#C87CFF]">{pr}/5</td>
+                      <td className="py-4 pr-4 text-text-variant">{p?.name ?? `Patient #${r.patient_id}`}</td>
+                      <td className="py-4 pr-4 text-text-variant">{r.prediction}</td>
+                      <td className="py-4 pr-4 text-center text-text-variant">{formatPercent(r.confidence)}</td>
+                      <td className="py-4 pr-4 text-center font-bold text-primary-bright">{pr}/5</td>
                       <td className="py-4 pr-4 text-right">
                         <div className="flex justify-end gap-2">
                           <button
                             type="button"
-                            className="px-3 py-1 rounded-lg bg-white/5 text-white/50 text-xs font-bold hover:text-[#C87CFF] transition-colors"
+                            className="px-3 py-1 rounded-lg bg-white/5 text-text-variant text-xs font-bold hover:text-primary-bright transition-colors"
                             onClick={() => setReportModal({ report: r, patient: p })}
                           >
                             View
                           </button>
                           <a
-                            className="px-3 py-1 rounded-lg bg-white/5 text-white/50 text-xs font-bold hover:text-[#C87CFF] transition-colors"
+                            className="px-3 py-1 rounded-lg bg-white/5 text-text-variant text-xs font-bold hover:text-primary-bright transition-colors"
                             href={resolveBackendImageUrl(r.heatmap_url)}
                             target="_blank"
                             rel="noreferrer"
@@ -1188,19 +1188,19 @@ export default function AdminDashboard() {
                           </a>
                           <button
                             type="button"
-                            className="px-3 py-1 rounded-lg bg-white/5 text-white/50 text-xs font-bold hover:text-[#C87CFF] transition-colors"
+                            className="px-3 py-1 rounded-lg bg-white/5 text-text-variant text-xs font-bold hover:text-primary-bright transition-colors"
                             onClick={() => exportReportPdf(r, p)}
                           >
                             PDF
                           </button>
                         </div>
                       </td>
-                      <td className="py-4 text-right text-white/50">{new Date(r.created_at).toLocaleString()}</td>
+                      <td className="py-4 text-right text-text-variant">{new Date(r.created_at).toLocaleString()}</td>
                     </tr>
                   ))}
                 {!isLoading && reports.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-white/50">
+                    <td colSpan={7} className="py-10 text-center text-text-variant">
                       No reports yet.
                     </td>
                   </tr>
@@ -1215,22 +1215,22 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 z-[80] flex items-center justify-center px-4" role="dialog" aria-modal="true">
           <button
             type="button"
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-surface/80 backdrop-blur-sm"
             onClick={() => setDoctorModalId(null)}
             aria-label="Close dialog"
           />
           <div className="relative w-full max-w-5xl">
-            <Card className="p-6 md:p-7 shadow-2xl shadow-black/40 border border-white/10-variant/15">
+            <Card className="p-6 md:p-7 shadow-2xl shadow-black/40 border border-border-variant/15">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
-                  <div className="font-mono font-extrabold text-xl text-white">{doctorModal.name}</div>
-                  <div className="text-sm text-white/50 mt-1">
+                  <div className="font-mono font-extrabold text-xl text-text-primary">{doctorModal.name}</div>
+                  <div className="text-sm text-text-variant mt-1">
                     {doctorModal.email} Â· {doctorModal.is_active === false ? "Inactive" : "Active"}
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="text-white/50 hover:text-[#C87CFF] transition-colors"
+                  className="text-text-variant hover:text-primary-bright transition-colors"
                   onClick={() => setDoctorModalId(null)}
                   aria-label="Close"
                 >
@@ -1240,22 +1240,22 @@ export default function AdminDashboard() {
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-4 grid grid-cols-2 lg:grid-cols-1 gap-4">
-                  <Card className="p-5 bg-black/40 border border-white/10">
-                    <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Patients</div>
+                  <Card className="p-5 bg-surface/80 border border-border">
+                    <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Patients</div>
                     <div className="text-3xl font-mono font-extrabold mt-2">
                       {doctorTotals.patients}
                     </div>
                   </Card>
-                  <Card className="p-5 bg-black/40 border border-white/10">
-                    <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Reports</div>
+                  <Card className="p-5 bg-surface/80 border border-border">
+                    <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Reports</div>
                     <div className="text-3xl font-mono font-extrabold mt-2">
                       {doctorTotals.reports}
                     </div>
-                    <div className="text-xs text-white/50 mt-1">{doctorTotals.critical} high-risk</div>
+                    <div className="text-xs text-text-variant mt-1">{doctorTotals.critical} high-risk</div>
                   </Card>
-                  <Card className="p-5 bg-black/40 border border-white/10 col-span-2 lg:col-span-1">
-                    <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Recent Activity</div>
-                    <div className="text-sm text-white/50 mt-2 leading-relaxed">
+                  <Card className="p-5 bg-surface/80 border border-border col-span-2 lg:col-span-1">
+                    <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Recent Activity</div>
+                    <div className="text-sm text-text-variant mt-2 leading-relaxed">
                       {reportsForDoctorModal[0]
                         ? `Last report: ${new Date(reportsForDoctorModal[0].created_at).toLocaleString()}`
                         : "No reports yet."}
@@ -1264,30 +1264,30 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="lg:col-span-8 space-y-6">
-                  <Card className="p-5 bg-black/40 border border-white/10">
+                  <Card className="p-5 bg-surface/80 border border-border">
                     <div className="font-mono font-bold text-lg mb-3">Reports (14 days)</div>
                     <SvgLine
                       values={doctorSeries14.reports}
-                      xLabel="Days (old â†’ new)"
+                      xLabel="Days (old → new)"
                       yLabel="Reports (count)"
                       yUnit="Reports"
                       xStartLabel="14d ago"
                       xEndLabel="Today"
                     />
-                    <div className="text-xs text-white/50 mt-2">
+                    <div className="text-xs text-text-variant mt-2">
                       Tip: filter by this doctor from the Doctors/Patients tabs for more detail.
                     </div>
                   </Card>
 
-                  <Card className="p-5 bg-black/40 border border-white/10 overflow-hidden">
+                  <Card className="p-5 bg-surface/80 border border-border overflow-hidden">
                     <div className="flex items-center justify-between mb-3">
                       <div className="font-mono font-bold text-lg">Recent Reports</div>
-                      <div className="text-xs text-white/50">Newest first</div>
+                      <div className="text-xs text-text-variant">Newest first</div>
                     </div>
                     <div className="overflow-x-auto no-scrollbar">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="text-xs uppercase tracking-wider text-white/50">
+                          <tr className="text-xs uppercase tracking-wider text-text-variant">
                             <th className="py-3 pr-4">Report</th>
                             <th className="py-3 pr-4">Patient</th>
                             <th className="py-3 pr-4">Prediction</th>
@@ -1299,19 +1299,19 @@ export default function AdminDashboard() {
                           {reportsForDoctorModal.map((r) => (
                             <tr key={r.id} className="text-sm hover:bg-white/5 transition-colors">
                               <td className="py-4 pr-4 font-semibold">#{r.id}</td>
-                              <td className="py-4 pr-4 text-white/50">
+                              <td className="py-4 pr-4 text-text-variant">
                                 {patientById.get(r.patient_id)?.name ?? `Patient #${r.patient_id}`}
                               </td>
-                              <td className="py-4 pr-4 text-white/50">{r.prediction}</td>
-                              <td className="py-4 pr-4 text-center font-bold text-[#C87CFF]">
+                              <td className="py-4 pr-4 text-text-variant">{r.prediction}</td>
+                              <td className="py-4 pr-4 text-center font-bold text-primary-bright">
                                 {severityFromStage(r.prediction)}/5
                               </td>
-                              <td className="py-4 text-right text-white/50">{new Date(r.created_at).toLocaleString()}</td>
+                              <td className="py-4 text-right text-text-variant">{new Date(r.created_at).toLocaleString()}</td>
                             </tr>
                           ))}
                           {reportsForDoctorModal.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="py-8 text-center text-white/50">
+                              <td colSpan={5} className="py-8 text-center text-text-variant">
                                 No activity yet.
                               </td>
                             </tr>
@@ -1331,22 +1331,22 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 z-[80] flex items-center justify-center px-4" role="dialog" aria-modal="true">
           <button
             type="button"
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-surface/80 backdrop-blur-sm"
             onClick={() => setPatientModalId(null)}
             aria-label="Close dialog"
           />
           <div className="relative w-full max-w-5xl">
-            <Card className="p-6 md:p-7 shadow-2xl shadow-black/40 border border-white/10-variant/15">
+            <Card className="p-6 md:p-7 shadow-2xl shadow-black/40 border border-border-variant/15">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
-                  <div className="font-mono font-extrabold text-xl text-white">{patientModal.name}</div>
-                  <div className="text-sm text-white/50 mt-1">
+                  <div className="font-mono font-extrabold text-xl text-text-primary">{patientModal.name}</div>
+                  <div className="text-sm text-text-variant mt-1">
                     {patientModal.gender} Â· {patientModal.age}y Â· Doctor: {doctorById.get(patientModal.doctor_id)?.name ?? `#${patientModal.doctor_id}`}
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="text-white/50 hover:text-[#C87CFF] transition-colors"
+                  className="text-text-variant hover:text-primary-bright transition-colors"
                   onClick={() => setPatientModalId(null)}
                   aria-label="Close"
                 >
@@ -1356,27 +1356,27 @@ export default function AdminDashboard() {
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-4 space-y-4">
-                  <Card className="p-5 bg-black/40 border border-white/10">
-                    <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Contact</div>
-                    <div className="text-sm text-white/50 mt-2">{patientModal.phone || "â€”"}</div>
-                    <div className="text-sm text-white/50 mt-1">{patientModal.address || "â€”"}</div>
+                  <Card className="p-5 bg-surface/80 border border-border">
+                    <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Contact</div>
+                    <div className="text-sm text-text-variant mt-2">{patientModal.phone || "—"}</div>
+                    <div className="text-sm text-text-variant mt-1">{patientModal.address || "—"}</div>
                   </Card>
-                  <Card className="p-5 bg-black/40 border border-white/10">
-                    <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Created</div>
-                    <div className="text-sm text-white/50 mt-2">{new Date(patientModal.created_at).toLocaleString()}</div>
+                  <Card className="p-5 bg-surface/80 border border-border">
+                    <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Created</div>
+                    <div className="text-sm text-text-variant mt-2">{new Date(patientModal.created_at).toLocaleString()}</div>
                   </Card>
                 </div>
 
                 <div className="lg:col-span-8">
-                  <Card className="p-5 bg-black/40 border border-white/10 overflow-hidden">
+                  <Card className="p-5 bg-surface/80 border border-border overflow-hidden">
                     <div className="flex items-center justify-between mb-3">
                       <div className="font-mono font-bold text-lg">Reports</div>
-                      <div className="text-xs text-white/50">{reportsForPatientModal.length} total</div>
+                      <div className="text-xs text-text-variant">{reportsForPatientModal.length} total</div>
                     </div>
                     <div className="overflow-x-auto no-scrollbar">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="text-xs uppercase tracking-wider text-white/50">
+                          <tr className="text-xs uppercase tracking-wider text-text-variant">
                             <th className="py-3 pr-4">Report</th>
                             <th className="py-3 pr-4">Prediction</th>
                             <th className="py-3 pr-4 text-center">Confidence</th>
@@ -1389,20 +1389,20 @@ export default function AdminDashboard() {
                           {reportsForPatientModal.map((r) => (
                             <tr key={r.id} className="text-sm hover:bg-white/5 transition-colors">
                               <td className="py-4 pr-4 font-semibold">#{r.id}</td>
-                              <td className="py-4 pr-4 text-white/50">{r.prediction}</td>
-                              <td className="py-4 pr-4 text-center text-white/50">{formatPercent(r.confidence)}</td>
-                              <td className="py-4 pr-4 text-center font-bold text-[#C87CFF]">{severityFromStage(r.prediction)}/5</td>
+                              <td className="py-4 pr-4 text-text-variant">{r.prediction}</td>
+                              <td className="py-4 pr-4 text-center text-text-variant">{formatPercent(r.confidence)}</td>
+                              <td className="py-4 pr-4 text-center font-bold text-primary-bright">{severityFromStage(r.prediction)}/5</td>
                               <td className="py-4 pr-4 text-right">
                                 <div className="flex justify-end gap-2">
                                   <button
                                     type="button"
-                                    className="px-3 py-1 rounded-lg bg-white/5 text-white/50 text-xs font-bold hover:text-[#C87CFF] transition-colors"
+                                    className="px-3 py-1 rounded-lg bg-white/5 text-text-variant text-xs font-bold hover:text-primary-bright transition-colors"
                                     onClick={() => setReportModal({ report: r, patient: patientModal })}
                                   >
                                     View
                                   </button>
                                   <a
-                                    className="px-3 py-1 rounded-lg bg-white/5 text-white/50 text-xs font-bold hover:text-[#C87CFF] transition-colors"
+                                    className="px-3 py-1 rounded-lg bg-white/5 text-text-variant text-xs font-bold hover:text-primary-bright transition-colors"
                                     href={resolveBackendImageUrl(r.heatmap_url)}
                                     target="_blank"
                                     rel="noreferrer"
@@ -1411,19 +1411,19 @@ export default function AdminDashboard() {
                                   </a>
                                   <button
                                     type="button"
-                                    className="px-3 py-1 rounded-lg bg-white/5 text-white/50 text-xs font-bold hover:text-[#C87CFF] transition-colors"
+                                    className="px-3 py-1 rounded-lg bg-white/5 text-text-variant text-xs font-bold hover:text-primary-bright transition-colors"
                                     onClick={() => exportReportPdf(r, patientModal)}
                                   >
                                     PDF
                                   </button>
                                 </div>
                               </td>
-                              <td className="py-4 text-right text-white/50">{new Date(r.created_at).toLocaleString()}</td>
+                              <td className="py-4 text-right text-text-variant">{new Date(r.created_at).toLocaleString()}</td>
                             </tr>
                           ))}
                           {reportsForPatientModal.length === 0 && (
                             <tr>
-                              <td colSpan={6} className="py-10 text-center text-white/50">
+                              <td colSpan={6} className="py-10 text-center text-text-variant">
                                 No reports for this patient yet.
                               </td>
                             </tr>
@@ -1443,23 +1443,23 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 z-[80] flex items-center justify-center px-4" role="dialog" aria-modal="true">
           <button
             type="button"
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-surface/80 backdrop-blur-sm"
             onClick={() => setReportModal(null)}
             aria-label="Close dialog"
           />
           <div className="relative w-full max-w-4xl">
-            <Card className="p-6 md:p-7 shadow-2xl shadow-black/40 border border-white/10-variant/15">
+            <Card className="p-6 md:p-7 shadow-2xl shadow-black/40 border border-border-variant/15">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
-                  <div className="font-mono font-extrabold text-xl text-white">Report #{reportModal.report.id}</div>
-                  <div className="text-sm text-white/50 mt-1">
+                  <div className="font-mono font-extrabold text-xl text-text-primary">Report #{reportModal.report.id}</div>
+                  <div className="text-sm text-text-variant mt-1">
                     {reportModal.patient?.name ?? `Patient #${reportModal.report.patient_id}`} Â·{" "}
                     {new Date(reportModal.report.created_at).toLocaleString()}
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="text-white/50 hover:text-[#C87CFF] transition-colors"
+                  className="text-text-variant hover:text-primary-bright transition-colors"
                   onClick={() => setReportModal(null)}
                   aria-label="Close"
                 >
@@ -1468,33 +1468,33 @@ export default function AdminDashboard() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-xl overflow-hidden border border-white/10 bg-black/40">
-                  <div className="px-4 py-3 text-xs uppercase tracking-widest text-white/50 font-bold border-b border-white/10">
+                <div className="rounded-xl overflow-hidden border border-border bg-surface/80">
+                  <div className="px-4 py-3 text-xs uppercase tracking-widest text-text-variant font-bold border-b border-border">
                     Input image
                   </div>
                   <img className="w-full aspect-square object-cover" src={resolveBackendImageUrl(reportModal.report.image_url)} alt="Input" />
                 </div>
-                <div className="rounded-xl overflow-hidden border border-white/10 bg-black/40">
-                  <div className="px-4 py-3 text-xs uppercase tracking-widest text-white/50 font-bold border-b border-white/10">
+                <div className="rounded-xl overflow-hidden border border-border bg-surface/80">
+                  <div className="px-4 py-3 text-xs uppercase tracking-widest text-text-variant font-bold border-b border-border">
                     Heatmap
                   </div>
                   <img className="w-full aspect-square object-cover" src={resolveBackendImageUrl(reportModal.report.heatmap_url)} alt="Heatmap" />
                 </div>
               </div>
 
-              <div className="mt-5 rounded-xl bg-black/40 border border-white/10 p-4">
+              <div className="mt-5 rounded-xl bg-surface/80 border border-border p-4">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
-                    <div className="text-xs uppercase tracking-widest text-white/50 font-bold">Prediction</div>
-                    <div className="text-xl font-mono font-extrabold text-white mt-1">{reportModal.report.prediction}</div>
-                    <div className="text-sm text-white/50 mt-1">{stageDescription(reportModal.report.prediction)}</div>
+                    <div className="text-xs uppercase tracking-widest text-text-variant font-bold">Prediction</div>
+                    <div className="text-xl font-mono font-extrabold text-text-primary mt-1">{reportModal.report.prediction}</div>
+                    <div className="text-sm text-text-variant mt-1">{stageDescription(reportModal.report.prediction)}</div>
                   </div>
                   <div className="flex gap-3">
                     <Button variant="secondary" icon="picture_as_pdf" onClick={() => exportReportPdf(reportModal.report, reportModal.patient)}>
                       PDF
                     </Button>
                     <a
-                      className="px-6 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform bg-white/5est text-white font-bold hover:bg-black/50 transition-colors"
+                      className="px-6 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform bg-white/5est text-text-primary font-bold hover:bg-surface/80 transition-colors"
                       href={resolveBackendImageUrl(reportModal.report.heatmap_url)}
                       target="_blank"
                       rel="noreferrer"
@@ -1514,20 +1514,20 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 z-[80] flex items-center justify-center px-4" role="dialog" aria-modal="true">
           <button
             type="button"
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-surface/80 backdrop-blur-sm"
             onClick={() => setCreateOpen(false)}
             aria-label="Close dialog"
           />
           <div className="relative w-full max-w-lg">
-            <Card className="p-6 md:p-7 shadow-2xl shadow-black/40 border border-white/10-variant/15">
+            <Card className="p-6 md:p-7 shadow-2xl shadow-black/40 border border-border-variant/15">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
-                  <div className="font-mono font-extrabold text-xl text-white">Create doctor</div>
-                  <div className="text-sm text-white/50 mt-1">Creates a doctor user account.</div>
+                  <div className="font-mono font-extrabold text-xl text-text-primary">Create doctor</div>
+                  <div className="text-sm text-text-variant mt-1">Creates a doctor user account.</div>
                 </div>
                 <button
                   type="button"
-                  className="text-white/50 hover:text-[#C87CFF] transition-colors"
+                  className="text-text-variant hover:text-primary-bright transition-colors"
                   onClick={() => setCreateOpen(false)}
                   aria-label="Close"
                 >
@@ -1539,20 +1539,20 @@ export default function AdminDashboard() {
                 <input
                   value={createName}
                   onChange={(e) => setCreateName(e.target.value)}
-                  className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white outline-none focus:ring-1 focus:ring-primary/40"
+                  className="block w-full px-4 py-3 bg-surface/80 border border-border rounded-xl text-text-primary outline-none focus:ring-1 focus:ring-primary/40"
                   placeholder="Doctor name"
                 />
                 <input
                   value={createEmail}
                   onChange={(e) => setCreateEmail(e.target.value)}
-                  className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white outline-none focus:ring-1 focus:ring-primary/40"
+                  className="block w-full px-4 py-3 bg-surface/80 border border-border rounded-xl text-text-primary outline-none focus:ring-1 focus:ring-primary/40"
                   placeholder="Email"
                 />
                 <input
                   type="password"
                   value={createPassword}
                   onChange={(e) => setCreatePassword(e.target.value)}
-                  className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white outline-none focus:ring-1 focus:ring-primary/40"
+                  className="block w-full px-4 py-3 bg-surface/80 border border-border rounded-xl text-text-primary outline-none focus:ring-1 focus:ring-primary/40"
                   placeholder="Temporary password"
                 />
                 {createError && <div className="rounded-xl bg-red-500/10 text-red-400 px-4 py-3 text-sm">{createError}</div>}

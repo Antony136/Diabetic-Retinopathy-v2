@@ -19,11 +19,11 @@ export default function AuthLayout(props: AuthLayoutProps) {
         transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
         className="text-center mb-12"
       >
-        <h1 className="text-5xl md:text-6xl font-bold text-white tracking-tight">
+        <h1 className="text-5xl md:text-6xl font-bold text-text-primary tracking-tight">
           {props.title.split(" ").slice(0, -1).join(" ")}{" "}
-          <span className="text-[#C87CFF]">{props.title.split(" ").slice(-1)}</span>
+          <span className="text-primary-bright">{props.title.split(" ").slice(-1)}</span>
         </h1>
-        <p className="mt-4 text-white/50 font-mono text-sm tracking-wider">
+        <p className="mt-4 text-text-variant font-mono text-sm tracking-wider">
           {props.subtitle}
         </p>
       </motion.div>
@@ -33,7 +33,7 @@ export default function AuthLayout(props: AuthLayoutProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-        className="w-full max-w-lg bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-xl p-8 md:p-10 shadow-[0_0_60px_rgba(200,124,255,0.08)]"
+        className="w-full max-w-lg bg-white/[0.03] backdrop-blur-xl border border-border rounded-xl p-8 md:p-10 shadow-[0_0_60px_rgba(200,124,255,0.08)]"
       >
         {props.children}
       </motion.div>
@@ -43,13 +43,13 @@ export default function AuthLayout(props: AuthLayoutProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.4 }}
-        className="mt-8 text-sm text-white/40 font-mono"
+        className="mt-8 text-sm text-text-variant font-mono"
       >
         {props.footer}
       </motion.div>
 
       {/* Branding at bottom */}
-      <div className="fixed bottom-6 left-8 font-mono text-white/20 text-xs tracking-[0.3em] uppercase">
+      <div className="fixed bottom-6 left-8 font-mono text-text-variant text-xs tracking-[0.3em] uppercase">
         {APP_NAME}
       </div>
     </main>

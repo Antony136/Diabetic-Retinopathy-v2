@@ -76,10 +76,10 @@ export default function Loader({ onComplete }: { onComplete: () => void }) {
             transition={{ duration: 0.4 }}
             className="flex flex-col items-center gap-6 z-10"
           >
-            <div className="w-16 h-16 rounded-full border-2 border-[#C87CFF]/30 flex items-center justify-center">
-              <div className="w-3 h-3 rounded-full bg-[#C87CFF] animate-pulse" />
+            <div className="w-16 h-16 rounded-full border-2 border-primary-bright/50 flex items-center justify-center">
+              <div className="w-3 h-3 rounded-full bg-primary-bright animate-pulse" />
             </div>
-            <div className="font-mono text-[#C87CFF] tracking-[0.3em] text-sm uppercase">
+            <div className="font-mono text-primary-bright tracking-[0.3em] text-sm uppercase">
               INITIALIZING...
             </div>
           </motion.div>

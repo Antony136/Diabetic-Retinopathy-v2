@@ -53,7 +53,7 @@ export default function PatientDetailsModal(props: {
   if (!patientId) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/55 p-4 pt-20 pb-12">
+    <div className="fixed inset-0 z-[120] flex items-start justify-center bg-surface/80 p-4 pt-20 pb-12">
       <Card className="w-full max-w-4xl p-0 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline/10 bg-surface-container-low">
           <div>
@@ -192,7 +192,7 @@ export default function PatientDetailsModal(props: {
         <div className="fixed inset-0 z-[130] flex items-center justify-center px-4" role="dialog" aria-modal="true">
           <button
             type="button"
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-surface/80 backdrop-blur-sm"
             onClick={() => setReportModal(null)}
             aria-label="Close dialog"
           />

@@ -8,6 +8,8 @@ import { getUserIdFromToken } from "../services/jwt";
 import Loader from "../components/ui/Loader";
 import CustomCursor from "../components/ui/CustomCursor";
 import ParticleBackground from "../components/ui/ParticleBackground";
+import { ThemeProvider } from "../contexts/ThemeContext";
+import { AnimationProvider, useAnimation } from "../contexts/AnimationContext";
 
 function AppChrome() {
   const location = useLocation();
@@ -18,7 +20,7 @@ function AppChrome() {
     location.hash.startsWith("#/register");
 
   return (
-    <div className="min-h-screen font-body selection:bg-primary-bright/30 relative">
+    <div className="min-h-screen font-body selection:bg-primary-bright/30 relative text-text-primary">
       <CustomCursor />
       <ParticleBackground />
       {!isAuthRoute && <Navbar />}
@@ -28,13 +30,27 @@ function AppChrome() {
   );
 }
 
-export default function App() {
+import { MotionConfig } from "framer-motion";
+
+function RootWithConfig() {
+  const { animationsEnabled } = useAnimation();
   const [loaderDone, setLoaderDone] = useState(false);
 
   const handleLoaderComplete = useCallback(() => {
     setLoaderDone(true);
   }, []);
 
+  return (
+    <MotionConfig transition={animationsEnabled ? undefined : { duration: 0, delay: 0 }}>
+      <HashRouter>
+        <Loader onComplete={handleLoaderComplete} />
+        {loaderDone && <AppChrome />}
+      </HashRouter>
+    </MotionConfig>
+  );
+}
+
+export default function App() {
   useEffect(() => {
     void (async () => {
       await syncAuthFromSecureStore();
@@ -51,9 +67,10 @@ export default function App() {
   }, []);
 
   return (
-    <HashRouter>
-      <Loader onComplete={handleLoaderComplete} />
-      {loaderDone && <AppChrome />}
-    </HashRouter>
+    <ThemeProvider>
+      <AnimationProvider>
+        <RootWithConfig />
+      </AnimationProvider>
+    </ThemeProvider>
   );
 }

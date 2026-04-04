@@ -42,7 +42,7 @@ function SvgBars(props: { labels: string[]; values: number[]; yUnit?: string }) 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="w-full h-72 text-white/40"
+      className="w-full h-72 text-text-variant"
     >
       <defs>
         <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
@@ -183,7 +183,7 @@ function SvgLine(props: { values: number[]; yUnit?: string; xStartLabel?: string
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="w-full h-72 text-white/40"
+      className="w-full h-72 text-text-variant"
     >
       <defs>
         <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
@@ -302,12 +302,12 @@ function StatCard({ label, value, hint, icon, index = 0 }: { label: string; valu
         <div className="absolute inset-0 bg-primary-bright/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
         <div className="flex items-center justify-between relative z-10">
-          <span className="text-white/50 font-mono text-xs uppercase tracking-widest">{label}</span>
+          <span className="text-text-variant font-mono text-xs uppercase tracking-widest">{label}</span>
           <span className="material-symbols-outlined text-primary-bright/70 text-xl group-hover:text-primary-bright group-hover:shadow-[0_0_10px_#C87CFF] transition-all">{icon}</span>
         </div>
         <div className="flex items-baseline gap-2 relative z-10">
-          <span className="text-3xl font-mono font-bold text-white group-hover:glow-text-primary transition-all">{value}</span>
-          {hint && <span className="text-white/30 text-xs font-mono">{hint}</span>}
+          <span className="text-3xl font-mono font-bold text-text-primary group-hover:glow-text-primary transition-all">{value}</span>
+          {hint && <span className="text-text-variant text-xs font-mono">{hint}</span>}
         </div>
       </Card>
     </FadeInReveal>
@@ -419,7 +419,7 @@ export default function Dashboard() {
       <FadeInReveal delay={0}>
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
           <div>
-            <h1 className="text-4xl font-mono font-extrabold text-white tracking-[0.2em] uppercase glow-text-primary">
+            <h1 className="text-4xl font-mono font-extrabold text-text-primary tracking-[0.2em] uppercase glow-text-primary">
               {user ? `[USER_ID: ${user.name}]` : "DASHBOARD"}
             </h1>
             <div className="text-primary-bright/70 font-mono text-sm mt-2 uppercase tracking-widest">
@@ -438,7 +438,7 @@ export default function Dashboard() {
         <FadeInReveal delay={0.1}>
           <Card className="p-5 mb-8 border border-error/50 bg-error/10">
             <div className="text-error font-mono font-bold tracking-widest uppercase">[{error}]</div>
-            <div className="text-white/50 text-sm mt-1 font-mono uppercase tracking-widest">
+            <div className="text-text-variant text-sm mt-1 font-mono uppercase tracking-widest">
               Please verify backend connectivity and token status.
             </div>
           </Card>
@@ -461,12 +461,12 @@ export default function Dashboard() {
           </div>
           <Card className="w-full p-6 group">
             <div className="flex items-center justify-between mb-3 relative z-10">
-              <div className="font-mono font-bold tracking-widest uppercase text-white group-hover:glow-text-primary transition-all">REPORTS_TREND [14_DAYS]</div>
-              <div className="text-xs text-white/50 font-mono tracking-widest">
+              <div className="font-mono font-bold tracking-widest uppercase text-text-primary group-hover:glow-text-primary transition-all">REPORTS_TREND [14_DAYS]</div>
+              <div className="text-xs text-text-variant font-mono tracking-widest">
                 {isLoading ? "CALCULATING…" : `${reportsLast14Days.reduce((a, b) => a + b, 0)} TOTAL`}
               </div>
             </div>
-            <div className="flex items-center justify-between text-xs text-white/30 mb-3 font-mono tracking-widest relative z-10">
+            <div className="flex items-center justify-between text-xs text-text-variant mb-3 font-mono tracking-widest relative z-10">
               <span>X: DAYS</span>
               <span>Y: COUNT</span>
             </div>
@@ -484,15 +484,15 @@ export default function Dashboard() {
           <FadeInReveal delay={0.6}>
             <Card className="p-6">
               <div className="flex items-center justify-between mb-3">
-                <div className="font-mono font-bold tracking-widest uppercase text-white">SEVERITY_DISTRIBUTION</div>
-                <div className="text-xs text-white/50 font-mono tracking-widest">{reports.length} REPORTS</div>
+                <div className="font-mono font-bold tracking-widest uppercase text-text-primary">SEVERITY_DISTRIBUTION</div>
+                <div className="text-xs text-text-variant font-mono tracking-widest">{reports.length} REPORTS</div>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-white/30 mb-3 font-mono tracking-widest">
+              <div className="flex items-center justify-between text-[10px] text-text-variant mb-3 font-mono tracking-widest">
                 <span>X: STAGE</span>
                 <span>Y: COUNT</span>
               </div>
               <SvgBars labels={["0", "1", "2", "3", "4"]} values={severityDist.counts} yUnit="COUNT" />
-              <div className="grid grid-cols-5 gap-2 mt-2 text-[10px] text-white/50 font-mono tracking-widest uppercase">
+              <div className="grid grid-cols-5 gap-2 mt-2 text-[10px] text-text-variant font-mono tracking-widest uppercase">
                 {["No DR", "Mild", "Mod", "Sev", "Prolif"].map((t) => (
                   <div key={t} className="text-center">
                     {t}
@@ -505,10 +505,10 @@ export default function Dashboard() {
           <FadeInReveal delay={0.7}>
             <Card className="p-6">
               <div className="flex items-center justify-between mb-3">
-                <div className="font-mono font-bold tracking-widest uppercase text-white">CONFIDENCE_BINS</div>
-                <div className="text-xs text-white/50 font-mono tracking-widest">(%)</div>
+                <div className="font-mono font-bold tracking-widest uppercase text-text-primary">CONFIDENCE_BINS</div>
+                <div className="text-xs text-text-variant font-mono tracking-widest">(%)</div>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-white/30 mb-3 font-mono tracking-widest">
+              <div className="flex items-center justify-between text-[10px] text-text-variant mb-3 font-mono tracking-widest">
                 <span>X: PERCENT</span>
                 <span>Y: COUNT</span>
               </div>
@@ -522,15 +522,15 @@ export default function Dashboard() {
         <FadeInReveal delay={0.8} className="lg:col-span-12">
           <Card className="p-6 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-mono font-bold text-xl tracking-widest uppercase text-white">SYSTEM_LOGS // RECENT_REPORTS</h2>
-              <div className="text-xs text-white/50 font-mono tracking-widest">
+              <h2 className="font-mono font-bold text-xl tracking-widest uppercase text-text-primary">SYSTEM_LOGS // RECENT_REPORTS</h2>
+              <div className="text-xs text-text-variant font-mono tracking-widest">
                 {isLoading ? "LOADING…" : "LATEST"}
               </div>
             </div>
             <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="text-xs uppercase tracking-wider text-white/30 font-mono border-b border-white/10">
+                  <tr className="text-xs uppercase tracking-wider text-text-variant font-mono border-b border-border">
                     <th className="py-3 pr-4">SUBJECT_ID</th>
                     <th className="py-3 pr-4">PREDICTION_STATE</th>
                     <th className="py-3 pr-4 text-center">CONFIDENCE</th>
@@ -540,7 +540,7 @@ export default function Dashboard() {
                 </thead>
                 <tbody className="divide-y divide-white/5 font-mono text-sm">
                   {recent.map((r) => (
-                    <tr key={r.id} className="hover:bg-white/5 transition-colors group cursor-pointer text-white/70 hover:text-white">
+                    <tr key={r.id} className="hover:bg-white/5 transition-colors group cursor-pointer text-text-variant hover:text-text-primary">
                       <td className="py-4 pr-4 font-bold tracking-widest group-hover:glow-text-primary transition-all">
                         {patientNameById.get(r.patient_id) ?? `SUB_${r.patient_id}`}
                       </td>
@@ -549,14 +549,14 @@ export default function Dashboard() {
                       <td className={`py-4 pr-4 text-center font-bold text-[10px] tracking-widest`}>
                         <span className={`px-2 py-1 border rounded-non ${r.priority_score >= 4 ? 'border-error text-error shadow-[0_0_10px_rgba(255,0,0,0.3)]' : 'border-primary-bright text-primary-bright'}`}>LVL_{r.priority_score}</span>
                       </td>
-                      <td className="py-4 text-right text-xs text-white/40">
+                      <td className="py-4 text-right text-xs text-text-variant">
                         {new Date(r.created_at).toLocaleString()}
                       </td>
                     </tr>
                   ))}
                   {!isLoading && recent.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-10 text-center text-white/30 tracking-widest uppercase text-xs">
+                      <td colSpan={5} className="py-10 text-center text-text-variant tracking-widest uppercase text-xs">
                         {">"} TERMINAL_EMPTY // NO_LOGS_FOUND 
                       </td>
                     </tr>

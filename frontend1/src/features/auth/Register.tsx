@@ -47,7 +47,7 @@ export default function Register() {
           <button
             type="button"
             onClick={() => navigate("/login")}
-            className="text-[#C87CFF] hover:text-[#C87CFF]/80 font-mono tracking-wider transition-colors"
+            className="text-primary-bright hover:text-primary-bright/80 font-mono tracking-wider transition-colors"
           >
             AUTHENTICATE
           </button>
@@ -56,11 +56,11 @@ export default function Register() {
     >
       <form onSubmit={onSubmit} className="space-y-6">
         <div className="space-y-2">
-          <label className="block text-xs font-mono text-white/40 uppercase tracking-[0.2em]">
+          <label className="block text-xs font-mono text-text-variant uppercase tracking-[0.2em]">
             SUBJECT_IDENTIFIER
           </label>
           <input
-            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-white/10 font-mono text-white/80 placeholder:text-white/20 focus:border-[#C87CFF]/50 focus:ring-0 transition-colors outline-none text-sm"
+            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-border font-mono text-text-variant placeholder:text-text-variant focus:border-primary-bright/50 focus:ring-0 transition-colors outline-none text-sm"
             placeholder="Enter designation..."
             type="text"
             value={name}
@@ -71,11 +71,11 @@ export default function Register() {
         </div>
 
         <div className="space-y-2">
-          <label className="block text-xs font-mono text-white/40 uppercase tracking-[0.2em]">
+          <label className="block text-xs font-mono text-text-variant uppercase tracking-[0.2em]">
             COMMUNICATION_RELAY
           </label>
           <input
-            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-white/10 font-mono text-white/80 placeholder:text-white/20 focus:border-[#C87CFF]/50 focus:ring-0 transition-colors outline-none text-sm"
+            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-border font-mono text-text-variant placeholder:text-text-variant focus:border-primary-bright/50 focus:ring-0 transition-colors outline-none text-sm"
             placeholder="Secure channel address..."
             type="email"
             value={email}
@@ -86,11 +86,11 @@ export default function Register() {
         </div>
 
         <div className="space-y-2">
-          <label className="block text-xs font-mono text-white/40 uppercase tracking-[0.2em]">
+          <label className="block text-xs font-mono text-text-variant uppercase tracking-[0.2em]">
             ACCESS_KEY
           </label>
           <input
-            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-white/10 font-mono text-white/80 placeholder:text-white/20 focus:border-[#C87CFF]/50 focus:ring-0 transition-colors outline-none text-sm"
+            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-border font-mono text-text-variant placeholder:text-text-variant focus:border-primary-bright/50 focus:ring-0 transition-colors outline-none text-sm"
             placeholder="Create passphrase..."
             type="password"
             value={password}

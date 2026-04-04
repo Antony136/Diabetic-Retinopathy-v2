@@ -1,13 +1,14 @@
 import Card from "../../components/ui/Card";
 import { useEffect, useRef, useState } from "react";
-import { getThemeMode, setThemeMode, type ThemeMode } from "../../services/theme";
+
 import {
   getAppSettings,
   setAppSettings,
   type AppSettings,
 } from "../../services/appSettings";
-import { applyAnimationsEnabled } from "../../services/animations";
 import { applyHighContrastEnabled } from "../../services/contrast";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useAnimation } from "../../contexts/AnimationContext";
 import { listPatients } from "../../services/patients";
 import { listReports } from "../../services/reports";
 import { severityFromStage } from "../screening/mockAnalysis";
@@ -26,14 +27,14 @@ function Toggle(props: ToggleProps) {
       type="button"
       onClick={() => onChange(!value)}
       className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${
-        value ? "bg-primary" : "bg-surface-container-highest"
+        value ? "bg-[#321c43] border border-[#522f6d] shadow-[0_0_10px_rgba(200,124,255,0.3)]" : "bg-surface-container-high border border-border"
       }`}
       aria-label={label}
       aria-pressed={value}
     >
       <div
         className={`absolute top-1 w-4 h-4 rounded-full shadow-sm transition-transform duration-300 ${
-          value ? "bg-white translate-x-6" : "bg-outline translate-x-1"
+          value ? "bg-[#050505] translate-x-6" : "bg-text-secondary translate-x-1"
         }`}
       />
     </button>
@@ -291,7 +292,8 @@ function buildYesterdaySummaryHtml(params: {
 }
 
 export default function Settings() {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
+  const { theme, setTheme } = useTheme();
+  const { animationsEnabled, setAnimationsEnabled } = useAnimation();
   const [settings, setSettingsState] = useState<AppSettings>(() => getAppSettings());
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -462,11 +464,9 @@ export default function Settings() {
                 <p className="text-xs text-on-surface-variant">Switch between dark and light themes.</p>
               </div>
               <Toggle
-                value={themeMode === "dark"}
+                value={theme === "dark"}
                 onChange={(next) => {
-                  const mode: ThemeMode = next ? "dark" : "light";
-                  setThemeMode(mode);
-                  setThemeModeState(mode);
+                  setTheme(next ? "dark" : "light");
                 }}
                 label="Toggle dark mode"
               />
@@ -477,9 +477,9 @@ export default function Settings() {
                 <p className="text-xs text-on-surface-variant">Smoother transitions and UI interactions.</p>
               </div>
               <Toggle
-                value={settings.animationsEnabled}
+                value={animationsEnabled}
                 onChange={(next) => {
-                  applyAnimationsEnabled(next);
+                  setAnimationsEnabled(next);
                   persistSettings({ ...settings, animationsEnabled: next });
                 }}
                 label="Toggle animations"

@@ -214,7 +214,7 @@ export default function Profile() {
                     {data ? initials(data.name) : "—"}
                   </div>
                 )}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer bg-black/40">
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer bg-surface/80">
                   <span className="material-symbols-outlined text-on-surface">photo_camera</span>
                 </div>
               </button>
@@ -383,7 +383,7 @@ export default function Profile() {
         >
           <button
             type="button"
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-surface/80 backdrop-blur-sm"
             onClick={() => setPwOpen(false)}
             aria-label="Close dialog"
           />

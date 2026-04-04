@@ -518,7 +518,7 @@ export default function Triage() {
 
       {/* Manual Entry Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/50 p-4 pt-20 pb-12 transition-opacity">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-surface/80 p-4 pt-20 pb-12 transition-opacity">
           <div className="bg-surface-container rounded-3xl w-full max-w-xl max-h-full flex flex-col shadow-2xl">
             <div className="flex justify-between items-center p-5 border-b border-outline/10">
               <h2 className="text-xl font-headline font-bold text-on-surface">Add Manual Triage Entry</h2>

@@ -80,7 +80,7 @@ export default function Login() {
           <button
             type="button"
             onClick={() => navigate("/register")}
-            className="text-[#C87CFF] hover:text-[#C87CFF]/80 font-mono tracking-wider transition-colors"
+            className="text-primary-bright hover:text-primary-bright/80 font-mono tracking-wider transition-colors"
           >
             REGISTER
           </button>
@@ -88,37 +88,37 @@ export default function Login() {
       }
     >
       {/* GDSC Notice */}
-      <div className="mb-8 p-5 border border-white/10 rounded-lg bg-white/[0.02] space-y-3">
+      <div className="mb-8 p-5 border border-border rounded-lg bg-white/[0.02] space-y-3">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-[#C87CFF]" />
-          <span className="font-mono font-bold text-xs tracking-[0.2em] uppercase text-white/70">SYSTEM_NOTICE</span>
+          <div className="w-2 h-2 rounded-full bg-primary-bright" />
+          <span className="font-mono font-bold text-xs tracking-[0.2em] uppercase text-text-variant">SYSTEM_NOTICE</span>
         </div>
         
-        <p className="text-xs font-mono text-white/50 leading-relaxed">
+        <p className="text-xs font-mono text-text-variant leading-relaxed">
           GDSC Reviewers: Use these credentials for a quick preview.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="p-3 border border-white/5 rounded-lg">
-            <p className="text-[10px] font-mono font-bold text-[#C87CFF] uppercase tracking-widest mb-1">ADMIN_ACCESS</p>
-            <p className="text-xs font-mono text-white/70">icebox1306@gmail.com</p>
-            <p className="text-xs font-mono text-white/40">Pass: 123456</p>
+          <div className="p-3 border border-border rounded-lg">
+            <p className="text-[10px] font-mono font-bold text-primary-bright uppercase tracking-widest mb-1">ADMIN_ACCESS</p>
+            <p className="text-xs font-mono text-text-variant">icebox1306@gmail.com</p>
+            <p className="text-xs font-mono text-text-variant">Pass: 123456</p>
           </div>
-          <div className="p-3 border border-white/5 rounded-lg">
-            <p className="text-[10px] font-mono font-bold text-[#5efdba] uppercase tracking-widest mb-1">DOCTOR_ACCESS</p>
-            <p className="text-xs font-mono text-white/70">doc@gmail.com</p>
-            <p className="text-xs font-mono text-white/40">Pass: 123456</p>
+          <div className="p-3 border border-border rounded-lg">
+            <p className="text-[10px] font-mono font-bold text-secondary-bright uppercase tracking-widest mb-1">DOCTOR_ACCESS</p>
+            <p className="text-xs font-mono text-text-variant">doc@gmail.com</p>
+            <p className="text-xs font-mono text-text-variant">Pass: 123456</p>
           </div>
         </div>
         
-        <div className="pt-2 border-t border-white/5">
-          <p className="text-[11px] font-mono text-white/30 leading-relaxed">
-            ML inference engine runs on <span className="text-[#C87CFF]/70">Hugging Face Spaces</span>.
+        <div className="pt-2 border-t border-border">
+          <p className="text-[11px] font-mono text-text-variant leading-relaxed">
+            ML inference engine runs on <span className="text-primary-bright/70">Hugging Face Spaces</span>.
           </p>
           <a 
             href="https://huggingface.co/spaces/jczdgyo/diabetic-retinopathy" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#C87CFF]/30 text-[#C87CFF] text-[10px] font-mono font-bold hover:bg-[#C87CFF]/10 transition-colors uppercase tracking-widest"
+            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 border border-primary-bright/50 text-primary-bright text-[10px] font-mono font-bold hover:bg-primary-bright/10 transition-colors uppercase tracking-widest"
           >
             <span className="material-symbols-outlined text-xs">explore</span>
             VIEW MODEL
@@ -129,11 +129,11 @@ export default function Login() {
       <form onSubmit={onSubmit} className="space-y-6">
         {/* Email field - template style with bottom border only */}
         <div className="space-y-2">
-          <label className="block text-xs font-mono text-white/40 uppercase tracking-[0.2em]">
+          <label className="block text-xs font-mono text-text-variant uppercase tracking-[0.2em]">
             COMMUNICATION_RELAY
           </label>
           <input
-            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-white/10 font-mono text-white/80 placeholder:text-white/20 focus:border-[#C87CFF]/50 focus:ring-0 transition-colors outline-none text-sm"
+            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-border font-mono text-text-variant placeholder:text-text-variant focus:border-primary-bright/50 focus:ring-0 transition-colors outline-none text-sm"
             placeholder="Secure channel address..."
             type="email"
             value={email}
@@ -145,11 +145,11 @@ export default function Login() {
 
         {/* Password field */}
         <div className="space-y-2">
-          <label className="block text-xs font-mono text-white/40 uppercase tracking-[0.2em]">
+          <label className="block text-xs font-mono text-text-variant uppercase tracking-[0.2em]">
             ACCESS_KEY
           </label>
           <input
-            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-white/10 font-mono text-white/80 placeholder:text-white/20 focus:border-[#C87CFF]/50 focus:ring-0 transition-colors outline-none text-sm"
+            className="block w-full px-0 py-3 bg-transparent border-0 border-b border-border font-mono text-text-variant placeholder:text-text-variant focus:border-primary-bright/50 focus:ring-0 transition-colors outline-none text-sm"
             placeholder="Enter passphrase..."
             type="password"
             value={password}
