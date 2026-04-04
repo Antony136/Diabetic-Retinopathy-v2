@@ -262,11 +262,41 @@ async def create_report(
         provider = (os.getenv("AI_PROVIDER") or "").strip().lower()
         use_local = provider in ("local", "offline", "desktop")
 
+        # Defaults (keeps mypy/linters happy and avoids accidental UnboundLocalError)
+        prediction = "Unknown"
+        confidence = 0.0
+        heatmap_bytes = None
+        heatmap_content_type = None
+        heatmap_ext = None
+        risk_score = None
+        risk_level = None
+        decision = None
+        adaptive_explanation = None
+        override_applied = False
+        source = "sync_local" if use_local else "sync_remote"
+
         if use_local:
             # Local (desktop/offline) dual-mode screening using bundled checkpoint.
             from app.services.dual_mode_service import run_inference, load_model, MODEL_PATH
 
-            model = load_model(MODEL_PATH)
+            try:
+                model = load_model(MODEL_PATH)
+            except FileNotFoundError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=f"Local AI model not available on this device: {e}",
+                )
+            except ModuleNotFoundError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=f"Local AI dependencies missing: {e}",
+                )
+            except Exception as e:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=f"Local AI failed to initialize: {e}",
+                )
+
             result = run_inference(local_image_path, mode, model=model)
 
             prediction = result["grade"]
@@ -278,10 +308,16 @@ async def create_report(
             override_applied = result["override_applied"]
 
             # Heatmap (best-effort) via local Grad-CAM pipeline.
-            from app.services.local_ai_service import predict as local_predict
+            try:
+                from app.services.local_ai_service import predict as local_predict
 
-            _lbl, _conf, heatmap_bytes, heatmap_content_type, heatmap_ext = local_predict(local_image_path)
-            source = "sync_local"
+                _lbl, _conf, heatmap_bytes, heatmap_content_type, heatmap_ext = local_predict(local_image_path)
+            except Exception as e:
+                # Heatmap is optional; do not fail the report for this.
+                print(f"WARNING: heatmap generation failed: {e}")
+                heatmap_bytes = None
+                heatmap_content_type = None
+                heatmap_ext = None
         else:
             # Online/cloud: default to Hugging Face (or other remote provider) to avoid missing-checkpoint 500s.
             from app.services.ai_service import predict_dr_stage
@@ -294,13 +330,22 @@ async def create_report(
             decision = triage["decision"]
             adaptive_explanation = triage["explanation"]
             override_applied = triage["override_applied"]
-            source = "sync_remote"
         
     except ValueError as ve:
         # Catch strict validation (heuristics/confidence filter) from dual_mode_service
         if os.path.exists(local_image_path):
             os.remove(local_image_path)
-        raise HTTPException(status_code=400, detail="Invalid image. Please upload a retinal fundus image (JPG/PNG only).")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(ve) or "Invalid image. Please upload a retinal fundus image (JPG/PNG only).",
+        )
+    except (httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout) as e:
+        if os.path.exists(local_image_path):
+            os.remove(local_image_path)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"AI provider unreachable: {e}",
+        )
     except Exception as e:
         try:
             import traceback

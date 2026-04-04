@@ -37,6 +37,7 @@ try {
     --clean `
     --onefile `
     --name "desktop_server" `
+    --add-data "app\\checkpoints\\model_b3.pth;app\\checkpoints" `
     --hidden-import=passlib.handlers.bcrypt `
     --hidden-import=passlib.handlers.pbkdf2_sha256 `
     --hidden-import=passlib.handlers.argon2 `
@@ -54,4 +55,3 @@ try {
 } finally {
   Pop-Location
 }
-

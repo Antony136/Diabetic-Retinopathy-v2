@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 
 
 def setup_environment():
@@ -7,6 +8,10 @@ def setup_environment():
     Configure environment variables for desktop runtime
     """
     os.environ.setdefault("AI_PROVIDER", "local")
+    # Desktop runs should never rely on cloud storage being available. This enables:
+    # - JSON error details from the global exception handler
+    # - local `/uploads` fallback when cloud uploads fail
+    os.environ.setdefault("DESKTOP_MODE", "1")
     os.environ.setdefault("ALLOWED_ORIGINS", "*")
 
     # When running from Electron we intentionally keep the current working directory (cwd)
@@ -21,6 +26,38 @@ def setup_environment():
 
     if base_path and base_path not in sys.path:
         sys.path.insert(0, base_path)
+
+    # Ensure the local model checkpoint can be found in both dev + frozen builds.
+    # dual_mode_service prefers an explicit MODEL_PATH override.
+    if not (os.getenv("MODEL_PATH") or "").strip():
+        candidates: list[Path] = []
+        try:
+            meipass = Path(getattr(sys, "_MEIPASS", ""))
+            if str(meipass):
+                candidates.append(meipass / "app" / "checkpoints" / "model_b3.pth")
+        except Exception:
+            pass
+
+        try:
+            exe_dir = Path(sys.executable).resolve().parent
+            candidates.append(exe_dir / "model_b3.pth")
+            candidates.append(exe_dir / "checkpoints" / "model_b3.pth")
+            candidates.append(exe_dir / "app" / "checkpoints" / "model_b3.pth")
+        except Exception:
+            pass
+
+        try:
+            candidates.append(Path(base_path) / "app" / "checkpoints" / "model_b3.pth")
+        except Exception:
+            pass
+
+        for p in candidates:
+            try:
+                if p and p.exists():
+                    os.environ["MODEL_PATH"] = str(p)
+                    break
+            except Exception:
+                continue
 
 
 def main():
