@@ -16,6 +16,7 @@ import {
 import { severityFromStage, stageDescription, getTreatmentWindow, getLesionRegion } from "./mockAnalysis";
 
 import { getAppSettings } from "../../services/appSettings";
+import { useScreeningMode } from "../../contexts/ScreeningModeContext";
 
 type ReportRow = ReportResponse & { priority_score: 1 | 2 | 3 | 4 | 5 };
 
@@ -65,6 +66,8 @@ export default function Screening() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [imageExplainLoading, setImageExplainLoading] = useState(false);
   const [imageExplainError, setImageExplainError] = useState<string | null>(null);
+
+  const { adaptiveMode, setAdaptiveMode } = useScreeningMode();
 
   const patientsById = useMemo(
     () => new Map(patients.map((p) => [p.id, p])),
@@ -147,7 +150,11 @@ export default function Screening() {
 
     setIsAnalyzing(true);
     try {
-      const created = await createReport({ patientId: selectedPatientId, file });
+      const created = await createReport({ 
+        patientId: selectedPatientId, 
+        file,
+        mode: adaptiveMode
+      });
       setReport(toReportRow(created));
     } catch (error: unknown) {
       console.error("Analysis request failed", error);
@@ -501,11 +508,44 @@ export default function Screening() {
                 <div className="text-on-surface-variant text-sm">No image selected</div>
               )}
             </div>
-            <div className="p-6 flex justify-end gap-3">
-              <Button type="button" variant="ghost" onClick={onReset} disabled={isAnalyzing}>Clear</Button>
-              <Button type="button" onClick={onRunAnalysis} disabled={isAnalyzing || !selectedPatientId || !file} icon="auto_awesome">
-                {isAnalyzing ? "Analyzing..." : "Run Analysis"}
-              </Button>
+            <div className="p-6 flex flex-col gap-5 border-t border-outline-variant/10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold block mb-1">Screening Mode</span>
+                  <p className="text-[11px] text-on-surface-variant/70 italic">Adjust sensitivity for early detection vs camp efficiency.</p>
+                </div>
+                <div className="flex p-1 bg-surface-container-high rounded-xl gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setAdaptiveMode("standard")}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${
+                      adaptiveMode === "standard"
+                        ? "bg-surface-container-lowest text-primary shadow-sm ring-1 ring-black/5"
+                        : "text-on-surface-variant hover:text-on-surface bg-transparent"
+                    }`}
+                  >
+                    Standard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdaptiveMode("high_sensitivity")}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${
+                      adaptiveMode === "high_sensitivity"
+                        ? "bg-surface-container-lowest text-secondary shadow-sm ring-1 ring-black/5"
+                        : "text-on-surface-variant hover:text-on-surface bg-transparent"
+                    }`}
+                  >
+                    High Sensitivity
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button type="button" variant="ghost" onClick={onReset} disabled={isAnalyzing}>Clear</Button>
+                <Button type="button" onClick={onRunAnalysis} disabled={isAnalyzing || !selectedPatientId || !file} icon="auto_awesome">
+                  {isAnalyzing ? "Analyzing..." : "Run Analysis"}
+                </Button>
+              </div>
             </div>
             {analysisError && (
               <div className="px-6 pb-6 -mt-3">
@@ -559,6 +599,67 @@ export default function Screening() {
                     </div>
                   </div>
                 </div>
+
+                {report.decision && (
+                  <div className="space-y-3">
+                    <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Adaptive Clinical Decision</span>
+                    <div 
+                      className={`rounded-xl p-5 border-2 flex flex-col gap-3 transition-all ${
+                        report.decision === "Refer" 
+                          ? "bg-error-container/10 border-error/20" 
+                          : "bg-success-container/10 border-success/20"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`material-symbols-outlined text-2xl ${
+                            report.decision === "Refer" ? "text-error" : "text-success"
+                          }`}>
+                            {report.decision === "Refer" ? "emergency_home" : "check_circle"}
+                          </span>
+                          <h4 className={`text-xl font-bold ${
+                            report.decision === "Refer" ? "text-error" : "text-success"
+                          }`}>
+                            {report.decision === "Refer" ? "REFER FOR CARE" : "NORMAL / MONITOR"}
+                          </h4>
+                        </div>
+                        <div className="px-3 py-1 rounded-full bg-surface-container-high text-[10px] font-black uppercase tracking-widest">
+                          {report.mode === "high_sensitivity" ? "High Sensitivity Mode" : "Standard Triage"}
+                        </div>
+                      </div>
+
+                      {report.override_applied && (
+                        <div className="bg-error/10 border border-error/20 p-3 rounded-lg flex items-center gap-3">
+                          <span className="material-symbols-outlined text-error text-xl animate-pulse">warning</span>
+                          <p className="text-[10px] text-error font-bold uppercase tracking-tighter">
+                            MEDICAL SAFETY OVERRIDE: SEVERE STAGE DETECTED
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-on-surface-variant uppercase font-bold">Risk Score</p>
+                          <p className="text-lg font-headline font-black text-on-surface">{(report.risk_score || 0).toFixed(3)}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-on-surface-variant uppercase font-bold">Risk Level</p>
+                          <p className={`text-lg font-headline font-black ${
+                            report.override_applied ? "text-error animate-pulse" : report.risk_level === "High" ? "text-error" : report.risk_level === "Moderate" ? "text-primary" : "text-success"
+                          }`}>
+                            {report.override_applied ? "OVERRIDDEN (SEVERE CASE)" : (report.risk_level || "Low")}
+                          </p>
+                        </div>
+                      </div>
+
+                      {report.adaptive_explanation && (
+                        <p className="text-xs text-on-surface-variant italic border-t border-outline/10 pt-3">
+                          "{report.adaptive_explanation}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   <div className="flex justify-between items-end">

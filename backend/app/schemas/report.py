@@ -13,6 +13,12 @@ class ReportCreate(BaseModel):
     description: Optional[str] = None
     image_observations: Optional[str] = None
     image_explanation: Optional[str] = None
+    risk_score: Optional[float] = None
+    risk_level: Optional[str] = None
+    decision: Optional[str] = None
+    mode: Optional[str] = None
+    adaptive_explanation: Optional[str] = None
+    override_applied: Optional[bool] = False
 
 class ReportUpdate(BaseModel):
     prediction: str
@@ -32,6 +38,12 @@ class ReportResponse(BaseModel):
     description: Optional[str] = None
     image_observations: Optional[str] = None
     image_explanation: Optional[str] = None
+    risk_score: Optional[float] = None
+    risk_level: Optional[str] = None
+    decision: Optional[str] = None
+    mode: Optional[str] = None
+    adaptive_explanation: Optional[str] = None
+    override_applied: Optional[bool] = False
     created_at: datetime
     updated_at: Optional[datetime] = None
     source: Optional[str] = None

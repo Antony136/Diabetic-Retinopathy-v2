@@ -132,6 +132,33 @@ def run_migrations(engine: Engine):
                         ddl = ddl.replace("TIMESTAMP", "DATETIME")
                     conn.execute(text(ddl))
 
+    # Adaptive Screening Mode columns (risk_score, risk_level, decision, mode, adaptive_explanation)
+    if _has_column(engine, "reports", "id"):
+        ddl_adaptive: list[str] = []
+        if not _has_column(engine, "reports", "risk_score"):
+            ddl_adaptive.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS risk_score FLOAT NULL")
+        if not _has_column(engine, "reports", "risk_level"):
+            ddl_adaptive.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS risk_level VARCHAR NULL")
+        if not _has_column(engine, "reports", "decision"):
+            ddl_adaptive.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS decision VARCHAR NULL")
+        if not _has_column(engine, "reports", "mode"):
+            ddl_adaptive.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS mode VARCHAR NULL")
+        if not _has_column(engine, "reports", "adaptive_explanation"):
+            ddl_adaptive.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS adaptive_explanation TEXT NULL")
+        if not _has_column(engine, "reports", "override_applied"):
+            ddl_adaptive.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS override_applied BOOLEAN DEFAULT FALSE")
+        
+        if ddl_adaptive:
+            with engine.begin() as conn:
+                if dialect == "postgresql":
+                    conn.execute(text("SET statement_timeout TO 0"))
+                for ddl in ddl_adaptive:
+                    if dialect != "postgresql":
+                        ddl = ddl.replace(" IF NOT EXISTS", "")
+                        ddl = ddl.replace("BOOLEAN", "INTEGER")
+                        ddl = ddl.replace("FALSE", "0")
+                    conn.execute(text(ddl))
+
     # image_cache table may not exist in older environments (desktop/offline feature)
     # Create table only when missing (safe for both SQLite/Postgres).
     insp = inspect(engine)

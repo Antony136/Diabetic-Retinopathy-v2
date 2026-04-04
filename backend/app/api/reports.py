@@ -144,19 +144,14 @@ async def cache_image_url(
 async def create_report(
     patient_id: int = Query(...),
     file: UploadFile = File(...),
+    mode: str = Query("standard"),
     client_uuid: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Create a new report with image upload and AI prediction.
-
-    Flow:
-    - Read multipart image bytes
-    - Send to Hugging Face Space /predict
-    - Upload original + heatmap to Supabase Storage
-    - Insert record into DB
-    - Return JSON to frontend
+    Now supports dual-mode adaptive screening (standard vs high_sensitivity).
     """
     patient_query = db.query(Patient).filter(Patient.id == patient_id)
     if getattr(current_user, "role", "doctor") != "admin":
@@ -190,13 +185,28 @@ async def create_report(
     local_image_path = _write_temp_image(image_bytes, suffix)
 
     try:
-        from app.services.ai_service import predict_dr_stage
-
-        prediction, confidence, heatmap_bytes, heatmap_content_type, heatmap_ext = predict_dr_stage(local_image_path)
+        # Use the newly implemented dual-mode screening service
+        from app.services.dual_mode_service import run_inference, load_model, MODEL_PATH
+        model = load_model(MODEL_PATH)
+        result = run_inference(local_image_path, mode, model=model)
+        
+        prediction = result["grade"]
+        confidence = result["confidence"]
+        risk_score = result["risk_score"]
+        risk_level = result["risk_level"]
+        decision = result["decision"]
+        adaptive_explanation = result["explanation"]
+        override_applied = result["override_applied"]
+        
+        # We still need the heatmap from the old service if dual_mode_service doesn't provide it
+        # Actually, local_ai_service already produces a heatmap, but run_inference doesn't return it currently.
+        # Let's use the local_ai_service logic for heatmap specifically if needed.
+        from app.services.local_ai_service import predict as local_predict
+        _, _, heatmap_bytes, heatmap_content_type, heatmap_ext = local_predict(local_image_path)
+        
     except Exception as e:
         try:
             import traceback
-
             traceback.print_exc()
         except Exception:
             pass
@@ -263,16 +273,22 @@ async def create_report(
         source="sync_local",
         image_observations=image_observations_raw,
         image_explanation=image_explanation,
+        # New Additions
+        risk_score=risk_score,
+        risk_level=risk_level,
+        decision=decision,
+        mode=mode,
+        adaptive_explanation=adaptive_explanation,
+        override_applied=override_applied
     )
 
     db.add(new_report)
     db.commit()
     db.refresh(new_report)
 
-    # Notifications/preferences are non-critical; don't fail the analysis if these tables are out of date locally.
+    # Notifications/preferences are non-critical
     try:
         pref = get_or_create_preferences(db, current_user.id)
-
         db.add(
             Notification(
                 user_id=current_user.id,
@@ -283,7 +299,6 @@ async def create_report(
                 message=f"Report #{new_report.id} for {patient.name} is ready.",
             )
         )
-
         if pref.notifications_high_risk:
             if prediction in ["Severe", "Proliferative DR"]:
                 db.add(
@@ -307,7 +322,6 @@ async def create_report(
                         message=f"{patient.name} has Moderate DR. Follow-up in {pref.follow_up_days_moderate} days.",
                     )
                 )
-
         if confidence < pref.min_confidence_threshold:
             db.add(
                 Notification(
@@ -319,7 +333,6 @@ async def create_report(
                     message=f"Report #{new_report.id} confidence is {round(confidence * 100, 1)}%. Please review before action.",
                 )
             )
-
         db.commit()
     except Exception as e:
         try:
@@ -350,8 +363,6 @@ async def import_report(
 ):
     """
     Import a report created offline (sync).
-
-    Idempotent on (doctor_id, report.client_uuid).
     """
     c_uuid = (client_uuid or "").strip()
     if not c_uuid:
@@ -528,7 +539,7 @@ def get_all_reports(
     if getattr(current_user, "role", "doctor") != "admin":
         query = query.filter(Patient.doctor_id == current_user.id)
 
-    # Time filtering (created_at stored as naive UTC by default)
+    # Time filtering
     tf = (timeframe or "").strip().lower()
     if tf and tf != "all":
         now = datetime.utcnow()
@@ -580,6 +591,12 @@ def get_all_reports(
             "description": getattr(report, "description", None),
             "image_observations": getattr(report, "image_observations", None),
             "image_explanation": getattr(report, "image_explanation", None),
+            # New fields
+            "risk_score": report.risk_score,
+            "risk_level": report.risk_level,
+            "decision": report.decision,
+            "mode": report.mode,
+            "adaptive_explanation": report.adaptive_explanation,
             "created_at": report.created_at,
             "patient_name": patient_name,
         }
@@ -641,6 +658,12 @@ def get_patient_reports(
             "description": getattr(report, "description", None),
             "image_observations": getattr(report, "image_observations", None),
             "image_explanation": getattr(report, "image_explanation", None),
+            # New fields
+            "risk_score": report.risk_score,
+            "risk_level": report.risk_level,
+            "decision": report.decision,
+            "mode": report.mode,
+            "adaptive_explanation": report.adaptive_explanation,
             "created_at": report.created_at,
             "patient_name": patient.name,
         }
@@ -657,7 +680,6 @@ async def generate_report_image_explanation(
 ):
     """
     Generate (or refresh) the image-based explanation for a report using its heatmap.
-    Best-effort and safe for offline use (uses local /uploads when available).
     """
     report = (
         db.query(Report)
@@ -679,6 +701,7 @@ async def generate_report_image_explanation(
 
     try:
         hm_bytes = await _fetch_bytes_for_url(str(report.heatmap_url))
+        from app.services import image_explanation_service
         hm_img = image_explanation_service.load_heatmap_image_from_bytes(hm_bytes)
         feats = image_explanation_service.extract_heatmap_features(hm_img)
         obs = image_explanation_service.derive_observations(feats)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Text
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Text, Boolean
 from datetime import datetime
 from app.db.database import Base
 
@@ -21,6 +21,14 @@ class Report(Base):
     # Explainable AI (image reasoning)
     image_observations = Column(Text, nullable=True)  # JSON-encoded list[str]
     image_explanation = Column(Text, nullable=True)  # LLM-generated text
+
+    # Adaptive Screening Mode
+    risk_score = Column(Float, nullable=True)
+    risk_level = Column(String, nullable=True)
+    decision = Column(String, nullable=True) # "Refer" or "Normal"
+    mode = Column(String, nullable=True) # "standard" or "high_sensitivity"
+    adaptive_explanation = Column(Text, nullable=True)
+    override_applied = Column(Boolean, default=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

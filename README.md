@@ -11,6 +11,8 @@ The application empowers clinicians to:
 - **Explainable AI (XAI)**: View Grad-CAM heatmaps highlighting regions affecting the AI's diagnosis.
 - **Patient Management**: Maintain comprehensive longitudinal records, history, and metadata.
 - **Offline-First Workflow**: Run full AI inference and database operations locally, syncing with a cloud server when online.
+- **Dual-Mode Adaptive Screening**: Toggle between standard efficiency and high-sensitivity preventative modes.
+- **Clinical Safety Overrides**: Real-time detection of severe cases that bypass thresholding for immediate referral.
 - **Micro-Animations & Premium UI**: A modern "Nordic Clinical" aesthetic built with Material Design 3 and Framer Motion.
 
 ---
