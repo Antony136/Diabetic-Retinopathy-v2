@@ -4,6 +4,8 @@ import { listPatients, createPatient, type PatientResponse } from "../../service
 import { createManualReport } from "../../services/reports";
 import PatientDetailsModal from "../../components/patients/PatientDetailsModal";
 import Card from "../../components/ui/Card";
+import { useScreeningMode } from "../../contexts/ScreeningModeContext";
+import FadeInReveal from "../../components/ui/FadeInReveal";
 
 type ReportData = {
   id: number;
@@ -27,12 +29,6 @@ function timeAgo(dateString: string) {
   return `${days}d ago`;
 }
 
-function getCategory(prediction: string) {
-  if (["Severe", "Proliferative DR"].includes(prediction)) return "Critical";
-  if (["Moderate"].includes(prediction)) return "High Risk";
-  if (["Mild"].includes(prediction)) return "Moderate";
-  return "Stable";
-}
 
 export default function Triage() {
   const [reports, setReports] = useState<ReportData[]>([]);
@@ -61,6 +57,8 @@ export default function Triage() {
   
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const { adaptiveMode, setAdaptiveMode } = useScreeningMode();
 
   useEffect(() => {
     fetchTriageCases();
@@ -166,90 +164,113 @@ export default function Triage() {
   };
 
   const categorizedData = {
-    Critical: reports.filter(r => getCategory(r.prediction) === "Critical"),
-    "High Risk": reports.filter(r => getCategory(r.prediction) === "High Risk"),
-    Moderate: reports.filter(r => getCategory(r.prediction) === "Moderate"),
-    Stable: reports.filter(r => getCategory(r.prediction) === "Stable"),
+    "Proliferative DR": reports.filter(r => r.prediction === "Proliferative DR"),
+    "Severe": reports.filter(r => r.prediction === "Severe"),
+    "Moderate": reports.filter(r => r.prediction === "Moderate"),
+    "Mild": reports.filter(r => r.prediction === "Mild"),
   };
 
   // Column color config: gradient, card left-border color, card bg tint
   const columnMeta: Record<string, { gradFrom: string; gradTo: string; cardBorder: string; cardBg: string; labelChip: string }> = {
-    Critical:   { gradFrom: '#B26357', gradTo: '#8b2e22', cardBorder: '#B26357', cardBg: 'rgba(178,99,87,0.07)',   labelChip: 'bg-[#B26357] text-white' },
-    'High Risk':{ gradFrom: '#C4812A', gradTo: '#92400e', cardBorder: '#C4812A', cardBg: 'rgba(196,129,42,0.07)',  labelChip: 'bg-[#C4812A] text-white' },
-    Moderate:   { gradFrom: '#4A8C6F', gradTo: '#065f46', cardBorder: '#4A8C6F', cardBg: 'rgba(74,140,111,0.07)', labelChip: 'bg-[#4A8C6F] text-white' },
-    Stable:     { gradFrom: '#334155', gradTo: '#1e293b', cardBorder: '#475569', cardBg: 'rgba(71,85,105,0.05)',   labelChip: 'bg-[#334155] text-white' },
+    "Proliferative DR": { gradFrom: '#b91c1c', gradTo: '#7f1d1d', cardBorder: '#ef4444', cardBg: 'rgba(239, 68, 68, 0.07)', labelChip: 'bg-red-600 text-white' },
+    'Severe':           { gradFrom: '#B26357', gradTo: '#8b2e22', cardBorder: '#B26357', cardBg: 'rgba(178,99,87,0.07)',   labelChip: 'bg-[#B26357] text-white' },
+    'Moderate':         { gradFrom: '#C4812A', gradTo: '#92400e', cardBorder: '#C4812A', cardBg: 'rgba(196,129,42,0.07)',  labelChip: 'bg-[#C4812A] text-white' },
+    'Mild':             { gradFrom: '#4f46e5', gradTo: '#3730a3', cardBorder: '#6366f1', cardBg: 'rgba(99, 102, 241, 0.07)', labelChip: 'bg-indigo-600 text-white' },
   };
 
   const triageColumns = [
     {
-      title: "Critical",
-      count: categorizedData.Critical.length,
-      label: "Imminent Threat",
-      icon: "priority_high",
-      cards: categorizedData.Critical.map(r => ({
+      title: "Proliferative DR",
+      count: categorizedData["Proliferative DR"].length,
+      label: "URGENT_TREATMENT",
+      icon: "bolt",
+      cards: categorizedData["Proliferative DR"].map(r => ({
         id: r.id,
         patientId: r.patient_id,
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
-        insight: `${r.prediction} — ${(r.confidence * 100).toFixed(1)}% confidence`,
+        insight: `Advanced Neovascularization Suspected`,
         timeAgo: timeAgo(r.created_at),
       }))
     },
     {
-      title: "High Risk",
-      count: categorizedData["High Risk"].length,
-      label: "Monitoring Needed",
-      icon: "warning",
-      cards: categorizedData["High Risk"].map(r => ({
+      title: "Severe",
+      count: categorizedData.Severe.length,
+      label: "IMMINENT_THREAT",
+      icon: "priority_high",
+      cards: categorizedData.Severe.map(r => ({
         id: r.id,
         patientId: r.patient_id,
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
-        insight: `${r.prediction} — ${(r.confidence * 100).toFixed(1)}% confidence`,
+        insight: `Significant NPDR changes detected`,
         timeAgo: timeAgo(r.created_at),
       }))
     },
     {
       title: "Moderate",
       count: categorizedData.Moderate.length,
-      label: "Follow-Up",
-      icon: "schedule",
+      label: "MONITORING_REQUIRED",
+      icon: "warning",
       cards: categorizedData.Moderate.map(r => ({
         id: r.id,
         patientId: r.patient_id,
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
-        insight: `${r.prediction} — ${(r.confidence * 100).toFixed(1)}% confidence`,
+        insight: `Review within 3-6 months`,
         timeAgo: timeAgo(r.created_at),
       }))
     },
     {
-      title: "Stable",
-      count: categorizedData.Stable.length,
-      label: "Routine Clear",
-      icon: "check_circle",
-      cards: categorizedData.Stable.map(r => ({
+      title: "Mild",
+      count: categorizedData.Mild.length,
+      label: "PREVENTATIVE_FOLLOWUP",
+      icon: "schedule",
+      cards: categorizedData.Mild.map(r => ({
         id: r.id,
         patientId: r.patient_id,
         name: r.patient_name || 'Unknown',
         pid: `#RET-${r.patient_id.toString().padStart(4, '0')}`,
-        insight: `No acute findings — ${(r.confidence * 100).toFixed(1)}% conf.`,
+        insight: `Early progression noted`,
         timeAgo: timeAgo(r.created_at),
       }))
     }
-  ];
+  ].filter(col => {
+    if (adaptiveMode === 'standard') {
+        return col.title === "Proliferative DR" || col.title === "Severe";
+    }
+    return true; // High sensitivity shows all 4
+  });
   return (
     <main className="pt-24 pb-32 px-6 md:px-12 max-w-[1600px] mx-auto">
-      {/* Header */}
-      <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
-          <h1 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight mb-2">
+          <h1 className="font-headline text-4xl font-extrabold text-on-surface tracking-tight mb-4">
             Triage Queue
           </h1>
-          <p className="text-on-surface-variant font-body">
-            Real-time patient prioritization based on AI-detected retinal pathologies.
-          </p>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
+            <div className="flex flex-col pr-4 border-r border-white/10">
+              <span className="text-[10px] text-text-variant font-mono uppercase tracking-widest mb-1">Adaptive Mode</span>
+              <span className="text-xs text-text-primary font-mono font-bold tracking-tight">{adaptiveMode === 'high_sensitivity' ? 'SENSITIVITY_PRIORITY' : 'EFFICIENCY_TRIAGE'}</span>
+            </div>
+            <div className="flex bg-black/40 p-1 rounded-xl gap-1">
+              <button 
+                onClick={() => setAdaptiveMode('standard')}
+                className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold transition-all tracking-widest ${adaptiveMode === 'standard' ? 'bg-primary-bright text-black shadow-[0_0_15px_rgba(200,124,255,0.4)]' : 'text-text-variant hover:text-text-primary'}`}
+              >
+                STANDARD
+              </button>
+              <button 
+                onClick={() => setAdaptiveMode('high_sensitivity')}
+                className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold transition-all tracking-widest ${adaptiveMode === 'high_sensitivity' ? 'bg-secondary-bright text-black shadow-[0_0_15px_rgba(255,100,200,0.4)]' : 'text-text-variant hover:text-text-primary'}`}
+              >
+                HIGH_SENSITIVITY
+              </button>
+            </div>
+          </div>
         </div>
+
         <div className="overflow-x-auto no-scrollbar">
           <div className="flex flex-nowrap items-center gap-2 min-w-max">
             <div className="flex items-center gap-2 bg-surface-container-lowest border border-outline/10 rounded-xl px-2 py-1.5">
@@ -387,24 +408,27 @@ export default function Triage() {
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
                 {[...reports]
-                  .sort((a, b) => {
-                    const sa = getCategory(a.prediction);
-                    const sb = getCategory(b.prediction);
-                    const rank = (c: string) => (c === "Critical" ? 3 : c === "High Risk" ? 2 : c === "Moderate" ? 1 : 0);
-                    return rank(sb) - rank(sa) || +new Date(b.created_at) - +new Date(a.created_at);
+                  .filter(r => {
+                    if (adaptiveMode === 'standard') {
+                        return ["Proliferative DR", "Severe"].includes(r.prediction);
+                    }
+                    return r.prediction !== "No DR";
                   })
-                  .slice(0, 250)
-                  .map((r) => {
-                    const cat = getCategory(r.prediction);
-                    const badgeStyle: React.CSSProperties = cat === 'Critical'
-                      ? { background: '#B26357', color: '#fff' }
-                      : cat === 'High Risk'
-                      ? { background: '#C4812A', color: '#fff' }
-                      : cat === 'Moderate'
-                      ? { background: '#4A8C6F', color: '#fff' }
-                      : { background: '#334155', color: '#fff' };
-                    const viewBg = cat === 'Critical' ? '#B26357' : cat === 'High Risk' ? '#C4812A' : cat === 'Moderate' ? '#4A8C6F' : '#334155';
-                    return (
+                  .sort((a, b) => {
+                    const rank = (p: string) => {
+                        if (p === "Proliferative DR") return 4;
+                        if (p === "Severe") return 3;
+                        if (p === "Moderate") return 2;
+                        if (p === "Mild") return 1;
+                        return 0;
+                    };
+                    return rank(b.prediction) - rank(a.prediction) || +new Date(b.created_at) - +new Date(a.created_at);
+                  })
+                    .map((r) => {
+                      const meta = columnMeta[r.prediction];
+                      const badgeStyle: React.CSSProperties = meta ? { background: meta.gradFrom, color: '#fff' } : { background: '#334155', color: '#fff' };
+                      const viewBg = meta ? meta.gradFrom : '#334155';
+                      return (
                     <tr key={r.id} className="text-sm border-t border-border/40 hover:bg-surface-container transition-colors">
                       <td className="px-4 py-3.5 font-semibold">
                         <button
@@ -446,90 +470,91 @@ export default function Triage() {
           </div>
         </Card>
       ) : (
-        /* Kanban Grid — bold full-color columns */
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-start">
-          {triageColumns.map((col) => {
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${adaptiveMode === 'standard' ? 'xl:grid-cols-2 max-w-4xl mx-auto' : 'xl:grid-cols-4'} gap-5 items-start`}>
+          {triageColumns.map((col, idx) => {
             const meta = columnMeta[col.title]!;
             return (
-              <div key={col.title} className="flex flex-col gap-3">
-                {/* Bold gradient column header */}
-                <div
-                  className="flex items-center justify-between px-4 py-3 rounded-xl"
-                  style={{
-                    background: `linear-gradient(135deg, ${meta.gradFrom} 0%, ${meta.gradTo} 100%)`,
-                    boxShadow: `0 3px 12px ${meta.gradFrom}55`,
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="material-symbols-outlined text-white text-[18px]"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      {col.icon}
+              <FadeInReveal key={col.title} delay={idx * 0.1}>
+                <div className="flex flex-col gap-3">
+                  {/* Bold gradient column header */}
+                  <div
+                    className="flex items-center justify-between px-4 py-3 rounded-xl"
+                    style={{
+                      background: `linear-gradient(135deg, ${meta.gradFrom} 0%, ${meta.gradTo} 100%)`,
+                      boxShadow: `0 3px 12px ${meta.gradFrom}55`,
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="material-symbols-outlined text-white text-[18px]"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        {col.icon}
+                      </span>
+                      <h2 className="font-mono font-bold text-sm uppercase tracking-widest text-white">{col.title}</h2>
+                    </div>
+                    <span className="bg-white/20 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                      {col.count}
                     </span>
-                    <h2 className="font-mono font-bold text-sm uppercase tracking-widest text-white">{col.title}</h2>
                   </div>
-                  <span className="bg-white/20 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
-                    {col.count}
-                  </span>
-                </div>
 
-                {/* Cards */}
-                <div className={`space-y-3 ${col.title === "Stable" ? "opacity-60" : ""}`}>
-                  {col.cards.length === 0 && (
-                    <div className="text-center text-text-variant text-xs font-mono py-6 border border-dashed border-border rounded-xl">
-                      No patients
-                    </div>
-                  )}
-                  {col.cards.map((card) => (
-                    <div
-                      key={card.id}
-                      className="relative overflow-hidden rounded-xl p-4 transition-all duration-200 group hover:-translate-y-0.5"
-                      style={{
-                        background: meta.cardBg,
-                        borderLeft: `3px solid ${meta.cardBorder}`,
-                        backgroundColor: `var(--surface)`,
-                        backgroundImage: `linear-gradient(135deg, ${meta.cardBg} 0%, transparent 100%)`,
-                        boxShadow: `0 2px 8px rgba(0,0,0,0.08), 2px 0 0 ${meta.cardBorder} inset`,
-                      }}
-                    >
-                      {/* Label chip */}
-                      <div className="mb-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-widest ${meta.labelChip}`}>
-                          {col.label}
-                        </span>
+                  {/* Cards */}
+                  <div className="space-y-3">
+                    {col.cards.length === 0 && (
+                      <div className="text-center text-text-variant text-xs font-mono py-12 border border-dashed border-border rounded-xl opacity-30">
+                        No patients in queue
                       </div>
+                    )}
+                    {col.cards.map((card) => (
+                      <div
+                        key={card.id}
+                        className="relative overflow-hidden rounded-xl p-4 transition-all duration-200 group hover:-translate-y-0.5"
+                        style={{
+                          background: meta.cardBg,
+                          borderLeft: `3px solid ${meta.cardBorder}`,
+                          backgroundColor: `var(--surface)`,
+                          backgroundImage: `linear-gradient(135deg, ${meta.cardBg} 0%, transparent 100%)`,
+                          boxShadow: `0 2px 8px rgba(0,0,0,0.08), 2px 0 0 ${meta.cardBorder} inset`,
+                        }}
+                      >
+                        {/* Label chip */}
+                        <div className="mb-3">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-widest ${meta.labelChip}`}>
+                            {col.label}
+                          </span>
+                        </div>
 
-                      <h3 className="font-semibold text-text-primary text-base mb-0.5 group-hover:text-primary-bright transition-colors">
-                        <button
-                          type="button"
-                          onClick={() => setPatientModalId(card.patientId)}
-                          className="text-left"
-                        >
-                          {card.name}
-                        </button>
-                      </h3>
-                      <p className="text-[11px] text-text-variant font-mono mb-3">{card.pid}</p>
+                        <h3 className="font-semibold text-text-primary text-base mb-0.5 group-hover:text-primary-bright transition-colors">
+                          <button
+                            type="button"
+                            onClick={() => setPatientModalId(card.patientId)}
+                            className="text-left"
+                          >
+                            {card.name}
+                          </button>
+                        </h3>
+                        <p className="text-[11px] text-text-variant font-mono mb-3">{card.pid}</p>
 
-                      <p className="text-xs text-text-secondary bg-surface/60 rounded-lg px-3 py-2 border border-border/40 mb-3">
-                        {card.insight}
-                      </p>
+                        <p className="text-xs text-text-secondary bg-surface/60 rounded-lg px-3 py-2 border border-border/40 mb-3">
+                          {card.insight}
+                        </p>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-text-variant font-mono">{card.timeAgo}</span>
-                        <button
-                          type="button"
-                          onClick={() => setPatientModalId(card.patientId)}
-                          className="text-[11px] font-bold px-3 py-1 rounded-lg text-white transition-all hover:brightness-110 active:scale-95"
-                          style={{ background: `${meta.gradFrom}cc` }}
-                        >
-                          View →
-                        </button>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-text-variant font-mono">{card.timeAgo}</span>
+                          <button
+                            type="button"
+                            onClick={() => setPatientModalId(card.patientId)}
+                            className="text-[11px] font-bold px-3 py-1 rounded-lg text-white transition-all hover:brightness-110 active:scale-95"
+                            style={{ background: `${meta.gradFrom}cc` }}
+                          >
+                            View →
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </FadeInReveal>
             );
           })}
         </div>
