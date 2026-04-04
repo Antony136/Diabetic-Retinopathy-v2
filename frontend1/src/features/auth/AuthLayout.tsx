@@ -11,46 +11,86 @@ type AuthLayoutProps = {
 
 export default function AuthLayout(props: AuthLayoutProps) {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-16 relative z-10">
-      {/* Title section matching template "Establish Connection" style */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
-        className="text-center mb-12"
-      >
-        <h1 className="text-5xl md:text-6xl font-bold text-white tracking-tight">
-          {props.title.split(" ").slice(0, -1).join(" ")}{" "}
-          <span className="text-[#C87CFF]">{props.title.split(" ").slice(-1)}</span>
-        </h1>
-        <p className="mt-4 text-white/50 font-mono text-sm tracking-wider">
-          {props.subtitle}
-        </p>
-      </motion.div>
+    <main className="min-h-screen flex flex-col lg:flex-row bg-[#080808] text-white overflow-hidden">
+      {/* Left side: Information/Content about Diabetic Retinopathy */}
+      <div className="hidden lg:flex lg:flex-1 relative p-12 lg:p-24 flex-col justify-between overflow-hidden">
+        {/* Background gradient/decoration */}
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-[#1a1a1a] to-[#080808] -z-10" />
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#C87CFF]/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-[#5efdba]/5 blur-[100px] rounded-full" />
 
-      {/* Form card matching template glassmorphism style */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-        className="w-full max-w-lg bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-xl p-8 md:p-10 shadow-[0_0_60px_rgba(200,124,255,0.08)]"
-      >
-        {props.children}
-      </motion.div>
+        <motion.div
+           initial={{ opacity: 0, x: -30 }}
+           animate={{ opacity: 1, x: 0 }}
+           transition={{ duration: 1.2, ease: [0.25, 0.1, 0.25, 1] }}
+        >
+          <div className="inline-flex items-center gap-2 px-3 py-1 border border-[#C87CFF]/30 rounded-full bg-[#C87CFF]/5 mb-8">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#C87CFF] animate-pulse" />
+            <span className="text-[10px] uppercase tracking-[0.2em] font-mono text-[#C87CFF]/80">Clinical Intelligence</span>
+          </div>
+          
+          <h2 className="text-6xl xl:text-7xl font-bold tracking-tight mb-8">
+            Protecting Vision with <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#C87CFF] to-[#8a4fff]">Precision AI</span>
+          </h2>
+          
+          <div className="max-w-xl space-y-6 text-white/50 text-lg leading-relaxed">
+            <p>
+              Diabetic Retinopathy is the leading cause of preventable blindness in working-age adults. 
+              Our platform leverages advanced neural networks to provide rapid, accurate screening of retinal images.
+            </p>
+            <p>
+              By detecting microaneurysms and exudates early, we empower healthcare providers to intervene before permanent vision loss occurs.
+            </p>
+          </div>
+        </motion.div>
 
-      {/* Footer */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.4 }}
-        className="mt-8 text-sm text-white/40 font-mono"
-      >
-        {props.footer}
-      </motion.div>
+        <motion.div
+           initial={{ opacity: 0 }}
+           animate={{ opacity: 0.3 }}
+           transition={{ duration: 1.5, delay: 0.5 }}
+           className="font-mono text-xs tracking-[0.4em] uppercase"
+        >
+          Retina AI Ecosystem • Early Detection • Precision Diagnostics
+        </motion.div>
+      </div>
 
-      {/* Branding at bottom */}
-      <div className="fixed bottom-6 left-8 font-mono text-white/20 text-xs tracking-[0.3em] uppercase">
-        {APP_NAME}
+      {/* Right side: Authentication Form */}
+      <div className="flex-1 lg:max-w-[500px] relative flex flex-col items-center justify-center p-6 md:p-12 lg:p-16 border-l border-white/5 bg-[#0a0a0a]">
+        {/* Branding for mobile/small screens */}
+        <div className="lg:hidden mb-12 text-center">
+            <h1 className="text-4xl font-bold text-white tracking-tight">
+                Retina <span className="text-[#C87CFF]">AI</span>
+            </h1>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="w-full max-w-sm"
+        >
+          <div className="mb-10">
+            <h2 className="text-3xl font-bold text-white mb-2">
+                {props.title}
+            </h2>
+            <p className="text-white/40 text-sm leading-relaxed">
+                {props.subtitle}
+            </p>
+          </div>
+
+          <div className="mb-10">
+            {props.children}
+          </div>
+
+          <div className="text-center pt-6 border-t border-white/5 text-sm text-white/40 font-mono">
+            {props.footer}
+          </div>
+        </motion.div>
+
+        {/* Floating Branding bottom left corner of right pane */}
+        <div className="absolute bottom-6 left-8 font-mono text-white/20 text-[10px] tracking-[0.3em] uppercase">
+          {APP_NAME}
+        </div>
       </div>
     </main>
   );
