@@ -72,9 +72,12 @@ class PDFReportService:
         elements.append(Spacer(1, 0.1 * inch))
 
         # Compact Table Header
-        results_data = [["File / ID", "Prediction", "Confidence", "Decision", "Clinical Summary", "Heatmap Map"]]
+        results_data = [["Patient / File", "Prediction", "Confidence", "Decision", "Clinical Summary", "Heatmap Map"]]
 
         for res in batch_results["results"]:
+            meta = res.get("metadata") or {}
+            patient_label = meta.get("patient_name") or meta.get("name") or meta.get("patient") or res['name']
+            
             hm_cell = ""
             if res.get("heatmap_bytes"):
                 try:
@@ -87,7 +90,7 @@ class PDFReportService:
             summary_txt = (res.get("clinical_summary") or res.get("explanation") or "")[:150] + "..."
 
             results_data.append([
-                Paragraph(res['name'], styles['Normal']),
+                Paragraph(str(patient_label), styles['Normal']),
                 res['prediction'],
                 f"{res['confidence']*100:.1f}%",
                 res['decision'],

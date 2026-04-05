@@ -21,6 +21,7 @@ import json
 from datetime import datetime, timedelta
 from app.services.batch_inference_service import batch_inference_service, batch_progress_store
 import asyncio
+import pandas as pd
 
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -211,15 +212,15 @@ async def create_batch_reports(
             
             # Common CSV column names
             pid = meta.get("patient_id") or meta.get("id") or meta.get("client_uuid")
+            if pd.isna(pid) or str(pid).lower().strip() == "nan" or str(pid).strip() == "":
+                pid = None
+                
             pname = meta.get("patient_name") or meta.get("name") or meta.get("patient")
+            if pd.isna(pname) or str(pname).lower().strip() == "nan" or str(pname).strip() == "":
+                pname = None
             
             print(f"DEBUG DB MAP -> Image: {res.get('name')} | PID Extracted: {pid} | Name: {pname} | Raw Meta: {meta}")
             
-            # If completely empty, we skip creating a ghost patient to avoid junk DB bloat
-            if not pid and not pname:
-                print(f"DEBUG DB MAP -> Skipping {res.get('name')} because NO pid and NO pname were found in metadata!")
-                continue
-                
             # Locate the exact patient enforcing security controls
             patient_query = db.query(Patient)
             if getattr(current_user, "role", "doctor") != "admin":
@@ -230,6 +231,10 @@ async def create_batch_reports(
                 patient = patient_query.filter(Patient.id == int(pid)).first()
             if not patient and pid:
                 patient = patient_query.filter(Patient.client_uuid == str(pid)).first()
+            # Fallback to matching by name if no exact ID is provided
+            if not patient and pname:
+                # To prevent case-sensitivity issues, we could strictly match
+                patient = patient_query.filter(Patient.name == str(pname)).first()
                 
             if result_existing := patient:
                 print(f"DEBUG DB MAP -> Found existing patient: {result_existing.id} ({result_existing.name})")

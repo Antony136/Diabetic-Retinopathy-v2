@@ -51,10 +51,15 @@ class BatchInferenceService:
                 df = pd.read_csv(io.BytesIO(csv_content))
                 # Normalize column names to lowercase and handle missing ones
                 df.columns = [c.lower().strip() for c in df.columns]
+                
+                # Critically replace NaN with python None so FastAPI JSON encoder doesn't crash on 'NaN'
+                # Requires 'import numpy as np' safely handled via pd.NA replacement
+                df = df.where(pd.notnull(df), None)
+                
                 for _, row in df.iterrows():
                     # Support valid filename-centric key patterns to prevent confusing Patient ID with Filename
                     key = str(row.get('filename') or row.get('file') or row.get('image') or row.get('image_name') or "").strip()
-                    if key:
+                    if key and key != "None":
                         labels_map[key] = row.to_dict()
             except Exception as e:
                 print(f"ERROR: Failed to parse CSV: {e}")
@@ -139,11 +144,12 @@ class BatchInferenceService:
             except Exception as e:
                 print(f"ERROR: PDF generation failed: {e}")
 
-        summary["batch_pdf_url"] = batch_pdf_url
-        
-        # Cleanup: Remove heatmap_bytes from summary to keep JSON response small
+        # 5. Clean up raw bytes to prevent FastAPI JSON serialization socket crashes
         for res in summary["results"]:
-            res.pop("heatmap_bytes", None)
+            if "heatmap_bytes" in res:
+                del res["heatmap_bytes"]
+                
+        summary["batch_pdf_url"] = batch_pdf_url
             
         if batch_id and batch_id in batch_progress_store:
             del batch_progress_store[batch_id]
