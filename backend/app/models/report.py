@@ -20,7 +20,9 @@ class Report(Base):
 
     # Explainable AI (image reasoning)
     image_observations = Column(Text, nullable=True)  # JSON-encoded list[str]
-    image_explanation = Column(Text, nullable=True)  # LLM-generated text
+    image_explanation = Column(Text, nullable=True)  # LLM-generated detailed explanation
+    image_explanation_summary = Column(Text, nullable=True)  # LLM-generated short summary
+    image_explanation_structured = Column(Text, nullable=True)  # JSON-encoded structured components
 
     # Adaptive Screening Mode
     risk_score = Column(Float, nullable=True)

@@ -114,6 +114,8 @@ class SyncReport(BaseModel):
     description: Optional[str] = None
     image_observations: Optional[str] = None
     image_explanation: Optional[str] = None
+    image_explanation_summary: Optional[str] = None
+    image_explanation_structured: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     source: Optional[str] = None
@@ -199,6 +201,8 @@ def export_changes(
             description=getattr(r, "description", None),
             image_observations=getattr(r, "image_observations", None),
             image_explanation=getattr(r, "image_explanation", None),
+            image_explanation_summary=getattr(r, "image_explanation_summary", None),
+            image_explanation_structured=getattr(r, "image_explanation_structured", None),
             created_at=_dt_iso(r.created_at) if r.created_at else None,
             updated_at=_dt_iso(getattr(r, "updated_at", None) or r.created_at or now),
             source=getattr(r, "source", None),
@@ -308,6 +312,8 @@ def import_changes(
             description=r.description,
             image_observations=r.image_observations,
             image_explanation=r.image_explanation,
+            image_explanation_summary=r.image_explanation_summary,
+            image_explanation_structured=r.image_explanation_structured,
             created_at=created_dt,
             updated_at=updated_dt,
             source=r.source or "sync_import",

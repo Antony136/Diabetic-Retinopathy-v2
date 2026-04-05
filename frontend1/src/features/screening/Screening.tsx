@@ -38,6 +38,22 @@ function formatPercent(confidence: number) {
   return `${(confidence * 100).toFixed(1)}%`;
 }
 
+interface StructuredExplanation {
+  severity?: string;
+  reasonings?: string[];
+  lesions?: string;
+  recommendations?: string;
+}
+
+function parseStructuredExplanation(jsonStr: string | null | undefined): StructuredExplanation | null {
+  if (!jsonStr) return null;
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    return null;
+  }
+}
+
 export default function Screening() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const printFrameRef = useRef<HTMLIFrameElement | null>(null);
@@ -216,12 +232,18 @@ export default function Screening() {
       let message = "Failed to run analysis";
       if (error && typeof error === "object") {
         if ("response" in error) {
-          const resp = (error as any).response;
-          if (resp?.data?.detail) message = String(resp.data.detail);
-          else if (resp?.data?.error) message = String(resp.data.error);
-          else if (resp?.statusText) message = `${resp.statusText} (${resp.status})`;
+          const resp = (error as Record<string, unknown>).response;
+          if (resp && typeof resp === "object") {
+            const respObj = resp as Record<string, unknown>;
+            if (respObj?.data) {
+              const data = respObj.data as Record<string, unknown>;
+              if (data?.detail) message = String(data.detail);
+              else if (data?.error) message = String(data.error);
+            }
+            if (respObj?.statusText) message = `${respObj.statusText} (${respObj?.status})`;
+          }
         }
-        if ((error as any).message) message = String((error as any).message);
+        if ("message" in error && error.message) message = String(error.message);
       }
       setAnalysisError(message);
     } finally {
@@ -236,9 +258,22 @@ export default function Screening() {
     try {
       const data = await generateImageExplanation(report.id, force);
       setReport((prev) => (prev ? { ...prev, ...data } : prev));
-    } catch (error: any) {
-      const message = error?.response?.data?.detail || error?.message || "Failed to generate image explanation";
-      setImageExplainError(String(message));
+    } catch (error: unknown) {
+      let message = "Failed to generate image explanation";
+      if (error && typeof error === "object") {
+        if ("response" in error) {
+          const resp = (error as Record<string, unknown>).response;
+          if (resp && typeof resp === "object") {
+            const respObj = resp as Record<string, unknown>;
+            if (respObj?.data) {
+              const data = respObj.data as Record<string, unknown>;
+              if (data?.detail) message = String(data.detail);
+            }
+          }
+        }
+        if ("message" in error && error.message) message = String(error.message);
+      }
+      setImageExplainError(message);
     } finally {
       setImageExplainLoading(false);
     }
@@ -649,171 +684,232 @@ export default function Screening() {
           </section>
         </div>
 
-        <div className="lg:col-span-5 space-y-6">
-          <section className="bg-surface-container-low rounded-xl p-8 relative overflow-hidden h-full flex flex-col shadow-2xl shadow-black/20 lg:sticky lg:top-24">
-            <div className="absolute top-0 right-0 p-4">
-              <span className="material-symbols-outlined text-primary/10 text-7xl select-none">clinical_notes</span>
-            </div>
+        {/* Results Section - Split Layout */}
+        {report && (
+          <div className="lg:col-span-12 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column: Quick Analysis */}
+              <section className="bg-surface-container-low rounded-xl p-6 shadow-2xl shadow-black/20">
+                <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">analytics</span>
+                  Analysis Results
+                  <span className={`w-2 h-2 rounded-full ${report ? "bg-primary animate-pulse" : "bg-outline/40"}`} />
+                </h3>
 
-            <h3 className="font-headline text-2xl font-bold mb-7 flex items-center gap-2">
-              Analysis Results
-              <span className={`w-2 h-2 rounded-full ${report ? "bg-primary animate-pulse" : "bg-outline/40"}`} />
-            </h3>
+                <div className="space-y-5">
+                  {/* Prediction Card */}
+                  <div className="space-y-2">
+                    <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Prediction</span>
+                    <div className="bg-tertiary-container/10 border border-tertiary-container/20 rounded-xl p-5">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-2xl font-bold text-tertiary">{report.prediction}</h4>
+                        <span className="text-xs font-bold px-2 py-1 rounded-md bg-surface-container-high text-on-surface-variant">
+                          Priority {report.priority_score}/5
+                        </span>
+                      </div>
+                      <p className="text-sm text-on-surface-variant leading-relaxed">{stageDescription(report.prediction)}</p>
+                    </div>
+                  </div>
 
-            {!report ? (
-              <div className="text-on-surface-variant text-sm leading-relaxed">
-                Upload an image and run analysis to see results.
-              </div>
-            ) : (
-              <div className="space-y-7 flex-grow transition-all duration-300">
-                <div className="space-y-2">
-                  <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Prediction</span>
-                  <div className="bg-tertiary-container/10 border border-tertiary-container/20 rounded-xl p-5">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-2xl font-bold text-tertiary">{report.prediction}</h4>
-                      <span className="text-xs font-bold px-2 py-1 rounded-md bg-surface-container-high text-on-surface-variant">
-                        Priority {report.priority_score}/5
+                  {/* Quick Stats Grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-black">Treatment Window</span>
+                      <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
+                        <div className="text-xs font-bold text-primary">{getTreatmentWindow(report.prediction)}</div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-black">Focal Point</span>
+                      <div className="bg-orange-500/5 border border-orange-500/10 rounded-lg p-3">
+                        <div className="text-xs font-bold text-orange-500">{getLesionRegion(report.prediction)}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Confidence Score */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Confidence</span>
+                      <span className="text-2xl font-headline font-extrabold text-primary">
+                        {confidencePct.toFixed(1)}<span className="text-sm">%</span>
                       </span>
                     </div>
-                    <p className="text-sm text-on-surface-variant leading-relaxed">{stageDescription(report.prediction)}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-black">Treatment Window</span>
-                    <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
-                      <div className="text-xs font-bold text-primary">{getTreatmentWindow(report.prediction)}</div>
+                    <div className="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
+                      <div className="h-full bg-primary rounded-full transition-[width] duration-700 ease-out" style={{ width: `${confidencePct}%` }} />
                     </div>
                   </div>
+
+                  {/* Heatmap */}
                   <div className="space-y-2">
-                    <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-black">Major Focal Point</span>
-                    <div className="bg-orange-500/5 border border-orange-500/10 rounded-lg p-3">
-                      <div className="text-xs font-bold text-orange-500">{getLesionRegion(report.prediction)}</div>
+                    <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Heatmap</span>
+                    <div className="aspect-square w-full rounded-xl bg-surface-container-lowest relative overflow-hidden">
+                      {resolvedHeatmap ? (
+                        <img alt="Heatmap visualization" className="w-full h-full object-cover opacity-90" src={resolvedHeatmap} />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-on-surface-variant text-sm">No heatmap</div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent" />
                     </div>
                   </div>
-                </div>
 
-                {report.decision && (
-                  <div className="space-y-3">
-                    <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Adaptive Clinical Decision</span>
-                    <div 
-                      className={`rounded-xl p-5 border-2 flex flex-col gap-3 transition-all ${
-                        report.decision === "Refer" 
-                          ? "bg-error-container/10 border-error/20" 
-                          : "bg-success-container/10 border-success/20"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
+                  {/* Clinical Decision */}
+                  {report.decision && (
+                    <div className="space-y-3">
+                      <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Clinical Decision</span>
+                      <div 
+                        className={`rounded-xl p-4 border-2 flex flex-col gap-3 transition-all ${
+                          report.decision === "Refer" 
+                            ? "bg-error-container/10 border-error/20" 
+                            : "bg-success-container/10 border-success/20"
+                        }`}
+                      >
                         <div className="flex items-center gap-2">
                           <span className={`material-symbols-outlined text-2xl ${
                             report.decision === "Refer" ? "text-error" : "text-success"
                           }`}>
                             {report.decision === "Refer" ? "emergency_home" : "check_circle"}
                           </span>
-                          <h4 className={`text-xl font-bold ${
+                          <h4 className={`font-bold ${
                             report.decision === "Refer" ? "text-error" : "text-success"
                           }`}>
                             {report.decision === "Refer" ? "REFER FOR CARE" : "NORMAL / MONITOR"}
                           </h4>
                         </div>
-                        <div className="px-3 py-1 rounded-full bg-surface-container-high text-[10px] font-black uppercase tracking-widest">
-                          {report.mode === "high_sensitivity" ? "High Sensitivity Mode" : "Standard Triage"}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <p className="text-[10px] text-on-surface-variant uppercase font-bold">Risk Score</p>
+                            <p className="text-lg font-headline font-black text-on-surface">{(report.risk_score || 0).toFixed(3)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-on-surface-variant uppercase font-bold">Risk Level</p>
+                            <p className={`font-bold ${
+                              report.override_applied ? "text-error" : report.risk_level === "High" ? "text-error" : report.risk_level === "Moderate" ? "text-primary" : "text-success"
+                            }`}>
+                              {report.override_applied ? "CRITICAL" : (report.risk_level || "Low")}
+                            </p>
+                          </div>
                         </div>
                       </div>
-
-                      {report.override_applied && (
-                        <div className="bg-error/10 border border-error/20 p-3 rounded-lg flex items-center gap-3">
-                          <span className="material-symbols-outlined text-error text-xl animate-pulse">warning</span>
-                          <p className="text-[10px] text-error font-bold uppercase tracking-tighter">
-                            MEDICAL SAFETY OVERRIDE: SEVERE STAGE DETECTED
-                          </p>
-                        </div>
-                      )}
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <p className="text-[10px] text-on-surface-variant uppercase font-bold">Risk Score</p>
-                          <p className="text-lg font-headline font-black text-on-surface">{(report.risk_score || 0).toFixed(3)}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[10px] text-on-surface-variant uppercase font-bold">Risk Level</p>
-                          <p className={`text-lg font-headline font-black ${
-                            report.override_applied ? "text-error animate-pulse" : report.risk_level === "High" ? "text-error" : report.risk_level === "Moderate" ? "text-primary" : "text-success"
-                          }`}>
-                            {report.override_applied ? "OVERRIDDEN (SEVERE CASE)" : (report.risk_level || "Low")}
-                          </p>
-                        </div>
-                      </div>
-
-                      {report.adaptive_explanation && (
-                        <p className="text-xs text-on-surface-variant italic border-t border-outline/10 pt-3">
-                          "{report.adaptive_explanation}"
-                        </p>
-                      )}
                     </div>
-                  </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Right Column: Structured Explanation */}
+              <section className="bg-surface-container-low rounded-xl p-6 shadow-2xl shadow-black/20">
+                <div className="flex items-center justify-between gap-3 mb-6">
+                  <h3 className="font-headline text-xl font-bold flex items-center gap-2">
+                    <span className="material-symbols-outlined text-secondary">description</span>
+                    Details
+                  </h3>
+                  <button
+                    type="button"
+                    className="text-[11px] px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors disabled:opacity-50"
+                    disabled={!report || imageExplainLoading}
+                    onClick={() => onGenerateImageExplanation(Boolean(report?.image_explanation))}
+                    title="Generate or refresh explanations"
+                  >
+                    {imageExplainLoading ? "Generating..." : report?.image_explanation ? "Refresh" : "Generate"}
+                  </button>
+                </div>
+
+                {imageExplainError && (
+                  <div className="rounded-xl bg-error-container/30 text-error px-4 py-3 text-sm mb-4">{imageExplainError}</div>
                 )}
 
-                <div className="space-y-4">
-                  <div className="flex justify-between items-end">
-                    <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Confidence Score</span>
-                    <span className="text-3xl font-headline font-extrabold text-primary tracking-tighter">
-                      {confidencePct.toFixed(1)}<span className="text-lg">%</span>
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full bg-surface-container-high rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full transition-[width] duration-700 ease-out" style={{ width: `${confidencePct}%` }} />
-                  </div>
-                </div>
+                {report.image_explanation ? (
+                  <div className="space-y-4">
+                    {/* Summary */}
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                      <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Summary</p>
+                      <p className="text-sm font-semibold text-on-surface leading-snug">
+                        {report.image_explanation_summary || "Analyzing patterns..."}
+                      </p>
+                    </div>
 
-                <div className="space-y-2 pt-2">
-                  <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Heatmap (uploads/)</span>
-                  <div className="aspect-square w-full rounded-xl bg-surface-container-lowest relative overflow-hidden">
-                    {resolvedHeatmap ? (
-                      <img alt="Heatmap visualization" className="w-full h-full object-cover opacity-90" src={resolvedHeatmap} />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-on-surface-variant text-sm">No heatmap available</div>
+                    {/* Structured Components */}
+                    {(() => {
+                      const structured = parseStructuredExplanation(report.image_explanation_structured);
+                      if (!structured) return null;
+
+                      return (
+                        <div className="space-y-4">
+                          {/* Severity */}
+                          {structured.severity && (
+                            <div className="rounded-lg border border-secondary/20 bg-secondary/5 p-4">
+                              <p className="text-[10px] font-bold text-secondary uppercase tracking-wider mb-2">Severity Level</p>
+                              <p className={`text-lg font-bold ${
+                                structured.severity === "High" ? "text-error" :
+                                structured.severity === "Moderate" ? "text-warning" :
+                                "text-success"
+                              }`}>
+                                {structured.severity}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Reasonings */}
+                          {structured.reasonings && structured.reasonings.length > 0 && (
+                            <div className="rounded-lg border border-tertiary/20 bg-tertiary/5 p-4">
+                              <p className="text-[10px] font-bold text-tertiary uppercase tracking-wider mb-3">Key Findings</p>
+                              <ul className="space-y-2">
+                                {structured.reasonings.map((reason, idx) => (
+                                  <li key={idx} className="text-xs text-on-surface-variant leading-relaxed flex gap-2">
+                                    <span className="text-tertiary font-bold">•</span>
+                                    <span>{reason}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Lesions */}
+                          {structured.lesions && (
+                            <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4">
+                              <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider mb-2">Lesion Analysis</p>
+                              <p className="text-xs text-on-surface-variant leading-relaxed">
+                                {structured.lesions}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Recommendations */}
+                          {structured.recommendations && (
+                            <div className="rounded-lg border border-success/20 bg-success/5 p-4">
+                              <p className="text-[10px] font-bold text-success uppercase tracking-wider mb-2">Recommendations</p>
+                              <p className="text-xs text-on-surface-variant leading-relaxed">
+                                {structured.recommendations}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Full Detailed Text */}
+                    {report.image_explanation && (
+                      <div className="rounded-lg border border-outline/20 bg-surface-container-lowest p-4 text-xs text-on-surface-variant">
+                        <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-3">Full Analysis</p>
+                        <p className="leading-relaxed whitespace-pre-line">
+                          {report.image_explanation}
+                        </p>
+                      </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent" />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">AI Image Explanation</span>
-                    <button
-                      type="button"
-                      className="text-[11px] px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors disabled:opacity-50"
-                      disabled={!report || imageExplainLoading}
-                      onClick={() => onGenerateImageExplanation(Boolean(report?.image_explanation))}
-                      title="Generate or refresh image explanation"
-                    >
-                      {imageExplainLoading ? "Generating..." : report?.image_explanation ? "Refresh" : "Generate"}
-                    </button>
+                ) : (
+                  <div className="rounded-lg border border-outline/10 bg-surface-container-lowest p-4 text-sm text-on-surface-variant">
+                    No details yet. Click Generate to create detailed analysis.
                   </div>
+                )}
+              </section>
+            </div>
 
-                  {imageExplainError && (
-                    <div className="rounded-xl bg-error-container/30 text-error px-4 py-3 text-sm">{imageExplainError}</div>
-                  )}
-
-                  {report.image_explanation ? (
-                    <div className="rounded-xl border border-outline/10 bg-surface-container-lowest p-4 text-sm text-on-surface-variant leading-relaxed whitespace-pre-line">
-                      {report.image_explanation}
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-outline/10 bg-surface-container-lowest p-4 text-sm text-on-surface-variant">
-                      No image explanation yet. Click Generate to create one using the heatmap.
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="mt-8 pt-6 border-t border-outline-variant/10 flex gap-4">
+            {/* Export Buttons */}
+            <div className="flex gap-4">
               <button
                 type="button"
-                className="flex-1 flex items-center justify-center gap-2 py-3 bg-surface-container-high rounded-lg text-sm font-bold hover:text-primary transition-colors disabled:opacity-50 disabled:hover:text-on-surface-variant"
+                className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary text-on-primary rounded-lg text-sm font-bold hover:bg-primary-container transition-colors disabled:opacity-50"
                 disabled={!report || !selectedPatient}
                 onClick={onExportPdf}
               >
@@ -829,8 +925,18 @@ export default function Screening() {
                 New Scan
               </button>
             </div>
-          </section>
-        </div>
+          </div>
+        )}
+
+        {/* No Report Placeholder */}
+        {!report && (
+          <div className="lg:col-span-12 text-center py-12">
+            <div className="flex flex-col items-center gap-4">
+              <span className="material-symbols-outlined text-6xl text-on-surface-variant/30">description</span>
+              <p className="text-on-surface-variant">Upload an image and run analysis to see results.</p>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

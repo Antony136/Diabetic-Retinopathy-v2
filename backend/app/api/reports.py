@@ -16,6 +16,7 @@ import httpx
 import os
 import tempfile
 import uuid
+import json
 from datetime import datetime, timedelta
 from pathlib import PurePosixPath
 
@@ -388,19 +389,33 @@ async def create_report(
 
     image_observations_raw: str | None = None
     image_explanation: str | None = None
+    image_explanation_summary: str | None = None
+    image_explanation_structured: str | None = None
     if heatmap_bytes:
         try:
             hm_img = image_explanation_service.load_heatmap_image_from_bytes(heatmap_bytes)
             feats = image_explanation_service.extract_heatmap_features(hm_img)
             obs = image_explanation_service.derive_observations(feats)
             image_observations_raw = image_explanation_service.pack_observations(obs)
-            # Best-effort LLM explanation. Skip on failure.
+            # Generate summary, detailed, and structured explanation (best-effort, skip on failure)
+            image_explanation_summary = await image_explanation_service.generate_image_explanation_summary(
+                diagnosis=prediction,
+                confidence=float(confidence),
+                cache_key=f"imgexp_summary:{prediction}:{round(float(confidence),4)}",
+            )
             image_explanation = await image_explanation_service.generate_image_explanation(
                 diagnosis=prediction,
                 confidence=float(confidence),
                 observations=obs,
-                cache_key=f"imgexp:{prediction}:{round(float(confidence),4)}:{hash(tuple(obs))}",
+                cache_key=f"imgexp:{prediction}:{round(float(confidence),4)}:{image_explanation_service.get_stable_hash(obs)}",
             )
+            structured = await image_explanation_service.generate_structured_explanation(
+                diagnosis=prediction,
+                confidence=float(confidence),
+                observations=obs,
+                cache_key=f"imgexp_struct:{prediction}:{round(float(confidence),4)}:{image_explanation_service.get_stable_hash(obs)}",
+            )
+            image_explanation_structured = json.dumps(structured) if structured else None
         except Exception as e:
             print(f"WARNING: image explanation generation failed: {e}")
 
@@ -415,6 +430,8 @@ async def create_report(
         source=source,
         image_observations=image_observations_raw,
         image_explanation=image_explanation,
+        image_explanation_summary=image_explanation_summary,
+        image_explanation_structured=image_explanation_structured,
         # New Additions
         risk_score=risk_score,
         risk_level=risk_level,
@@ -733,6 +750,8 @@ def get_all_reports(
             "description": getattr(report, "description", None),
             "image_observations": getattr(report, "image_observations", None),
             "image_explanation": getattr(report, "image_explanation", None),
+            "image_explanation_summary": getattr(report, "image_explanation_summary", None),
+            "image_explanation_structured": getattr(report, "image_explanation_structured", None),
             # New fields
             "risk_score": report.risk_score,
             "risk_level": report.risk_level,
@@ -800,6 +819,8 @@ def get_patient_reports(
             "description": getattr(report, "description", None),
             "image_observations": getattr(report, "image_observations", None),
             "image_explanation": getattr(report, "image_explanation", None),
+            "image_explanation_summary": getattr(report, "image_explanation_summary", None),
+            "image_explanation_structured": getattr(report, "image_explanation_structured", None),
             # New fields
             "risk_score": report.risk_score,
             "risk_level": report.risk_level,
@@ -836,6 +857,8 @@ async def generate_report_image_explanation(
         return {
             "image_observations": getattr(report, "image_observations", None),
             "image_explanation": getattr(report, "image_explanation", None),
+            "image_explanation_summary": getattr(report, "image_explanation_summary", None),
+            "image_explanation_structured": getattr(report, "image_explanation_structured", None),
         }
 
     if not report.heatmap_url:
@@ -848,22 +871,41 @@ async def generate_report_image_explanation(
         feats = image_explanation_service.extract_heatmap_features(hm_img)
         obs = image_explanation_service.derive_observations(feats)
         packed = image_explanation_service.pack_observations(obs)
+        
+        # Generate summary, detailed, and structured explanations
+        explanation_summary = await image_explanation_service.generate_image_explanation_summary(
+            diagnosis=str(report.prediction),
+            confidence=float(report.confidence or 0.0),
+            cache_key=f"imgexp_summary:report:{report.id}",
+        )
         explanation = await image_explanation_service.generate_image_explanation(
             diagnosis=str(report.prediction),
             confidence=float(report.confidence or 0.0),
             observations=obs,
-            cache_key=f"imgexp:report:{report.id}:{hash(tuple(obs))}",
+            cache_key=f"imgexp:report:{report.id}:{image_explanation_service.get_stable_hash(obs)}",
         )
+        structured = await image_explanation_service.generate_structured_explanation(
+            diagnosis=str(report.prediction),
+            confidence=float(report.confidence or 0.0),
+            observations=obs,
+            cache_key=f"imgexp_struct:report:{report.id}:{image_explanation_service.get_stable_hash(obs)}",
+        )
+        structured_json = json.dumps(structured) if structured else None
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate image explanation: {e}")
 
     report.image_observations = packed
     report.image_explanation = explanation
+    report.image_explanation_summary = explanation_summary
+    report.image_explanation_structured = structured_json
+    report.updated_at = datetime.utcnow()
     db.commit()
 
     return {
         "image_observations": packed,
         "image_explanation": explanation,
+        "image_explanation_summary": explanation_summary,
+        "image_explanation_structured": structured_json,
     }
 
 
