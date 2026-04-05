@@ -24,6 +24,30 @@ export interface ReportResponse {
   updated_at?: string;
 }
 
+export interface BatchResultItem {
+  status: "success" | "failed";
+  name: string;
+  image_url?: string;
+  heatmap_url?: string;
+  prediction?: string;
+  confidence?: number;
+  risk_score?: number;
+  decision?: string;
+  explanation?: string;
+  clinical_summary?: string;
+  reason?: string;
+  metadata?: any;
+}
+
+export interface BatchReportResponse {
+  total: number;
+  successful: number;
+  failed: number;
+  results: BatchResultItem[];
+  failed_items: { name: string; reason: string }[];
+  batch_pdf_url: string;
+}
+
 export type AdaptiveScreeningMode = "standard" | "high_sensitivity";
 
 export async function createReport(params: { 
@@ -73,3 +97,30 @@ export async function generateImageExplanation(reportId: number, force = false) 
   );
   return data;
 }
+
+export async function createBatchReports(params: {
+  files: File[];
+  csvFile?: File;
+  mode?: AdaptiveScreeningMode;
+  batchId?: string;
+}) {
+  const formData = new FormData();
+  params.files.forEach((f) => formData.append("files", f));
+  if (params.csvFile) formData.append("csv_file", params.csvFile);
+
+  const { data } = await api.post<BatchReportResponse>("/reports/batch", formData, {
+    params: { 
+      mode: params.mode || "standard",
+      batch_id: params.batchId
+    },
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 300000, // 5 minutes for large batches
+  });
+  return data;
+}
+
+export async function getBatchProgress(batchId: string) {
+  const { data } = await api.get<{ done: number; total: number }>(`/reports/batch/progress/${batchId}`);
+  return data;
+}
+

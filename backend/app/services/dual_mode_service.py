@@ -13,6 +13,9 @@ APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_PATH = os.path.join(APP_DIR, "checkpoints", "model_b3.pth")
 IMG_SIZE = 300 # Standard resolution for this EfficientNet-B3 checkpoint
 
+# Model Cache
+_MODEL_CACHE = {}
+
 def load_model(model_path: str):
     """
     Load the pre-trained EfficientNet-B3 model.
@@ -42,6 +45,14 @@ def load_model(model_path: str):
     model.load_state_dict(state_dict, strict=False)
     model.eval()
     return model
+
+def get_cached_model(model_path: str):
+    """
+    Singleton-style retriever for the AI model to prevent redundant loads.
+    """
+    if model_path not in _MODEL_CACHE:
+        _MODEL_CACHE[model_path] = load_model(model_path)
+    return _MODEL_CACHE[model_path]
 
 def preprocess_image(image_path: str):
     """
@@ -177,7 +188,7 @@ def run_inference(image_path: str, mode: str, model=None) -> Dict[str, Any]:
         raise ValueError(err_msg)
 
     if model is None:
-        model = load_model(MODEL_PATH)
+        model = get_cached_model(MODEL_PATH)
         
     image_tensor = preprocess_image(image_path)
     probs = predict(model, image_tensor)
@@ -212,6 +223,59 @@ def run_inference(image_path: str, mode: str, model=None) -> Dict[str, Any]:
         "explanation": explanation,
         "override_applied": override_applied,
         "raw_probs": [round(p.item(), 4) for p in probs]
+    }
+
+def apply_dual_mode_logic_remote(prediction: str, mode: str, confidence: float) -> Dict[str, Any]:
+    """
+    Fallback triage for remote AI providers that don't return probabilities.
+    Maps stage names to approximate risk scores.
+    """
+    grade = (prediction or "").strip()
+
+    # Map stage -> approximate risk score (0..1) for downstream UI.
+    score_map = {
+        "No DR": 0.05,
+        "Mild": 0.45,
+        "Moderate": 0.65,
+        "Severe": 0.85,
+        "Proliferative DR": 0.95,
+    }
+    risk_score = float(score_map.get(grade, 0.5))
+
+    # Safety override is stage-based (clinically conservative).
+    override_applied = grade in ("Severe", "Proliferative DR")
+
+    # Mode affects referral threshold for early stages.
+    if override_applied:
+        decision = "Refer"
+    else:
+        if mode == "high_sensitivity":
+            decision = "Refer" if grade in ("Mild", "Moderate", "Severe", "Proliferative DR") else "Normal"
+        else:
+            decision = "Refer" if grade in ("Moderate", "Severe", "Proliferative DR") else "Normal"
+
+    if risk_score <= 0.3:
+        risk_level = "Low"
+    elif risk_score <= 0.6:
+        risk_level = "Moderate"
+    else:
+        risk_level = "High"
+
+    if override_applied:
+        explanation = "Critical DR stage detected — immediate referral required."
+    elif decision == "Refer":
+        explanation = "Early signs detected — follow-up recommended."
+    else:
+        explanation = "Low risk — continue routine screening."
+
+    return {
+        "risk_score": round(risk_score, 4),
+        "risk_level": risk_level,
+        "decision": decision,
+        "mode": mode,
+        "explanation": explanation,
+        "override_applied": bool(override_applied),
+        "confidence": float(confidence),
     }
 
 def generate_referral_list(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

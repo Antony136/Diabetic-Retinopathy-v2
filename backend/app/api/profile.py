@@ -84,10 +84,17 @@ def update_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # NOTE: `current_user` is loaded via the auth dependency which uses its own DB session.
+    # This route uses a different session (`db`), so we must re-load the user here to ensure
+    # updates (especially `name`) are persisted correctly.
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
     profile = get_or_create_profile(db, current_user.id)
 
     if request.name is not None:
-        current_user.name = request.name
+        user.name = request.name
     if request.title is not None:
         profile.title = request.title
     if request.hospital_name is not None:
@@ -102,9 +109,9 @@ def update_profile(
     db.commit()
     stats = compute_stats(db, current_user.id)
     return {
-        "id": current_user.id,
-        "name": current_user.name,
-        "email": current_user.email,
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
         "title": profile.title,
         "hospital_name": profile.hospital_name,
         "phone": profile.phone,

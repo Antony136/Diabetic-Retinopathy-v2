@@ -7,6 +7,7 @@ export const DOCTOR_NAV_ITEMS = [
   { label: "Timeline", icon: "timeline", path: "/timeline" },
   { label: "Triage", icon: "medical_services", path: "/triage" },
   { label: "Assistant", icon: "chat", path: "/assistant" },
+  { label: "Batch", icon: "rocket_launch", path: "/batch-screening" },
   { label: "Settings", icon: "settings", path: "/settings" },
 ] as const;
 

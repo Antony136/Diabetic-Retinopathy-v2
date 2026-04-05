@@ -8,6 +8,15 @@ import httpx
 
 load_dotenv()
 
+from pathlib import Path
+import httpx
+import threading
+
+load_dotenv()
+
+# Thread-local storage to prevent Gradio client collisions
+_thread_local = threading.local()
+
 # =========================
 # AI PREDICTOR SERVICE (GRADIO CLIENT SYNCED)
 # =========================
@@ -21,18 +30,16 @@ class AIPredictor:
     _hf_space_id = os.getenv("HF_SPACE_ID") or os.getenv("HF_SPACE_URL") or "jczdgyo/diabetic-retinopathy"
     _hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN") or os.getenv("HF_API_TOKEN")
     
-    # Initialize client
-    _client = None
-
+    # Initialize client per thread
     @classmethod
     def get_client(cls):
-        if cls._client is None:
-            print(f"DEBUG: Initializing Gradio Client for {cls._hf_space_id}...")
+        if not hasattr(_thread_local, "client"):
+            print(f"DEBUG: Initializing Gradio Client for {cls._hf_space_id} on thread {threading.current_thread().name}...")
             if cls._hf_token:
-                cls._client = Client(cls._hf_space_id, hf_token=cls._hf_token)
+                _thread_local.client = Client(cls._hf_space_id, hf_token=cls._hf_token)
             else:
-                cls._client = Client(cls._hf_space_id)
-        return cls._client
+                _thread_local.client = Client(cls._hf_space_id)
+        return _thread_local.client
 
     @classmethod
     def _parse_prediction(cls, prediction_json: object) -> Tuple[str, float]:

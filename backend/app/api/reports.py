@@ -1,3 +1,4 @@
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query, Form
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
@@ -9,18 +10,28 @@ from app.models.user_preference import UserPreference
 from app.schemas.report import ReportCreate, ReportResponse
 from app.api.auth import get_current_user
 from app.services.storage_service import storage_service
-from app.services import image_explanation_service
-from pathlib import Path
+from app.services.dual_mode_service import apply_dual_mode_logic_remote
+from pathlib import Path, PurePosixPath
 from urllib.parse import urlparse
 import httpx
 import os
 import tempfile
 import uuid
 from datetime import datetime, timedelta
-from pathlib import PurePosixPath
+from app.services.batch_inference_service import batch_inference_service, batch_progress_store
+import asyncio
 
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+
+@router.get("/batch/progress/{batch_id}")
+async def get_batch_progress(batch_id: str):
+    """
+    Returns the exact number of images done versus total for a running batch.
+    """
+    if batch_id in batch_progress_store:
+        return batch_progress_store[batch_id]
+    return {"done": 0, "total": 0}
 
 
 def get_db():
@@ -52,58 +63,7 @@ def _normalize_mode(mode: str | None) -> str:
     )
 
 
-def _triage_from_grade(prediction: str, mode: str, confidence: float) -> dict:
-    """
-    Fallback triage for remote AI providers that don't return probabilities.
-    Keeps the API from 500'ing when the local checkpoint isn't available (e.g. Render).
-    """
-    grade = (prediction or "").strip()
-
-    # Map stage -> approximate risk score (0..1) for downstream UI.
-    score_map = {
-        "No DR": 0.05,
-        "Mild": 0.45,
-        "Moderate": 0.65,
-        "Severe": 0.85,
-        "Proliferative DR": 0.95,
-    }
-    risk_score = float(score_map.get(grade, 0.5))
-
-    # Safety override is stage-based (clinically conservative).
-    override_applied = grade in ("Severe", "Proliferative DR")
-
-    # Mode affects referral threshold for early stages.
-    if override_applied:
-        decision = "Refer"
-    else:
-        if mode == "high_sensitivity":
-            decision = "Refer" if grade in ("Mild", "Moderate", "Severe", "Proliferative DR") else "Normal"
-        else:
-            decision = "Refer" if grade in ("Moderate", "Severe", "Proliferative DR") else "Normal"
-
-    if risk_score <= 0.3:
-        risk_level = "Low"
-    elif risk_score <= 0.6:
-        risk_level = "Moderate"
-    else:
-        risk_level = "High"
-
-    if override_applied:
-        explanation = "Critical DR stage detected — immediate referral required."
-    elif decision == "Refer":
-        explanation = "Early signs detected — follow-up recommended."
-    else:
-        explanation = "Low risk — continue routine screening."
-
-    return {
-        "risk_score": round(risk_score, 4),
-        "risk_level": risk_level,
-        "decision": decision,
-        "mode": mode,
-        "explanation": explanation,
-        "override_applied": bool(override_applied),
-        "confidence": float(confidence),
-    }
+# _triage_from_grade removed - moved to dual_mode_service.apply_dual_mode_logic_remote
 
 
 def _write_temp_image(image_bytes: bytes, suffix: str) -> str:
@@ -205,6 +165,133 @@ async def cache_image_url(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to cache image: {e}")
 
 
+@router.post("/batch")
+async def create_batch_reports(
+    files: List[UploadFile] = File(...),
+    csv_file: Optional[UploadFile] = File(None),
+    mode: str = Query("standard"),
+    batch_id: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Enhanced Batch Screening Endpoint.
+    Supports individual files, ZIP folders, and optional CSV labels.
+    Returns structured results and a consolidated PDF report.
+    """
+    mode = _normalize_mode(mode)
+    
+    # Security: Limit batch size (e.g., max 50 images per request for stability)
+    if len(files) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Batch size too large. Maximum 50 items per request allowed for security and stability."
+        )
+
+    try:
+        batch_results = await batch_inference_service.process_batch(
+            files=files,
+            mode=mode,
+            csv_file=csv_file,
+            batch_id=batch_id
+        )
+        
+        # Security/Integrity: Log the user who performed the batch
+        print(f"INFO: User {current_user.id} performed batch screening of {batch_results['total']} items.")
+        
+        # Database Persistence Integration
+        saved_count = 0
+        provider = (os.getenv("AI_PROVIDER") or "").strip().lower()
+        use_local = provider in ("local", "offline", "desktop")
+        source = "sync_local" if use_local else "sync_remote"
+
+        for res in batch_results.get("results", []):
+            meta = res.get("metadata") or {}
+            
+            # Common CSV column names
+            pid = meta.get("patient_id") or meta.get("id") or meta.get("client_uuid")
+            pname = meta.get("patient_name") or meta.get("name") or meta.get("patient")
+            
+            print(f"DEBUG DB MAP -> Image: {res.get('name')} | PID Extracted: {pid} | Name: {pname} | Raw Meta: {meta}")
+            
+            # If completely empty, we skip creating a ghost patient to avoid junk DB bloat
+            if not pid and not pname:
+                print(f"DEBUG DB MAP -> Skipping {res.get('name')} because NO pid and NO pname were found in metadata!")
+                continue
+                
+            # Locate the exact patient enforcing security controls
+            patient_query = db.query(Patient)
+            if getattr(current_user, "role", "doctor") != "admin":
+                patient_query = patient_query.filter(Patient.doctor_id == current_user.id)
+                
+            patient = None
+            if pid and str(pid).isdigit():
+                patient = patient_query.filter(Patient.id == int(pid)).first()
+            if not patient and pid:
+                patient = patient_query.filter(Patient.client_uuid == str(pid)).first()
+                
+            if result_existing := patient:
+                print(f"DEBUG DB MAP -> Found existing patient: {result_existing.id} ({result_existing.name})")
+                
+            # Automatic Patient Creation if missing!
+            if not patient:
+                import uuid
+                
+                # Best-effort extraction for new patient details
+                try: age = int(meta.get("age", 0))
+                except: age = None
+                
+                new_patient = Patient(
+                    client_uuid=str(pid) if pid else str(uuid.uuid4()),
+                    name=str(pname) if pname else f"Batch File: {res.get('name', 'Unknown')}",
+                    age=age if age else None,
+                    gender=str(meta.get("gender", "")),
+                    phone=str(meta.get("phone", "")),
+                    address=str(meta.get("address", "")),
+                    doctor_id=current_user.id
+                )
+                db.add(new_patient)
+                db.commit()
+                db.refresh(new_patient)
+                patient = new_patient
+                
+            if patient:
+                report_filename = _unique_report_filename(db, patient.id, res.get("name", "batch_report.png"))
+                
+                new_report = Report(
+                    patient_id=patient.id,
+                    filename=report_filename,
+                    image_url=res.get("image_url", ""),
+                    heatmap_url=res.get("heatmap_url", ""),
+                    prediction=res.get("prediction", "Unknown"),
+                    confidence=res.get("confidence", 0.0),
+                    source=source,
+                    image_observations=None,
+                    image_explanation=res.get("clinical_summary"),
+                    risk_score=res.get("risk_score"),
+                    risk_level=None, 
+                    decision=res.get("decision"),
+                    mode=mode,
+                    adaptive_explanation=res.get("explanation"),
+                    override_applied=False
+                )
+                db.add(new_report)
+                db.commit()
+                saved_count += 1
+                
+        if saved_count > 0:
+            print(f"INFO: Successfully saved {saved_count} batch reports to PostgreSQL records.")
+
+        return batch_results
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Batch processing failed: {str(e)}"
+        )
+
+
 @router.post("/", response_model=ReportResponse)
 async def create_report(
     patient_id: int = Query(...),
@@ -257,6 +344,9 @@ async def create_report(
     original_filename = _clean_filename(getattr(file, "filename", None), suffix)
     report_filename = _unique_report_filename(db, patient_id, original_filename)
     local_image_path = _write_temp_image(image_bytes, suffix)
+
+    # Multi-analysis using existing model outputs
+    from app.services import image_explanation_service
 
     try:
         provider = (os.getenv("AI_PROVIDER") or "").strip().lower()
@@ -324,7 +414,7 @@ async def create_report(
 
             prediction, confidence, heatmap_bytes, heatmap_content_type, heatmap_ext = predict_dr_stage(local_image_path)
             confidence = float(confidence)
-            triage = _triage_from_grade(prediction, mode, confidence)
+            triage = apply_dual_mode_logic_remote(prediction, mode, confidence)
             risk_score = triage["risk_score"]
             risk_level = triage["risk_level"]
             decision = triage["decision"]
