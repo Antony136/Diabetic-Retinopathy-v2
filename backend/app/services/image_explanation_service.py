@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import math
 import os
+import hashlib
+import re
 from dataclasses import dataclass
 from typing import Optional
 
@@ -219,7 +221,19 @@ IMAGE_EXPLAIN_SYSTEM = (
 )
 
 
+def build_image_explain_summary_prompt(*, diagnosis: str, confidence: float) -> str:
+    """Build a prompt for generating a short, crisp summary (1-2 sentences)."""
+    return (
+        "A retinal scan has been analyzed by a deep learning model.\n\n"
+        f"Diagnosis: {diagnosis}\n"
+        f"Confidence: {round(float(confidence) * 100.0, 1)}%\n\n"
+        "Generate a very short and crisp one-liner summary of this diagnosis (one sentence max). "
+        "Be direct and clinical without unnecessary detail."
+    )
+
+
 def build_image_explain_user_prompt(*, diagnosis: str, confidence: float, observations: list[str]) -> str:
+    """Build a prompt for generating detailed explanation."""
     obs_lines = "\n".join([f"- {o}" for o in observations]) if observations else "- (none)"
     return (
         "A retinal scan has been analyzed by a deep learning model.\n\n"
@@ -236,6 +250,33 @@ def build_image_explain_user_prompt(*, diagnosis: str, confidence: float, observ
     )
 
 
+async def generate_image_explanation_summary(
+    *,
+    diagnosis: str,
+    confidence: float,
+    cache_key: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Generate a short, crisp summary (1-2 sentences) of the diagnosis.
+    Falls back to a simple rule-based summary if LLM fails.
+    """
+    user_prompt = build_image_explain_summary_prompt(
+        diagnosis=diagnosis,
+        confidence=confidence,
+    )
+    text, _provider, _err = await generate_with_fallback(
+        system_prompt=IMAGE_EXPLAIN_SYSTEM,
+        user_prompt=user_prompt,
+        cache_key=cache_key + "_summary" if cache_key else None,
+    )
+    if text and text.strip():
+        return text.strip()
+
+    # Fallback: simple rule-based summary
+    conf_pct = round(float(confidence) * 100.0, 1)
+    return f"Diagnosis: {diagnosis} ({conf_pct}% confidence)"
+
+
 async def generate_image_explanation(
     *,
     diagnosis: str,
@@ -244,7 +285,8 @@ async def generate_image_explanation(
     cache_key: Optional[str] = None,
 ) -> Optional[str]:
     """
-    Best-effort LLM generation. Falls back to a concise rule-based explanation if the LLM fails.
+    Generate detailed explanation of the diagnosis based on heatmap observations.
+    Falls back to a concise rule-based explanation if the LLM fails.
     """
     timeout_override = (os.getenv("IMAGE_EXPLANATION_TIMEOUT_SECONDS") or "").strip()
     # Reuse existing LLM config; allow global timeout env (LLM_TIMEOUT_SECONDS) to control this.
@@ -275,6 +317,93 @@ async def generate_image_explanation(
         f"Heatmap analysis suggests: {bullets} "
         "This pattern is consistent with lesions and severity cues the model associates with this DR stage."
     ).strip()
+
+
+async def generate_structured_explanation(
+    *,
+    diagnosis: str,
+    confidence: float,
+    observations: list[str],
+    cache_key: Optional[str] = None,
+) -> dict:
+    """
+    Generate a structured explanation with separate components:
+    - severity: Severity assessment
+    - reasonings: Key reasoning points
+    - lesions: Lesion findings
+    - recommendations: Clinical recommendations
+    """
+    try:
+        # Build a prompt asking for JSON-structured output
+        obs_lines = "\n".join([f"- {o}" for o in observations]) if observations else "- (none)"
+        system_prompt = (
+            "You are an ophthalmology AI assistant. Generate structured clinical analysis in JSON format with keys: "
+            "severity (string: Low/Moderate/High), reasonings (list of 2-3 key points), "
+            "lesions (string describing lesion types), recommendations (string with clinical guidance)."
+        )
+        user_prompt = (
+            f"Diagnosis: {diagnosis}\n"
+            f"Confidence: {round(float(confidence) * 100.0, 1)}%\n\n"
+            f"Observations:\n{obs_lines}\n\n"
+            "Provide analysis in JSON format."
+        )
+        
+        text, _provider, _err = await generate_with_fallback(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            cache_key=cache_key + "_structured" if cache_key else None,
+        )
+        
+        if text and text.strip():
+            # Try to parse as JSON
+            try:
+                # Extract JSON from response (may have markdown code blocks)
+                json_match = re.search(r'\{.*\}', text, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group())
+                    return result
+            except Exception:
+                pass
+    except Exception:
+        pass
+    
+    # Fallback: generate structured response from observations
+    return _generate_fallback_structured_explanation(diagnosis, confidence, observations)
+
+
+def _generate_fallback_structured_explanation(diagnosis: str, confidence: float, observations: list[str]) -> dict:
+    """Fallback structured explanation when LLM is unavailable."""
+    conf_pct = round(float(confidence) * 100.0, 1)
+    
+    # Determine severity based on diagnosis
+    severity_map = {
+        "No DR": "Low",
+        "Mild": "Moderate",
+        "Moderate": "High",
+        "Severe": "High",
+        "Proliferative DR": "High",
+    }
+    severity = severity_map.get(diagnosis, "Moderate")
+    
+    # Build reasonings from observations
+    reasonings = []
+    if observations:
+        reasonings = [obs.rstrip(".") for obs in observations[:3]]
+    if not reasonings:
+        reasonings = [f"Model confidence: {conf_pct}%", "Pattern analysis indicates this DR stage"]
+    
+    return {
+        "severity": severity,
+        "reasonings": reasonings,
+        "lesions": "Lesions detected based on retinal pattern activation",
+        "recommendations": f"Follow-up examination recommended. Consult with ophthalmologist for clinical confirmation."
+    }
+
+
+def get_stable_hash(values: list[str]) -> str:
+    """Returns a stable hex digest for a list of strings (avoids randomized hash())."""
+    content = "|".join(values)
+    return hashlib.md5(content.encode("utf-8")).hexdigest()[:12]
 
 
 def pack_observations(observations: list[str]) -> str:

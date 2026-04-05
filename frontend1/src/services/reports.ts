@@ -11,6 +11,8 @@ export interface ReportResponse {
   description?: string | null;
   image_observations?: string | null;
   image_explanation?: string | null;
+  image_explanation_summary?: string | null;
+  image_explanation_structured?: string | null;
   
   // Adaptive Screening Mode
   risk_score?: number | null;
@@ -90,7 +92,7 @@ export async function createManualReport(params: {
 }
 
 export async function generateImageExplanation(reportId: number, force = false) {
-  const { data } = await api.post<{ image_observations: string | null; image_explanation: string | null }>(
+  const { data } = await api.post<{ image_observations: string | null; image_explanation: string | null; image_explanation_summary: string | null; image_explanation_structured: string | null }>(
     `/reports/${reportId}/image-explanation`,
     null,
     { params: { force: force ? "1" : "0" } }

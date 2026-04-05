@@ -13,6 +13,8 @@ class ReportCreate(BaseModel):
     description: Optional[str] = None
     image_observations: Optional[str] = None
     image_explanation: Optional[str] = None
+    image_explanation_summary: Optional[str] = None
+    image_explanation_structured: Optional[str] = None
     risk_score: Optional[float] = None
     risk_level: Optional[str] = None
     decision: Optional[str] = None
@@ -38,6 +40,8 @@ class ReportResponse(BaseModel):
     description: Optional[str] = None
     image_observations: Optional[str] = None
     image_explanation: Optional[str] = None
+    image_explanation_summary: Optional[str] = None
+    image_explanation_structured: Optional[str] = None
     risk_score: Optional[float] = None
     risk_level: Optional[str] = None
     decision: Optional[str] = None

@@ -122,6 +122,10 @@ def run_migrations(engine: Engine):
             ddl_list2.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS image_observations TEXT NULL")
         if not _has_column(engine, "reports", "image_explanation"):
             ddl_list2.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS image_explanation TEXT NULL")
+        if not _has_column(engine, "reports", "image_explanation_summary"):
+            ddl_list2.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS image_explanation_summary TEXT NULL")
+        if not _has_column(engine, "reports", "image_explanation_structured"):
+            ddl_list2.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS image_explanation_structured TEXT NULL")
         if ddl_list2:
             with engine.begin() as conn:
                 if dialect == "postgresql":
