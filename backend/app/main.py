@@ -74,6 +74,7 @@ allow_credentials = True if allowed_origins else False
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex="https://.*\.vercel\.app", # Allow all vercel subdomains & previews
     allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -86,6 +87,14 @@ async def _unhandled_exception_handler(request: Request, exc: Exception):
     # Ensure desktop gets JSON errors (instead of plain "Internal Server Error"),
     # which makes debugging offline issues much easier.
     desktop = (os.getenv("DESKTOP_MODE") or "").strip() == "1"
+    
+    # Extract origin for CORS fallback
+    origin = request.headers.get("origin")
+    headers = {}
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+
     if desktop:
         try:
             traceback.print_exc()
@@ -93,6 +102,7 @@ async def _unhandled_exception_handler(request: Request, exc: Exception):
             pass
         return JSONResponse(
             status_code=500,
+            headers=headers,
             content={
                 "detail": "Internal Server Error",
                 "error": str(exc),
@@ -101,8 +111,12 @@ async def _unhandled_exception_handler(request: Request, exc: Exception):
             },
         )
 
-    # Cloud: keep response generic.
-    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+    # Cloud: keep response generic but include CORS headers
+    return JSONResponse(
+        status_code=500, 
+        headers=headers,
+        content={"detail": f"Internal Server Error: {str(exc)}"}
+    )
 
 
 @app.api_route("/", methods=["GET", "HEAD"])

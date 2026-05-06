@@ -51,7 +51,8 @@ class BatchInferenceService:
         
         cpu_cores = os.cpu_count() or 4
         # Increased concurrency for better throughput
-        self.max_concurrency = cpu_cores * 2 if self.use_local else 6
+        # Lower concurrency for Cloud to avoid OOM on constrained environments like Render
+        self.max_concurrency = cpu_cores * 2 if self.use_local else 2
         
         self._executor = ThreadPoolExecutor(max_workers=self.max_concurrency * 2)
         self._semaphore: Optional[asyncio.Semaphore] = None
@@ -245,7 +246,9 @@ class BatchInferenceService:
             }
         extra_data = sanitize_for_json(extra_data)
 
-        tmp_path = f"tmp_batch_{uuid.uuid4().hex}{ext}"
+        import tempfile
+        tmp_dir = tempfile.gettempdir()
+        tmp_path = os.path.join(tmp_dir, f"tmp_batch_{uuid.uuid4().hex}{ext}")
         try:
             with open(tmp_path, "wb") as f:
                 f.write(content)
