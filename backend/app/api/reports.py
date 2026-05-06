@@ -149,49 +149,19 @@ async def get_batch_result(batch_id: str):
         detail="Batch result not found or still processing."
     )
 
-async def _background_batch_task(
-    files_data: List[dict],
-    csv_data: bytes,
-    mode: str,
-    batch_id: str,
-    provider: str,
-    user_id: int,
-):
-    """
-    Background task to process batch and save to DB.
-    """
-    # Create a fresh DB session for the background task
-    db = SessionLocal()
-    try:
-        # Re-construct UploadFiles from saved data if necessary, 
-        # or update batch_inference_service to accept raw data.
-        # For now, let's assume we pass the data directly.
-        
-        # We need a user object for the logic
-        from app.models.users import User
-        current_user = db.query(User).filter(User.id == user_id).first()
-        if not current_user:
-            print(f"ERROR: Background task user {user_id} not found.")
-            return
+def _save_batch_to_db(db: Session, batch_results: dict, mode: str, user_id: int, batch_id: str):
+    """Synchronous helper to save results to DB in one go."""
+    from app.models.users import User
+    current_user = db.query(User).filter(User.id == user_id).first()
+    if not current_user: return 0
 
-        # 1. Run inference
-        # Note: We need to modify process_batch to accept raw data or 
-        # use a wrapper.
-        batch_results = await batch_inference_service.process_batch_raw(
-            files_data=files_data,
-            mode=mode,
-            csv_content=csv_data,
-            batch_id=batch_id,
-            provider=provider
-        )
+    ai_provider = (os.getenv("AI_PROVIDER") or "").strip().lower()
+    use_local = ai_provider in ("local", "offline", "desktop")
+    source = "sync_local" if use_local else "sync_remote"
+    saved_count = 0
 
-        # 2. Database Persistence Integration
-        saved_count = 0
-        ai_provider = (os.getenv("AI_PROVIDER") or "").strip().lower()
-        use_local = ai_provider in ("local", "offline", "desktop")
-        source = "sync_local" if use_local else "sync_remote"
-
-        for res in batch_results.get("results", []):
+    for res in batch_results.get("results", []):
+        try:
             meta = res.get("metadata") or {}
             pid = (meta.get("patient_id") or meta.get("id") or meta.get("client_uuid") or meta.get("patient_no"))
             pname = (meta.get("patient_name") or meta.get("name") or meta.get("patient"))
@@ -209,48 +179,70 @@ async def _background_batch_task(
                 patient = patient_query.filter(Patient.name == str(pname)).first()
             
             if not patient:
-                new_patient = Patient(
+                patient = Patient(
                     client_uuid=str(pid) if pid else str(uuid.uuid4()),
-                    name=str(pname) if pname else f"Batch File: {res.get('name', 'Unknown')}",
+                    name=str(pname) if pname else f"Batch: {res.get('name', 'Unknown')}",
                     age=int(meta.get("age", 0)) if meta.get("age") else None,
                     gender=str(meta.get("gender", "")),
-                    phone=str(meta.get("phone", "")),
-                    address=str(meta.get("address", "")),
                     doctor_id=current_user.id
                 )
-                db.add(new_patient)
-                db.commit()
-                db.refresh(new_patient)
-                patient = new_patient
+                db.add(patient)
+                db.flush() # Get ID without commit
             
-            if patient:
-                report_filename = _unique_report_filename(db, patient.id, res.get("name", "batch_report.png"))
-                new_report = Report(
-                    patient_id=patient.id,
-                    filename=report_filename,
-                    image_url=res.get("image_url", ""),
-                    heatmap_url=res.get("heatmap_url", ""),
-                    prediction=res.get("prediction", "Unknown"),
-                    confidence=res.get("confidence", 0.0),
-                    source=source,
-                    image_explanation=res.get("clinical_summary"),
-                    risk_score=res.get("risk_score"),
-                    decision=res.get("decision"),
-                    mode=mode,
-                    adaptive_explanation=res.get("explanation"),
-                    pdf_url=res.get("pdf_url", "")
-                )
-                db.add(new_report)
-                db.commit()
-                saved_count += 1
+            report_filename = _unique_report_filename(db, patient.id, res.get("name", "batch.png"))
+            new_report = Report(
+                patient_id=patient.id,
+                filename=report_filename,
+                image_url=res.get("image_url", ""),
+                heatmap_url=res.get("heatmap_url", ""),
+                prediction=res.get("prediction", "Unknown"),
+                confidence=res.get("confidence", 0.0),
+                source=source,
+                image_explanation=res.get("clinical_summary"),
+                risk_score=res.get("risk_score"),
+                decision=res.get("decision"),
+                mode=mode,
+                adaptive_explanation=res.get("explanation"),
+                pdf_url=res.get("pdf_url", "")
+            )
+            db.add(new_report)
+            saved_count += 1
+        except Exception as e:
+            print(f"WARN: Failed to save individual result in batch {batch_id}: {e}")
+
+    db.commit()
+    return saved_count
+
+async def _background_batch_task(
+    files_data: List[dict],
+    csv_data: bytes,
+    mode: str,
+    batch_id: str,
+    provider: str,
+    user_id: int,
+):
+    try:
+        # 1. Inference (Heavy Async)
+        batch_results = await batch_inference_service.process_batch_raw(
+            files_data=files_data,
+            mode=mode,
+            csv_content=csv_data,
+            batch_id=batch_id,
+            provider=provider
+        )
+
+        # 2. Save to DB (Sync but in thread)
+        loop = asyncio.get_running_loop()
+        def _db_op():
+            with SessionLocal() as db:
+                return _save_batch_to_db(db, batch_results, mode, user_id, batch_id)
         
-        print(f"INFO: Background batch {batch_id} completed. Saved {saved_count} reports.")
+        saved = await loop.run_in_executor(None, _db_op)
+        print(f"INFO: Background batch {batch_id} done. Saved {saved} reports.")
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"ERROR: Background batch task {batch_id} failed: {e}")
-    finally:
-        db.close()
+        print(f"ERROR: Background batch {batch_id} failed: {e}")
 
 
 @router.post("/batch")
@@ -264,34 +256,26 @@ async def create_batch_reports(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Asynchronous Batch Screening Endpoint.
-    Starts a background task and returns a batch_id for polling.
+    Asynchronous Batch Screening. Optimized for low-memory environments.
     """
     mode = _normalize_mode(mode)
-    if not batch_id:
-        batch_id = uuid.uuid4().hex[:8]
+    if not batch_id: batch_id = uuid.uuid4().hex[:8]
 
-    # Security: Limit batch size
     if len(files) > 50:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="Batch size too large. Max 50 items."
-        )
+        raise HTTPException(status_code=413, detail="Max 50 items allowed.")
 
-    # 1. Read all file data immediately before request closes
     try:
+        # Read in memory, but we keep it minimal
         files_data = []
         for f in files:
-            content = await f.read()
             files_data.append({
                 "filename": f.filename,
-                "content": content,
+                "content": await f.read(),
                 "content_type": f.content_type
             })
         
         csv_data = await csv_file.read()
         
-        # 2. Trigger background task
         background_tasks.add_task(
             _background_batch_task,
             files_data=files_data,
@@ -302,16 +286,9 @@ async def create_batch_reports(
             user_id=current_user.id
         )
         
-        return {
-            "batch_id": batch_id,
-            "status": "processing",
-            "message": "Batch screening started in background."
-        }
+        return {"batch_id": batch_id, "status": "processing"}
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start batch: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Start failed: {e}")
 
 
 @router.post("/", response_model=ReportResponse)

@@ -74,7 +74,7 @@ allow_credentials = True if allowed_origins else False
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex="https://.*\.vercel\.app", # Allow all vercel subdomains & previews
+    allow_origin_regex=r"https://.*\.vercel\.app", # Allow all vercel subdomains & previews
     allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],

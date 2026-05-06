@@ -306,16 +306,32 @@ async def generate_image_explanation(
         # Strip any accidental JSON wrappers; we store plain text.
         return text.strip()
 
-    # Fallback: keep app functional offline even if Ollama isn't running.
+    # Default professional fallback message
+    conf_pct = round(float(confidence) * 100.0, 1)
+    
     if not observations:
-        return f"The model predicted {diagnosis} with {round(float(confidence) * 100.0, 1)}% confidence based on the retinal image activation pattern."
+        return (
+            f"Automated Analysis Summary: The deep learning model identifies patterns consistent with {diagnosis} "
+            f"(Confidence: {conf_pct}%). This assessment is based on architectural features and vascular cues "
+            "detected in the fundus topography."
+        )
 
-    top = observations[:4]
-    bullets = " ".join([o.rstrip(".") + "." for o in top])
+    # Use observations to build a richer manual explanation
+    # Prioritize the most critical findings (usually the first few)
+    top_obs = [o.rstrip(".") + "." for o in observations[:4]]
+    joined_obs = " ".join(top_obs)
+    
+    # Severity context
+    severity_note = ""
+    if "Severe" in diagnosis or "Proliferative" in diagnosis:
+        severity_note = " These findings indicate advanced retinal stress requiring urgent specialist review."
+    elif "Moderate" in diagnosis:
+        severity_note = " These changes suggest progressing diabetic retinopathy that warrants close monitoring."
+
     return (
-        f"The model predicted {diagnosis} with {round(float(confidence) * 100.0, 1)}% confidence. "
-        f"Heatmap analysis suggests: {bullets} "
-        "This pattern is consistent with lesions and severity cues the model associates with this DR stage."
+        f"Diagnostic Reasoning (Automated): The screening model suggests {diagnosis} with {conf_pct}% confidence. "
+        f"The visual analysis highlights several key indicators: {joined_obs} "
+        f"These activation patterns align with known biomarkers for this stage of retinopathy.{severity_note}"
     ).strip()
 
 
