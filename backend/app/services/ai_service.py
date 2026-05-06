@@ -8,14 +8,12 @@ import httpx
 
 load_dotenv()
 
-from pathlib import Path
-import httpx
 import threading
 
 load_dotenv()
 
-# Thread-local storage to prevent Gradio client collisions
-_thread_local = threading.local()
+_client_singleton = None
+_client_lock = threading.Lock()
 
 # =========================
 # AI PREDICTOR SERVICE (GRADIO CLIENT SYNCED)
@@ -27,19 +25,21 @@ class AIPredictor:
     """
 
     # Use your HF Space ID
-    _hf_space_id = os.getenv("HF_SPACE_ID") or os.getenv("HF_SPACE_URL") or "jczdgyo/diabetic-retinopathy"
+    _hf_space_id = os.getenv("HF_SPACE_ID") or os.getenv("HF_SPACE_URL") or "jczdgyo/diabetic-retinopathy-v2"
     _hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN") or os.getenv("HF_API_TOKEN")
     
-    # Initialize client per thread
     @classmethod
     def get_client(cls):
-        if not hasattr(_thread_local, "client"):
-            print(f"DEBUG: Initializing Gradio Client for {cls._hf_space_id} on thread {threading.current_thread().name}...")
-            if cls._hf_token:
-                _thread_local.client = Client(cls._hf_space_id, hf_token=cls._hf_token)
-            else:
-                _thread_local.client = Client(cls._hf_space_id)
-        return _thread_local.client
+        global _client_singleton
+        if _client_singleton is None:
+            with _client_lock:
+                if _client_singleton is None:
+                    print(f"DEBUG: Initializing Global Gradio Client for {cls._hf_space_id}...")
+                    if cls._hf_token:
+                        _client_singleton = Client(cls._hf_space_id, hf_token=cls._hf_token)
+                    else:
+                        _client_singleton = Client(cls._hf_space_id)
+        return _client_singleton
 
     @classmethod
     def _parse_prediction(cls, prediction_json: object) -> Tuple[str, float]:

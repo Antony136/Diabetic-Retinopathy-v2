@@ -221,21 +221,22 @@ async def generate_with_fallback(
         if isinstance(cached, str) and cached.strip():
             return cached, cfg.provider, None
 
-    primary: ProviderName = cfg.provider
-    secondary: ProviderName = "groq" if primary == "ollama" else "ollama"
-
     is_render = os.getenv("RENDER") == "true" or os.getenv("RENDER_SERVICE_ID") is not None
     
+    # Global flag to avoid repeated Groq restricted errors in a single worker session
+    global _groq_restricted
+    if not hasattr(generate_with_fallback, "_groq_restricted"):
+        setattr(generate_with_fallback, "_groq_restricted", False)
+
     async def _try(provider: ProviderName) -> str:
         if provider == "ollama":
-            if is_render and ("localhost" in cfg.ollama_url or "127.0.0.1" in cfg.ollama_url):
-                raise RuntimeError("Ollama not available on Render")
             return await _call_ollama(f"{system_prompt}\n\n{user_prompt}".strip(), cfg)
+        
+        if getattr(generate_with_fallback, "_groq_restricted", False):
+            raise RuntimeError("Groq restricted (skipping)")
         return await _call_groq(system_prompt, user_prompt, cfg)
 
     errors: list[str] = []
-    # If on Render and Groq restricted, we should avoid trying it for every image.
-    # But for now, let's just make sure it fails fast.
     for provider in [primary, secondary]:
         try:
             text = await _try(provider)
@@ -246,14 +247,13 @@ async def generate_with_fallback(
             err_str = str(e)
             msg = f"{provider} failed: {err_str}"
             errors.append(msg)
-            # If Groq is restricted, don't log the full traceback to keep logs clean
+            
             if "organization_restricted" in err_str:
-                logger.error("Groq Organization Restricted - Check your Groq account.")
+                setattr(generate_with_fallback, "_groq_restricted", True)
+                logger.error("Groq restricted. Switching to fallback mode for this session.")
+            elif "ConnectError" in err_str:
+                logger.error(f"Could not connect to {provider}. Check your configuration.")
             else:
                 logger.exception("DoctorAssistant LLM call failed (%s).", provider)
-            
-            # If it's a connection error to localhost on Render, don't wait for secondary
-            if "ConnectError" in err_str and is_render and provider == "ollama":
-                continue
 
     return None, None, "; ".join(errors) if errors else "LLM call failed"
