@@ -73,20 +73,12 @@ class PDFReportService:
         elements.append(Spacer(1, 0.1 * inch))
 
         # Compact Table Header
-        results_data = [["Patient / File", "Prediction", "Confidence", "Decision", "Clinical Summary", "Heatmap Map"]]
+        results_data = [["Patient / File", "Prediction", "Confidence", "Decision", "Clinical Summary"]]
 
         for res in batch_results["results"]:
             meta = res.get("metadata") or {}
             patient_label = meta.get("patient_name") or meta.get("name") or meta.get("patient") or res['name']
             
-            hm_cell = ""
-            if res.get("heatmap_bytes"):
-                try:
-                    img_data = BytesIO(res["heatmap_bytes"])
-                    hm_cell = RLImage(img_data, width=1.0*inch, height=1.0*inch)
-                except Exception:
-                    hm_cell = "[Missing]"
-
             # Cap the summary length to prevent row explosion
             summary_txt = (res.get("clinical_summary") or res.get("explanation") or "")[:150] + "..."
 
@@ -95,11 +87,10 @@ class PDFReportService:
                 res['prediction'],
                 f"{res['confidence']*100:.1f}%",
                 res['decision'],
-                Paragraph(summary_txt, styles['Normal']),
-                hm_cell
+                Paragraph(summary_txt, styles['Normal'])
             ])
 
-        tr = Table(results_data, colWidths=[1.5*inch, 0.9*inch, 0.8*inch, 0.9*inch, 2.3*inch, 1.1*inch])
+        tr = Table(results_data, colWidths=[1.6*inch, 1.0*inch, 1.0*inch, 1.1*inch, 2.8*inch])
         tr.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),

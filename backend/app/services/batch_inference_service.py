@@ -148,21 +148,31 @@ class BatchInferenceService:
             "failed_items": failed_items
         }
 
-        # PDF and Storage
+        # 5. PDF and Storage (Use minimal RAM)
         batch_pdf_url = ""
         if results:
             try:
+                # Discard heatmap bytes from summary BEFORE generating PDF to save RAM
+                # The PDF no longer uses them anyway
+                for res in results:
+                    res.pop("heatmap_bytes", None)
+                
                 pdf_bytes = pdf_report_service.generate_batch_pdf(summary)
                 batch_pdf_url = storage_service.upload_bytes(pdf_bytes, f"batch_{uuid.uuid4().hex[:8]}.pdf", "application/pdf")
-            except: pass
+                del pdf_bytes
+            except Exception as e:
+                print(f"ERROR: Batch PDF failed: {e}")
 
-        for res in summary["results"]: res.pop("heatmap_bytes", None)
         summary["batch_pdf_url"] = batch_pdf_url
         summary = sanitize_for_json(summary)
 
         if batch_id:
             batch_results_store[batch_id] = {"status": "completed", "result": summary}
             if batch_id in batch_progress_store: del batch_progress_store[batch_id]
+
+        # Final cleanup
+        import gc
+        gc.collect()
 
         return summary
 
