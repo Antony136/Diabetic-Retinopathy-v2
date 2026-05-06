@@ -18,6 +18,7 @@ from app.services import image_explanation_service
 from app.services.pdf_report_service import pdf_report_service
 
 batch_progress_store: Dict[str, Dict[str, int]] = {}
+batch_results_store: Dict[str, Any] = {}
 
 
 def sanitize_for_json(obj: Any) -> Any:
@@ -62,6 +63,93 @@ class BatchInferenceService:
         if self._semaphore is None:
             self._semaphore = asyncio.Semaphore(self.max_concurrency)
         return self._semaphore
+
+    async def process_batch_raw(
+        self,
+        files_data: List[Dict[str, Any]],
+        mode: str = "standard",
+        csv_content: bytes = b"",
+        batch_id: Optional[str] = None,
+        provider: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Processes batch from raw data (memory-buffered).
+        """
+        results = []
+        failed_items = []
+        labels_map = {}
+
+        # 1. Parse CSV
+        try:
+            df = pd.read_csv(io.BytesIO(csv_content))
+            df.columns = [c.lower().strip() for c in df.columns]
+            records = df.to_dict(orient="records")
+            records = [sanitize_for_json(row) for row in records]
+            for row in records:
+                key = str(row.get("filename") or row.get("file") or row.get("image") or "").strip()
+                if key and key != "None": labels_map[key] = row
+        except Exception as e:
+            print(f"ERROR: Raw CSV parse failed: {e}")
+
+        # 2. Extract images
+        all_images = []
+        for f in files_data:
+            if f["filename"].lower().endswith((".jpg", ".jpeg", ".png")):
+                all_images.append(f)
+            else:
+                failed_items.append({"name": f["filename"], "reason": "Unsupported format."})
+
+        # 3. Process
+        if batch_id:
+            batch_progress_store[batch_id] = {"done": 0, "total": len(all_images)}
+
+        tasks = [
+            asyncio.create_task(self._process_single_image(img, mode, labels_map, provider))
+            for img in all_images
+        ]
+
+        async def wrap_task(idx, t):
+            try: r = await t
+            except Exception as e: r = {"status": "failed", "name": all_images[idx]["filename"], "reason": str(e)}
+            if batch_id and batch_id in batch_progress_store:
+                batch_progress_store[batch_id]["done"] += 1
+            return idx, r
+
+        wrapped = [wrap_task(i, t) for i, t in enumerate(tasks)]
+        batch_results = [None] * len(all_images)
+        for coro in asyncio.as_completed(wrapped):
+            idx, res = await coro
+            batch_results[idx] = res
+
+        for res in batch_results:
+            if res.get("status") == "failed": failed_items.append(res)
+            else: results.append(res)
+
+        summary = {
+            "total": len(all_images) + len(failed_items),
+            "successful": len(results),
+            "failed": len(failed_items),
+            "results": results,
+            "failed_items": failed_items
+        }
+
+        # PDF and Storage
+        batch_pdf_url = ""
+        if results:
+            try:
+                pdf_bytes = pdf_report_service.generate_batch_pdf(summary)
+                batch_pdf_url = storage_service.upload_bytes(pdf_bytes, f"batch_{uuid.uuid4().hex[:8]}.pdf", "application/pdf")
+            except: pass
+
+        for res in summary["results"]: res.pop("heatmap_bytes", None)
+        summary["batch_pdf_url"] = batch_pdf_url
+        summary = sanitize_for_json(summary)
+
+        if batch_id:
+            batch_results_store[batch_id] = {"status": "completed", "result": summary}
+            if batch_id in batch_progress_store: del batch_progress_store[batch_id]
+
+        return summary
 
     async def process_batch(
         self,
@@ -205,8 +293,13 @@ class BatchInferenceService:
         summary["batch_pdf_url"] = batch_pdf_url
         summary = sanitize_for_json(summary)
 
-        if batch_id and batch_id in batch_progress_store:
-            del batch_progress_store[batch_id]
+        if batch_id:
+            batch_results_store[batch_id] = {
+                "status": "completed",
+                "result": summary
+            }
+            if batch_id in batch_progress_store:
+                del batch_progress_store[batch_id]
 
         return summary
 

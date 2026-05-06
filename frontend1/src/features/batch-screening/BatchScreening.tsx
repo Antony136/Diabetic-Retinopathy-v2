@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Card from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import { createBatchReports, getBatchProgress } from "../../services/reports";
+import { createBatchReports, getBatchProgress, getBatchResult } from "../../services/reports";
 import type { BatchReportResponse } from "../../services/reports";
 import { resolveBackendImageUrl } from "../../services/apiBase";
 import { useScreeningMode } from "../../contexts/ScreeningModeContext";
@@ -54,39 +54,52 @@ export default function BatchScreening() {
     setTotalCount(files.length);
     setProgress(0);
     
-    // Generate an ID for tracking this exact batch execution.
     const batchId = Math.random().toString(36).substring(2, 10);
-
-    // Exact Server-side completion tracking
-    const timer = setInterval(async () => {
-        try {
-            const data = await getBatchProgress(batchId);
-            if (data && data.total > 0) {
-                setDoneCount(data.done);
-                setTotalCount(data.total);
-                const perc = Math.min(99, Math.round((data.done / data.total) * 100)); // cap at 99 until finished
-                setProgress(perc);
-            }
-        } catch (e) {
-            // Silently ignore polling errors
-        }
-    }, 1500);
     
     try {
-      const resp = await createBatchReports({
+      // 1. Kick off the batch (this returns immediately now)
+      await createBatchReports({
         files,
         csvFile: csvFile || undefined,
         mode: adaptiveMode,
         batchId: batchId,
         provider: aiProvider
       });
-      setResult(resp);
-      setProgress(100);
+
+      // 2. Poll for progress and completion
+      const poll = async () => {
+        try {
+          const data = await getBatchProgress(batchId);
+          if (data) {
+            if (data.status === "completed") {
+                // Done! Fetch the final payload
+                const finalData = await getBatchResult(batchId);
+                setResult(finalData);
+                setProgress(100);
+                setIsProcessing(false);
+                return; // Stop polling
+            }
+            
+            if (data.total > 0) {
+                setDoneCount(data.done);
+                setTotalCount(data.total);
+                const perc = Math.min(99, Math.round((data.done / data.total) * 100));
+                setProgress(perc);
+            }
+          }
+          // Continue polling
+          setTimeout(poll, 2000);
+        } catch (e) {
+          // Retry later on error
+          setTimeout(poll, 4000);
+        }
+      };
+      
+      poll();
+
     } catch (err: any) {
       console.error("Batch error:", err);
       setError(err.response?.data?.detail || err.message || "Batch processing failed.");
-    } finally {
-      clearInterval(timer);
       setIsProcessing(false);
     }
   };
@@ -334,20 +347,24 @@ export default function BatchScreening() {
                         
                         <div className="space-y-6">
                             <div className="flex justify-between text-base font-bold text-primary tracking-tight">
-                                <span>Batch Progress ({doneCount} / {totalCount} Completed)</span>
-                                <span>{progress}%</span>
+                                <span style={{ color: 'var(--primary)' }}>Batch Progress ({doneCount} / {totalCount} Completed)</span>
+                                <span style={{ color: 'var(--primary)' }}>{progress}%</span>
                             </div>
-                            <div className="h-3 w-full bg-surface-container-high rounded-full overflow-hidden shadow-inner">
+                            <div className="h-3 w-full bg-surface-container-high rounded-full overflow-hidden shadow-inner" style={{ backgroundColor: 'var(--surface-container-high)' }}>
                                 <motion.div 
-                                    className="h-full bg-gradient-to-r from-primary via-primary-bright to-secondary"
+                                    className="h-full"
+                                    style={{ 
+                                        width: `${progress}%`,
+                                        background: 'linear-gradient(90deg, var(--primary), var(--primary-bright), var(--secondary))'
+                                    }}
                                     initial={{ width: 0 }}
                                     animate={{ width: `${progress}%` }}
                                     transition={{ duration: 0.5 }}
                                 />
                             </div>
-                            <div className="flex items-center gap-3 p-4 rounded-2xl bg-surface-container-lowest border border-outline/5 text-on-surface-variant text-sm italic font-medium">
-                                <span className="material-symbols-outlined text-lg animate-pulse text-primary">auto_awesome</span>
-                                Processing fundus heuristics & Grad-CAM overlays...
+                            <div className="flex items-center gap-3 p-4 rounded-2xl bg-surface-container-lowest border border-outline/5 text-on-surface-variant text-sm italic font-medium" style={{ backgroundColor: 'var(--surface-container-low)', borderColor: 'var(--border)' }}>
+                                <span className="material-symbols-outlined text-lg animate-pulse" style={{ color: 'var(--primary)' }}>auto_awesome</span>
+                                {progress === 0 ? "Initializing AI engine..." : "Processing fundus heuristics & Grad-CAM overlays..."}
                             </div>
                         </div>
                     </motion.div>

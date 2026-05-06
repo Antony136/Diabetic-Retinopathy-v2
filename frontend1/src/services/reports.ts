@@ -124,7 +124,12 @@ export async function createBatchReports(params: {
 }
 
 export async function getBatchProgress(batchId: string) {
-  const { data } = await api.get<{ done: number; total: number }>(`/reports/batch/progress/${batchId}`);
+  const { data } = await api.get<{ done: number; total: number; status: string }>(`/reports/batch/progress/${batchId}`);
+  return data;
+}
+
+export async function getBatchResult(batchId: string) {
+  const { data } = await api.get<BatchReportResponse>(`/reports/batch/result/${batchId}`);
   return data;
 }
 

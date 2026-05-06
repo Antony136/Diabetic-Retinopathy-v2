@@ -26,15 +26,8 @@ import pandas as pd
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
-@router.get("/batch/progress/{batch_id}")
-async def get_batch_progress(batch_id: str):
-    """
-    Returns the exact number of images done versus total for a running batch.
-    """
-    if batch_id in batch_progress_store:
-        return batch_progress_store[batch_id]
-    return {"done": 0, "total": 0}
-
+from fastapi import BackgroundTasks
+from app.services.batch_inference_service import batch_inference_service, batch_progress_store, batch_results_store
 
 def get_db():
     db = SessionLocal()
@@ -49,7 +42,6 @@ def _safe_suffix(filename: str | None) -> str | None:
         suffix = Path(filename or "").suffix
     except Exception:
         suffix = ""
-    # Reject GIF and other non-supported formats
     if suffix.lower() in [".jpg", ".jpeg", ".png"]:
         return suffix.lower()
     return None
@@ -59,13 +51,7 @@ def _normalize_mode(mode: str | None) -> str:
     m = (mode or "standard").strip().lower()
     if m in ("standard", "high_sensitivity"):
         return m
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Invalid mode. Use standard|high_sensitivity.",
-    )
-
-
-# _triage_from_grade removed - moved to dual_mode_service.apply_dual_mode_logic_remote
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid mode.")
 
 
 def _write_temp_image(image_bytes: bytes, suffix: str) -> str:
@@ -77,25 +63,18 @@ def _write_temp_image(image_bytes: bytes, suffix: str) -> str:
 
 def _clean_filename(name: str | None, default_ext: str) -> str:
     cleaned = Path(name or "").name.strip()
-    if not cleaned:
-        cleaned = f"retina{default_ext}"
-    if "." not in cleaned:
-        cleaned = f"{cleaned}{default_ext}"
+    if not cleaned: cleaned = f"retina{default_ext}"
+    if "." not in cleaned: cleaned = f"{cleaned}{default_ext}"
     return cleaned
 
 
 def _unique_report_filename(db: Session, patient_id: int, desired: str) -> str:
-    desired = desired.strip()
-    if not desired:
-        desired = "retina.png"
-
+    desired = desired.strip() or "retina.png"
     stem = Path(desired).stem
     ext = Path(desired).suffix
-
     candidate = f"{stem}{ext}"
     if not db.query(Report.id).filter(Report.patient_id == patient_id, Report.filename == candidate).first():
         return candidate
-
     n = 2
     while True:
         candidate = f"{stem} ({n}){ext}"
@@ -106,8 +85,7 @@ def _unique_report_filename(db: Session, patient_id: int, desired: str) -> str:
 
 def get_or_create_preferences(db: Session, user_id: int) -> UserPreference:
     pref = db.query(UserPreference).filter(UserPreference.user_id == user_id).first()
-    if pref:
-        return pref
+    if pref: return pref
     pref = UserPreference(user_id=user_id)
     db.add(pref)
     db.commit()
@@ -116,156 +94,125 @@ def get_or_create_preferences(db: Session, user_id: int) -> UserPreference:
 
 
 def _read_local_upload_bytes(url_path: str) -> bytes:
-    """
-    Reads a /uploads/<name> URL from the local uploads directory.
-    """
     uploads_dir = Path((os.getenv("UPLOADS_DIR") or "uploads").strip() or "uploads")
     name = PurePosixPath(url_path).name
     fs_path = uploads_dir / name
-    if not fs_path.exists():
-        raise FileNotFoundError(f"Local upload not found: {name}")
-    b = fs_path.read_bytes()
-    if not b:
-        raise ValueError("Local upload is empty")
-    return b
+    if not fs_path.exists(): raise FileNotFoundError(f"Local upload not found: {name}")
+    return fs_path.read_bytes()
 
 
 async def _fetch_bytes_for_url(path_or_url: str) -> bytes:
     s = (path_or_url or "").strip()
-    if not s:
-        raise ValueError("Empty URL")
-    if s.startswith("/uploads/"):
-        return _read_local_upload_bytes(s)
+    if not s: raise ValueError("Empty URL")
+    if s.startswith("/uploads/"): return _read_local_upload_bytes(s)
     if s.startswith("http://") or s.startswith("https://"):
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             r = await client.get(s)
             r.raise_for_status()
-            if not r.content:
-                raise ValueError("Remote content empty")
             return r.content
     raise ValueError("Unsupported path")
 
 
 @router.post("/cache-url")
-async def cache_image_url(
-    url: str = Form(...),
-    current_user: User = Depends(get_current_user),
-):
+async def cache_image_url(url: str = Form(...), current_user: User = Depends(get_current_user)):
     if not url or not (url.startswith("http://") or url.startswith("https://")):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid image URL")
-
+        raise HTTPException(status_code=400, detail="Invalid image URL")
     try:
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             response = await client.get(url)
             response.raise_for_status()
-            parsed = Path(urlparse(url).path).name
-            if not parsed:
-                parsed = f"{uuid.uuid4().hex}.png"
+            parsed = Path(urlparse(url).path).name or f"{uuid.uuid4().hex}.png"
             local_url = storage_service.upload_bytes(response.content, parsed)
             return {"local_url": local_url}
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to cache image: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to cache image: {e}")
 
 
-@router.post("/batch")
-async def create_batch_reports(
-    files: List[UploadFile] = File(...),
-    csv_file: UploadFile = File(...),
-    mode: str = Query("standard"),
-    batch_id: Optional[str] = Query(None),
-    provider: Optional[str] = Query(None),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+@router.get("/batch/progress/{batch_id}")
+async def get_batch_progress(batch_id: str):
+    if batch_id in batch_results_store:
+        return {"done": 1, "total": 1, "status": "completed"}
+    if batch_id in batch_progress_store:
+        return {**batch_progress_store[batch_id], "status": "processing"}
+    return {"done": 0, "total": 0, "status": "not_found"}
+
+@router.get("/batch/result/{batch_id}")
+async def get_batch_result(batch_id: str):
+    """
+    Returns the final results of a completed batch.
+    """
+    if batch_id in batch_results_store:
+        return batch_results_store[batch_id]["result"]
+    
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Batch result not found or still processing."
+    )
+
+async def _background_batch_task(
+    files_data: List[dict],
+    csv_data: bytes,
+    mode: str,
+    batch_id: str,
+    provider: str,
+    user_id: int,
 ):
     """
-    Enhanced Batch Screening Endpoint.
-    Supports individual files, ZIP folders, and optional CSV labels.
-    Returns structured results and a consolidated PDF report.
+    Background task to process batch and save to DB.
     """
-    mode = _normalize_mode(mode)
-    
-    # Security: Limit batch size (e.g., max 50 images per request for stability)
-    if len(files) > 50:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="Batch size too large. Maximum 50 items per request allowed for security and stability."
-        )
-
+    # Create a fresh DB session for the background task
+    db = SessionLocal()
     try:
-        batch_results = await batch_inference_service.process_batch(
-            files=files,
+        # Re-construct UploadFiles from saved data if necessary, 
+        # or update batch_inference_service to accept raw data.
+        # For now, let's assume we pass the data directly.
+        
+        # We need a user object for the logic
+        from app.models.users import User
+        current_user = db.query(User).filter(User.id == user_id).first()
+        if not current_user:
+            print(f"ERROR: Background task user {user_id} not found.")
+            return
+
+        # 1. Run inference
+        # Note: We need to modify process_batch to accept raw data or 
+        # use a wrapper.
+        batch_results = await batch_inference_service.process_batch_raw(
+            files_data=files_data,
             mode=mode,
-            csv_file=csv_file,
+            csv_content=csv_data,
             batch_id=batch_id,
             provider=provider
         )
-        
-        # Security/Integrity: Log the user who performed the batch
-        print(f"INFO: User {current_user.id} performed batch screening of {batch_results['total']} items.")
-        
-        # Database Persistence Integration
+
+        # 2. Database Persistence Integration
         saved_count = 0
-        provider = (os.getenv("AI_PROVIDER") or "").strip().lower()
-        use_local = provider in ("local", "offline", "desktop")
+        ai_provider = (os.getenv("AI_PROVIDER") or "").strip().lower()
+        use_local = ai_provider in ("local", "offline", "desktop")
         source = "sync_local" if use_local else "sync_remote"
 
         for res in batch_results.get("results", []):
             meta = res.get("metadata") or {}
+            pid = (meta.get("patient_id") or meta.get("id") or meta.get("client_uuid") or meta.get("patient_no"))
+            pname = (meta.get("patient_name") or meta.get("name") or meta.get("patient"))
             
-            # Expanded CSV column name mapping for robustness
-            pid = (
-                meta.get("patient_id") or 
-                meta.get("id") or 
-                meta.get("client_uuid") or 
-                meta.get("patient_no") or 
-                meta.get("uhid") or
-                meta.get("external_id")
-            )
-            if pd.isna(pid) or str(pid).lower().strip() == "nan" or str(pid).strip() == "":
-                pid = None
-                
-            pname = (
-                meta.get("patient_name") or 
-                meta.get("name") or 
-                meta.get("patient") or 
-                meta.get("full_name") or
-                meta.get("customer_name")
-            )
-            if pd.isna(pname) or str(pname).lower().strip() == "nan" or str(pname).strip() == "":
-                pname = None
-            
-            print(f"DEBUG DB MAP -> Image: {res.get('name')} | PID Extracted: {pid} | Name: {pname}")
-            
-            # Locate the exact patient enforcing security controls
             patient_query = db.query(Patient)
-            if getattr(current_user, "role", "doctor") != "admin":
+            if current_user.role != "admin":
                 patient_query = patient_query.filter(Patient.doctor_id == current_user.id)
-                
+            
             patient = None
             if pid and str(pid).isdigit():
                 patient = patient_query.filter(Patient.id == int(pid)).first()
             if not patient and pid:
                 patient = patient_query.filter(Patient.client_uuid == str(pid)).first()
-            # Fallback to matching by name if no exact ID is provided
             if not patient and pname:
-                # To prevent case-sensitivity issues, we could strictly match
                 patient = patient_query.filter(Patient.name == str(pname)).first()
-                
-            if result_existing := patient:
-                print(f"DEBUG DB MAP -> Found existing patient: {result_existing.id} ({result_existing.name})")
-                
-            # Automatic Patient Creation if missing!
+            
             if not patient:
-                import uuid
-                
-                # Best-effort extraction for new patient details
-                try: age = int(meta.get("age", 0))
-                except: age = None
-                
                 new_patient = Patient(
                     client_uuid=str(pid) if pid else str(uuid.uuid4()),
                     name=str(pname) if pname else f"Batch File: {res.get('name', 'Unknown')}",
-                    age=age if age else None,
+                    age=int(meta.get("age", 0)) if meta.get("age") else None,
                     gender=str(meta.get("gender", "")),
                     phone=str(meta.get("phone", "")),
                     address=str(meta.get("address", "")),
@@ -275,10 +222,9 @@ async def create_batch_reports(
                 db.commit()
                 db.refresh(new_patient)
                 patient = new_patient
-                
+            
             if patient:
                 report_filename = _unique_report_filename(db, patient.id, res.get("name", "batch_report.png"))
-                
                 new_report = Report(
                     patient_id=patient.id,
                     filename=report_filename,
@@ -287,30 +233,84 @@ async def create_batch_reports(
                     prediction=res.get("prediction", "Unknown"),
                     confidence=res.get("confidence", 0.0),
                     source=source,
-                    image_observations=None,
                     image_explanation=res.get("clinical_summary"),
                     risk_score=res.get("risk_score"),
-                    risk_level=None, 
                     decision=res.get("decision"),
                     mode=mode,
                     adaptive_explanation=res.get("explanation"),
-                    override_applied=False,
                     pdf_url=res.get("pdf_url", "")
                 )
                 db.add(new_report)
                 db.commit()
                 saved_count += 1
-                
-        if saved_count > 0:
-            print(f"INFO: Successfully saved {saved_count} batch reports to PostgreSQL records.")
-
-        return batch_results
+        
+        print(f"INFO: Background batch {batch_id} completed. Saved {saved_count} reports.")
     except Exception as e:
         import traceback
         traceback.print_exc()
+        print(f"ERROR: Background batch task {batch_id} failed: {e}")
+    finally:
+        db.close()
+
+
+@router.post("/batch")
+async def create_batch_reports(
+    background_tasks: BackgroundTasks,
+    files: List[UploadFile] = File(...),
+    csv_file: UploadFile = File(...),
+    mode: str = Query("standard"),
+    batch_id: Optional[str] = Query(None),
+    provider: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Asynchronous Batch Screening Endpoint.
+    Starts a background task and returns a batch_id for polling.
+    """
+    mode = _normalize_mode(mode)
+    if not batch_id:
+        batch_id = uuid.uuid4().hex[:8]
+
+    # Security: Limit batch size
+    if len(files) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Batch size too large. Max 50 items."
+        )
+
+    # 1. Read all file data immediately before request closes
+    try:
+        files_data = []
+        for f in files:
+            content = await f.read()
+            files_data.append({
+                "filename": f.filename,
+                "content": content,
+                "content_type": f.content_type
+            })
+        
+        csv_data = await csv_file.read()
+        
+        # 2. Trigger background task
+        background_tasks.add_task(
+            _background_batch_task,
+            files_data=files_data,
+            csv_data=csv_data,
+            mode=mode,
+            batch_id=batch_id,
+            provider=provider or "cloud",
+            user_id=current_user.id
+        )
+        
+        return {
+            "batch_id": batch_id,
+            "status": "processing",
+            "message": "Batch screening started in background."
+        }
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Batch processing failed: {str(e)}"
+            detail=f"Failed to start batch: {str(e)}"
         )
 
 
