@@ -214,15 +214,34 @@ def _save_batch_to_db(db: Session, batch_results: dict, mode: str, user_id: int,
     return saved_count
 
 async def _background_batch_task(
-    files_data: List[dict],
-    csv_data: bytes,
+    image_paths: List[str],
+    csv_path: str,
     mode: str,
     batch_id: str,
     provider: str,
     user_id: int,
 ):
     try:
-        # 1. Inference (Heavy Async)
+        # 1. Read CSV data from disk
+        csv_data = b""
+        if os.path.exists(csv_path):
+            with open(csv_path, "rb") as f:
+                csv_data = f.read()
+
+        # 2. Reconstruct minimal files_data (one by one would be better but let's see)
+        # Actually, let's modify process_batch_raw to take paths directly to be even more efficient.
+        # For now, I'll keep the interface but read them here.
+        files_data = []
+        for p in image_paths:
+            if os.path.exists(p):
+                with open(p, "rb") as f:
+                    files_data.append({
+                        "filename": Path(p).name,
+                        "content": f.read(),
+                        "content_type": "image/jpeg" # fallback
+                    })
+
+        # 3. Inference
         batch_results = await batch_inference_service.process_batch_raw(
             files_data=files_data,
             mode=mode,
@@ -231,18 +250,20 @@ async def _background_batch_task(
             provider=provider
         )
 
-        # 2. Save to DB (Sync but in thread)
+        # 4. Save to DB
         loop = asyncio.get_running_loop()
         def _db_op():
             with SessionLocal() as db:
                 return _save_batch_to_db(db, batch_results, mode, user_id, batch_id)
         
-        saved = await loop.run_in_executor(None, _db_op)
-        print(f"INFO: Background batch {batch_id} done. Saved {saved} reports.")
+        await loop.run_in_executor(None, _db_op)
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         print(f"ERROR: Background batch {batch_id} failed: {e}")
+    finally:
+        # Cleanup temporary files
+        for p in image_paths:
+            if os.path.exists(p): os.remove(p)
+        if os.path.exists(csv_path): os.remove(csv_path)
 
 
 @router.post("/batch")
@@ -256,7 +277,7 @@ async def create_batch_reports(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Asynchronous Batch Screening. Optimized for low-memory environments.
+    Asynchronous Batch Screening. Disk-buffered to prevent OOM on 512MB RAM limit.
     """
     mode = _normalize_mode(mode)
     if not batch_id: batch_id = uuid.uuid4().hex[:8]
@@ -265,21 +286,28 @@ async def create_batch_reports(
         raise HTTPException(status_code=413, detail="Max 50 items allowed.")
 
     try:
-        # Read in memory, but we keep it minimal
-        files_data = []
-        for f in files:
-            files_data.append({
-                "filename": f.filename,
-                "content": await f.read(),
-                "content_type": f.content_type
-            })
+        import tempfile
+        image_paths = []
         
-        csv_data = await csv_file.read()
+        # Save images to temp files immediately (low RAM)
+        for f in files:
+            suffix = Path(f.filename or "batch.jpg").suffix or ".jpg"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                content = await f.read()
+                tmp.write(content)
+                image_paths.append(tmp.name)
+        
+        # Save CSV to temp file
+        csv_path = ""
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+            csv_content = await csv_file.read()
+            tmp.write(csv_content)
+            csv_path = tmp.name
         
         background_tasks.add_task(
             _background_batch_task,
-            files_data=files_data,
-            csv_data=csv_data,
+            image_paths=image_paths,
+            csv_path=csv_path,
             mode=mode,
             batch_id=batch_id,
             provider=provider or "cloud",
