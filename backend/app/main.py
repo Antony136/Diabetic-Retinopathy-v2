@@ -51,13 +51,20 @@ except Exception:
 
 # CORS middleware
 origins_env = os.getenv("ALLOWED_ORIGINS")
-allowed_origins = origins_env.split(",") if origins_env else ["*"]
+if origins_env:
+    allowed_origins = [o.strip() for o in origins_env.split(",") if o.strip()]
+    allow_credentials = True
+else:
+    allowed_origins = ["*"]
+    allow_credentials = False
+
+print(f"CORS: allowed_origins={allowed_origins}, allow_credentials={allow_credentials}")
 
 # Standard-compliant CORS for JWT (non-cookie) authentication
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=False,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
