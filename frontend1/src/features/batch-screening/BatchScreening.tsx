@@ -14,7 +14,8 @@ import { useScreeningMode } from "../../contexts/ScreeningModeContext";
 export default function BatchScreening() {
   const [files, setFiles] = useState<File[]>([]);
   const [csvFile, setCsvFile] = useState<File | null>(null);
-  const { adaptiveMode, setAdaptiveMode } = useScreeningMode();
+  // @ts-ignore
+  const { adaptiveMode } = useScreeningMode();
   const [aiProvider, setAiProvider] = useState<"local" | "cloud">("cloud");
   
   const [isProcessing, setIsProcessing] = useState(false);
@@ -87,12 +88,6 @@ export default function BatchScreening() {
     } finally {
       clearInterval(timer);
       setIsProcessing(false);
-    }
-  };
-
-  const onDownloadReport = () => {
-    if (result?.batch_pdf_url) {
-      window.open(resolveBackendImageUrl(result.batch_pdf_url), "_blank");
     }
   };
 
@@ -382,7 +377,7 @@ export default function BatchScreening() {
                         </div>
 
                         {/* Details Table with Pagination */}
-                        <BatchResultsTable result={result} adaptiveMode={adaptiveMode} />
+                        <BatchResultsTable result={result} />
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -406,11 +401,12 @@ export default function BatchScreening() {
   );
 }
 
-interface BatchReportItem extends any {
+interface BatchReportItem {
     type: 'success' | 'failed';
+    [key: string]: any;
 }
 
-function BatchResultsTable({ result, adaptiveMode }: { result: BatchReportResponse, adaptiveMode: string }) {
+function BatchResultsTable({ result }: { result: BatchReportResponse }) {
     const [page, setPage] = useState(0);
     const perPage = 5;
     
@@ -545,14 +541,18 @@ function BatchResultsTable({ result, adaptiveMode }: { result: BatchReportRespon
                             onClick={() => setPage(p => p - 1)}
                             className="rounded-lg h-9 w-9 p-0"
                             icon="chevron_left"
-                        />
+                        >
+                            <span className="sr-only">Previous</span>
+                        </Button>
                         <Button 
                             variant="ghost" 
                             disabled={page === totalPages - 1} 
                             onClick={() => setPage(p => p + 1)}
                             className="rounded-lg h-9 w-9 p-0"
                             icon="chevron_right"
-                        />
+                        >
+                            <span className="sr-only">Next</span>
+                        </Button>
                     </div>
                 </div>
             )}

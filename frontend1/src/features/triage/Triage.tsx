@@ -68,7 +68,8 @@ export default function Triage() {
     return patients.filter((p) => p.name.toLowerCase().includes(lower) || p.id.toString().includes(lower));
   }, [patients, searchQuery]);
 
-  const { adaptiveMode, setAdaptiveMode } = useScreeningMode();
+  // @ts-ignore
+  const { adaptiveMode } = useScreeningMode();
 
   useEffect(() => {
     fetchTriageCases();
