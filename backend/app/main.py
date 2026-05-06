@@ -49,16 +49,26 @@ try:
 except Exception:
     app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
-# CORS middleware
+# --- ROBUST CORS CONFIGURATION ---
 origins_env = os.getenv("ALLOWED_ORIGINS")
-if origins_env:
-    allowed_origins = [o.strip() for o in origins_env.split(",") if o.strip()]
-    allow_credentials = True
-else:
-    allowed_origins = ["*"]
-    allow_credentials = False
+# Default production origins (Vercel & local)
+allowed_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://diabetic-retinopathy-v2.vercel.app"
+]
 
-print(f"CORS: allowed_origins={allowed_origins}, allow_credentials={allow_credentials}")
+if origins_env:
+    # Append user-defined origins from environment
+    extra_origins = [o.strip() for o in origins_env.split(",") if o.strip()]
+    for o in extra_origins:
+        # Strip trailing slash for robustness
+        clean_o = o.rstrip("/")
+        if clean_o not in allowed_origins:
+            allowed_origins.append(clean_o)
+
+# If we have specific origins, we can allow credentials (JWT/Cookies)
+allow_credentials = True if allowed_origins else False
 
 # Standard-compliant CORS for JWT (non-cookie) authentication
 app.add_middleware(
@@ -67,6 +77,7 @@ app.add_middleware(
     allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
