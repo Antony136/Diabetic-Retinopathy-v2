@@ -214,7 +214,7 @@ def _save_batch_to_db(db: Session, batch_results: dict, mode: str, user_id: int,
     return saved_count
 
 async def _background_batch_task(
-    image_paths: List[str],
+    image_info: List[dict], # List of {"path": str, "original_name": str}
     csv_path: str,
     mode: str,
     batch_id: str,
@@ -222,26 +222,23 @@ async def _background_batch_task(
     user_id: int,
 ):
     try:
-        # 1. Read CSV data from disk
         csv_data = b""
         if os.path.exists(csv_path):
             with open(csv_path, "rb") as f:
                 csv_data = f.read()
 
-        # 2. Reconstruct minimal files_data (one by one would be better but let's see)
-        # Actually, let's modify process_batch_raw to take paths directly to be even more efficient.
-        # For now, I'll keep the interface but read them here.
         files_data = []
-        for p in image_paths:
+        for info in image_info:
+            p = info["path"]
+            orig = info["original_name"]
             if os.path.exists(p):
                 with open(p, "rb") as f:
                     files_data.append({
-                        "filename": Path(p).name,
+                        "filename": orig, # Use original name for CSV matching
                         "content": f.read(),
-                        "content_type": "image/jpeg" # fallback
+                        "content_type": "image/jpeg"
                     })
 
-        # 3. Inference
         batch_results = await batch_inference_service.process_batch_raw(
             files_data=files_data,
             mode=mode,
@@ -250,7 +247,6 @@ async def _background_batch_task(
             provider=provider
         )
 
-        # 4. Save to DB
         loop = asyncio.get_running_loop()
         def _db_op():
             with SessionLocal() as db:
@@ -260,8 +256,8 @@ async def _background_batch_task(
     except Exception as e:
         print(f"ERROR: Background batch {batch_id} failed: {e}")
     finally:
-        # Cleanup temporary files
-        for p in image_paths:
+        for info in image_info:
+            p = info["path"]
             if os.path.exists(p): os.remove(p)
         if os.path.exists(csv_path): os.remove(csv_path)
 
@@ -277,7 +273,7 @@ async def create_batch_reports(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Asynchronous Batch Screening. Disk-buffered to prevent OOM on 512MB RAM limit.
+    Asynchronous Batch Screening. Disk-buffered & Filename-safe.
     """
     mode = _normalize_mode(mode)
     if not batch_id: batch_id = uuid.uuid4().hex[:8]
@@ -287,17 +283,18 @@ async def create_batch_reports(
 
     try:
         import tempfile
-        image_paths = []
+        image_info = []
         
-        # Save images to temp files immediately (low RAM)
         for f in files:
             suffix = Path(f.filename or "batch.jpg").suffix or ".jpg"
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                 content = await f.read()
                 tmp.write(content)
-                image_paths.append(tmp.name)
+                image_info.append({
+                    "path": tmp.name,
+                    "original_name": f.filename
+                })
         
-        # Save CSV to temp file
         csv_path = ""
         with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
             csv_content = await csv_file.read()
@@ -306,7 +303,7 @@ async def create_batch_reports(
         
         background_tasks.add_task(
             _background_batch_task,
-            image_paths=image_paths,
+            image_info=image_info,
             csv_path=csv_path,
             mode=mode,
             batch_id=batch_id,
