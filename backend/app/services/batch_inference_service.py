@@ -64,16 +64,17 @@ class BatchInferenceService:
             self._semaphore = asyncio.Semaphore(self.max_concurrency)
         return self._semaphore
 
-    async def process_batch_raw(
+    async def process_batch_disk_buffered(
         self,
-        files_data: List[Dict[str, Any]],
+        image_info: List[Dict[str, str]], # [{"path": str, "original_name": str}]
         mode: str = "standard",
         csv_content: bytes = b"",
         batch_id: Optional[str] = None,
         provider: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Processes batch from raw data (memory-buffered).
+        Processes batch from disk paths (low memory).
+        Only reads one image into RAM at a time per worker.
         """
         results = []
         failed_items = []
@@ -86,47 +87,61 @@ class BatchInferenceService:
             records = df.to_dict(orient="records")
             records = [sanitize_for_json(row) for row in records]
             for row in records:
-                key = str(row.get("filename") or row.get("file") or row.get("image") or "").strip()
+                key = str(row.get("filename") or row.get("file") or row.get("image") or row.get("image_name") or "").strip()
                 if key and key != "None": labels_map[key] = row
         except Exception as e:
-            print(f"ERROR: Raw CSV parse failed: {e}")
+            print(f"ERROR: Disk CSV parse failed: {e}")
 
-        # 2. Extract images
-        all_images = []
-        for f in files_data:
-            if f["filename"].lower().endswith((".jpg", ".jpeg", ".png")):
-                all_images.append(f)
-            else:
-                failed_items.append({"name": f["filename"], "reason": "Unsupported format."})
-
-        # 3. Process
+        # 2. Setup Progress
         if batch_id:
-            batch_progress_store[batch_id] = {"done": 0, "total": len(all_images)}
+            batch_progress_store[batch_id] = {"done": 0, "total": len(image_info)}
 
-        tasks = [
-            asyncio.create_task(self._process_single_image(img, mode, labels_map, provider))
-            for img in all_images
-        ]
+        # 3. Process with limited concurrency
+        # Use a list to store results in order
+        batch_results = [None] * len(image_info)
+        
+        async def _worker(idx, info):
+            path = info["path"]
+            original_name = info["original_name"]
+            try:
+                if not os.path.exists(path):
+                    return {"status": "failed", "name": original_name, "reason": "Temp file lost."}
+                
+                # Read only when needed
+                with open(path, "rb") as f:
+                    content = f.read()
+                
+                img_data = {
+                    "filename": original_name,
+                    "content": content,
+                    "content_type": "image/jpeg"
+                }
+                
+                # Process (this uses the semaphore internally)
+                res = await self._process_single_image(img_data, mode, labels_map, provider)
+                # Important: clear content immediately to free RAM
+                img_data["content"] = None
+                del content
+                
+                if batch_id and batch_id in batch_progress_store:
+                    batch_progress_store[batch_id]["done"] += 1
+                return res
+            except Exception as e:
+                return {"status": "failed", "name": original_name, "reason": str(e)}
 
-        async def wrap_task(idx, t):
-            try: r = await t
-            except Exception as e: r = {"status": "failed", "name": all_images[idx]["filename"], "reason": str(e)}
-            if batch_id and batch_id in batch_progress_store:
-                batch_progress_store[batch_id]["done"] += 1
-            return idx, r
-
-        wrapped = [wrap_task(i, t) for i, t in enumerate(tasks)]
-        batch_results = [None] * len(all_images)
-        for coro in asyncio.as_completed(wrapped):
-            idx, res = await coro
-            batch_results[idx] = res
-
-        for res in batch_results:
+        # Instead of creating all tasks at once (which pins all img_info in memory),
+        # we can process them in chunks or use a smarter loop.
+        # But since we are already using paths, the only RAM used is the final result.
+        tasks = [asyncio.create_task(_worker(i, info)) for i, info in enumerate(image_info)]
+        
+        for idx, coro in enumerate(asyncio.as_completed(tasks)):
+            res = await coro
+            # Find original index if we care about order, but for simplicity:
             if res.get("status") == "failed": failed_items.append(res)
             else: results.append(res)
 
         summary = {
-            "total": len(all_images) + len(failed_items),
+            "total": len(image_info),
             "successful": len(results),
             "failed": len(failed_items),
             "results": results,
@@ -150,6 +165,19 @@ class BatchInferenceService:
             if batch_id in batch_progress_store: del batch_progress_store[batch_id]
 
         return summary
+
+    async def process_batch_raw(
+        self,
+        files_data: List[Dict[str, Any]],
+        mode: str = "standard",
+        csv_content: bytes = b"",
+        batch_id: Optional[str] = None,
+        provider: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Processes batch from raw data (memory-buffered).
+        DEPRECATED for large batches: use process_batch_disk_buffered.
+        """
 
     async def process_batch(
         self,

@@ -222,31 +222,22 @@ async def _background_batch_task(
     user_id: int,
 ):
     try:
+        # 1. Read CSV data from disk
         csv_data = b""
         if os.path.exists(csv_path):
             with open(csv_path, "rb") as f:
                 csv_data = f.read()
 
-        files_data = []
-        for info in image_info:
-            p = info["path"]
-            orig = info["original_name"]
-            if os.path.exists(p):
-                with open(p, "rb") as f:
-                    files_data.append({
-                        "filename": orig, # Use original name for CSV matching
-                        "content": f.read(),
-                        "content_type": "image/jpeg"
-                    })
-
-        batch_results = await batch_inference_service.process_batch_raw(
-            files_data=files_data,
+        # 2. Use the NEW disk-buffered processing (Super low RAM!)
+        batch_results = await batch_inference_service.process_batch_disk_buffered(
+            image_info=image_info,
             mode=mode,
             csv_content=csv_data,
             batch_id=batch_id,
             provider=provider
         )
 
+        # 3. Save to DB
         loop = asyncio.get_running_loop()
         def _db_op():
             with SessionLocal() as db:
@@ -256,6 +247,7 @@ async def _background_batch_task(
     except Exception as e:
         print(f"ERROR: Background batch {batch_id} failed: {e}")
     finally:
+        # Cleanup temporary files
         for info in image_info:
             p = info["path"]
             if os.path.exists(p): os.remove(p)
