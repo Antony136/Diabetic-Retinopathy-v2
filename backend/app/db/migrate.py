@@ -151,6 +151,8 @@ def run_migrations(engine: Engine):
             ddl_adaptive.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS adaptive_explanation TEXT NULL")
         if not _has_column(engine, "reports", "override_applied"):
             ddl_adaptive.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS override_applied BOOLEAN DEFAULT FALSE")
+        if not _has_column(engine, "reports", "pdf_url"):
+            ddl_adaptive.append("ALTER TABLE reports ADD COLUMN IF NOT EXISTS pdf_url VARCHAR NULL")
         
         if ddl_adaptive:
             with engine.begin() as conn:

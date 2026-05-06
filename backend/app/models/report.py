@@ -31,6 +31,7 @@ class Report(Base):
     mode = Column(String, nullable=True) # "standard" or "high_sensitivity"
     adaptive_explanation = Column(Text, nullable=True)
     override_applied = Column(Boolean, default=False)
+    pdf_url = Column(String, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -15,6 +15,7 @@ export default function BatchScreening() {
   const [files, setFiles] = useState<File[]>([]);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const { adaptiveMode, setAdaptiveMode } = useScreeningMode();
+  const [aiProvider, setAiProvider] = useState<"local" | "cloud">("cloud");
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -75,7 +76,8 @@ export default function BatchScreening() {
         files,
         csvFile: csvFile || undefined,
         mode: adaptiveMode,
-        batchId: batchId
+        batchId: batchId,
+        provider: aiProvider
       });
       setResult(resp);
       setProgress(100);
@@ -100,45 +102,65 @@ export default function BatchScreening() {
 
   return (
     <main className="max-w-7xl mx-auto px-6 pt-24 pb-32 min-h-screen">
-      <div className="mb-10">
-        <motion.h1 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="font-headline text-5xl font-black tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-bright"
+      <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <motion.h1 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="font-headline text-5xl font-black tracking-tight mb-2 text-text-primary"
+          >
+            Batch Processing
+          </motion.h1>
+          <p className="text-on-surface-variant font-medium opacity-60">High-throughput automated screening engine</p>
+        </div>
+
+        <div 
+          className="flex bg-surface-container rounded-2xl p-1 gap-2 border border-outline-variant/30 shadow-2xl min-w-[340px]"
         >
-          Enhanced Batch Screening
-        </motion.h1>
-        <p className="text-on-surface-variant max-w-2xl text-lg">
-          Process multiple retinal images or structured ZIP folders in parallel.
-          Strict fundus validation and automatic PDF reporting included.
-        </p>
+          <button 
+            type="button"
+            onClick={() => {
+                console.log("STATE CHANGE: CLOUD");
+                setAiProvider("cloud");
+            }}
+            style={{
+                backgroundColor: aiProvider === "cloud" ? "var(--md-sys-color-primary, #0061A4)" : "transparent",
+                color: aiProvider === "cloud" ? "white" : "inherit",
+                borderColor: aiProvider === "cloud" ? "var(--md-sys-color-primary, #0061A4)" : "transparent"
+            }}
+            className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-2 border-2 ${
+              aiProvider === "cloud" ? "shadow-lg scale-[1.05]" : "opacity-60"
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">
+                {aiProvider === "cloud" ? "check_circle" : "cloud"}
+            </span>
+            CLOUD INFERENCE
+          </button>
+          <button 
+            type="button"
+            onClick={() => {
+                console.log("STATE CHANGE: LOCAL");
+                setAiProvider("local");
+            }}
+            style={{
+                backgroundColor: aiProvider === "local" ? "var(--md-sys-color-primary, #0061A4)" : "transparent",
+                color: aiProvider === "local" ? "white" : "inherit",
+                borderColor: aiProvider === "local" ? "var(--md-sys-color-primary, #0061A4)" : "transparent"
+            }}
+            className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-2 border-2 ${
+              aiProvider === "local" ? "shadow-lg scale-[1.05]" : "opacity-60"
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">
+                {aiProvider === "local" ? "check_circle" : "memory"}
+            </span>
+            LOCAL GPU ENGINE
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-12">
-            <div className="flex p-1 bg-surface-container-high rounded-2xl w-fit mb-6 shadow-inner">
-                <button
-                onClick={() => setAdaptiveMode("standard")}
-                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
-                    adaptiveMode === "standard"
-                    ? "bg-surface-container-lowest text-primary shadow-xl scale-105"
-                    : "text-on-surface-variant hover:text-on-surface font-black"
-                }`}
-                >
-                Standard Mode
-                </button>
-                <button
-                onClick={() => setAdaptiveMode("high_sensitivity")}
-                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
-                    adaptiveMode === "high_sensitivity"
-                    ? "bg-surface-container-lowest text-secondary shadow-xl scale-105"
-                    : "text-on-surface-variant hover:text-on-surface font-black"
-                }`}
-                >
-                High Sensitivity
-                </button>
-            </div>
-        </div>
 
         {/* Left Column: Configuration */}
         <div className="lg:col-span-5 space-y-6">
@@ -254,12 +276,21 @@ export default function BatchScreening() {
 
             <Button 
                 variant="primary" 
-                className="w-full mt-10 py-6 text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 disabled:grayscale"
+                className="w-full mt-10 py-6 text-lg rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
                 disabled={files.length === 0 || isProcessing}
-                onClick={onRunBatch}
+                onClick={() => onRunBatch()}
                 icon={isProcessing ? undefined : "rocket_launch"}
             >
-                {isProcessing ? `Analyzing ${files.length} items...` : `Run Parallel Analysis (${files.length})`}
+                <div className="flex items-center gap-2">
+                    {isProcessing ? (
+                        <span className="flex items-center gap-3">
+                            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ANALYZING {files.length} ITEMS...
+                        </span>
+                    ) : (
+                        `RUN PARALLEL ANALYSIS (${files.length})`
+                    )}
+                </div>
             </Button>
           </Card>
         </div>
@@ -350,107 +381,8 @@ export default function BatchScreening() {
                             </div>
                         </div>
 
-                        {/* PDF CTA */}
-                        {result.batch_pdf_url && (
-                             <motion.div 
-                                whileHover={{ scale: 1.01 }}
-                                className="p-8 rounded-[2.5rem] bg-gradient-to-br from-primary via-primary-bright to-secondary text-on-primary-container flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20 relative overflow-hidden"
-                             >
-                                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none" />
-                                <div className="relative z-10">
-                                    <h4 className="font-headline font-black text-2xl mb-1 tracking-tight">Clinical Batch Report</h4>
-                                    <p className="text-sm opacity-80 font-medium">Consolidated multi-analysis PDF with Grad-CAM visualization.</p>
-                                </div>
-                                <Button onClick={onDownloadReport} variant="secondary" className="px-8 py-4 rounded-2xl bg-white text-primary font-black shadow-2xl relative z-10" icon="picture_as_pdf">
-                                    Download PDF
-                                </Button>
-                             </motion.div>
-                        )}
-
-                        {/* Details Table */}
-                        <div className="bg-surface-container-low rounded-[2.5rem] border border-outline/10 overflow-hidden shadow-2xl">
-                            <div className="p-8 border-b border-outline/5 bg-surface-container-high/40 flex justify-between items-center">
-                                <h3 className="font-headline font-black text-xl flex items-center gap-3">
-                                    <span className="material-symbols-outlined text-primary-bright">database</span>
-                                    Analysis Breakdown
-                                </h3>
-                                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container-lowest border border-outline/10">
-                                    <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                                    <span className="text-[10px] text-on-surface-variant font-black uppercase tracking-widest">{adaptiveMode.replace('_', ' ')} logic</span>
-                                </div>
-                            </div>
-                            <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60 bg-surface-container-high/20">
-                                        <tr>
-                                            <th className="px-8 py-5">Patient Source</th>
-                                            <th className="px-8 py-5">Diagnosis</th>
-                                            <th className="px-8 py-5">Conf.</th>
-                                            <th className="px-8 py-5">Decision</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-outline/5">
-                                        {result.results.map((r, i) => (
-                                            <tr key={i} className="hover:bg-primary/5 transition-all group border-l-4 border-l-transparent hover:border-l-primary">
-                                                <td className="px-8 py-5">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-black/40 ring-1 ring-outline/20 shadow-lg group-hover:scale-105 transition-transform">
-                                                            <img src={resolveBackendImageUrl(r.image_url || "")} className="w-full h-full object-cover" alt="" />
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="font-black text-on-surface truncate max-w-[140px] tracking-tight">{r.name}</span>
-                                                            <span className="text-[10px] text-on-surface-variant font-medium opacity-60 italic whitespace-nowrap">File Access Validated</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-5">
-                                                    <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-tight ${
-                                                        r.prediction === "No DR" ? "bg-success/10 text-success" : "bg-error/10 text-error"
-                                                    }`}>
-                                                        {r.prediction?.toUpperCase()}
-                                                    </span>
-                                                </td>
-                                                <td className="px-8 py-5 font-mono font-black text-primary text-base">
-                                                    {((r.confidence || 0) * 100).toFixed(1)}%
-                                                </td>
-                                                <td className="px-8 py-5">
-                                                    <div className={`flex items-center gap-2 font-black text-[10px] uppercase tracking-widest ${r.decision === 'Refer' ? 'text-error' : 'text-success'}`}>
-                                                        <span className="material-symbols-outlined text-lg">
-                                                            {r.decision === 'Refer' ? 'release_alert' : 'check_circle'}
-                                                        </span>
-                                                        {r.decision}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {result.failed_items.map((r, i) => (
-                                            <tr key={`fail-${i}`} className="bg-error/[0.03] group border-l-4 border-l-error">
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-4">
-                                                         <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-error/10 border border-error/20">
-                                                            <span className="material-symbols-outlined text-error text-2xl">heart_broken</span>
-                                                         </div>
-                                                         <span className="font-bold truncate max-w-[140px] text-error tracking-tight">{r.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td colSpan={2} className="px-8 py-6">
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-[10px] font-black text-error uppercase tracking-widest opacity-60">Validation Failed</span>
-                                                        <span className="text-xs font-medium text-on-surface-variant leading-relaxed">"{r.reason}"</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-2 text-error font-black text-[10px] uppercase opacity-40">
-                                                        <span className="material-symbols-outlined text-lg">cancel</span>
-                                                        Rejected
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        {/* Details Table with Pagination */}
+                        <BatchResultsTable result={result} adaptiveMode={adaptiveMode} />
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -472,4 +404,158 @@ export default function BatchScreening() {
       </div>
     </main>
   );
+}
+
+interface BatchReportItem extends any {
+    type: 'success' | 'failed';
+}
+
+function BatchResultsTable({ result, adaptiveMode }: { result: BatchReportResponse, adaptiveMode: string }) {
+    const [page, setPage] = useState(0);
+    const perPage = 5;
+    
+    const combined: BatchReportItem[] = [
+        ...result.results.map(r => ({ ...r, type: 'success' as const })),
+        ...result.failed_items.map(f => ({ ...f, type: 'failed' as const }))
+    ];
+    
+    const totalPages = Math.ceil(combined.length / perPage);
+    const paginated = combined.slice(page * perPage, (page + 1) * perPage);
+
+    return (
+        <div className="bg-surface-container-low rounded-[2.5rem] border border-outline/10 overflow-hidden shadow-2xl">
+            <div className="p-8 border-b border-outline/5 bg-surface-container-high/40">
+                <h3 className="font-headline font-black text-xl flex items-center gap-3">
+                    <span className="material-symbols-outlined text-primary-bright">database</span>
+                    Analysis Breakdown
+                </h3>
+            </div>
+            
+            <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                    <thead className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/60 bg-surface-container-high/20">
+                        <tr>
+                            <th className="px-6 py-5">#</th>
+                            <th className="px-6 py-5">Patient Information</th>
+                            <th className="px-6 py-5">Diagnosis</th>
+                            <th className="px-6 py-5">Conf.</th>
+                            <th className="px-6 py-5">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline/5">
+                        {paginated.map((item, i) => {
+                            const globalIndex = page * perPage + i + 1;
+                            
+                            if (item.type === 'success') {
+                                const r = item as any;
+                                const meta = r.metadata || {};
+                                const pName = meta.patient_name || meta.name || meta.patient || r.name;
+                                const pId = meta.patient_id || meta.id || "N/A";
+                                
+                                return (
+                                    <tr key={`success-${i}`} className="hover:bg-primary/5 transition-all group border-l-4 border-l-transparent hover:border-l-primary">
+                                        <td className="px-6 py-5 font-mono text-primary font-bold">
+                                            {globalIndex.toString().padStart(2, '0')}
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/40 ring-1 ring-outline/20 shadow-md">
+                                                    <img src={resolveBackendImageUrl(r.image_url || "")} className="w-full h-full object-cover" alt="" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="font-black text-on-surface truncate max-w-[150px] tracking-tight">{pName}</span>
+                                                    <span className="text-[10px] text-on-surface-variant font-bold opacity-60">ID: {pId}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex flex-col gap-1">
+                                                <span className={`px-2 py-1 rounded-md text-[9px] font-black w-fit tracking-tight ${
+                                                    r.prediction === "No DR" ? "bg-success/10 text-success" : "bg-error/10 text-error"
+                                                }`}>
+                                                    {r.prediction?.toUpperCase()}
+                                                </span>
+                                                <span className="text-[9px] text-on-surface-variant font-bold opacity-50 uppercase tracking-widest">{r.decision}</span>
+                                                {r.warning && (
+                                                    <div className="mt-1 flex items-center gap-1 text-[8px] text-orange-500 font-black bg-orange-500/10 px-1.5 py-0.5 rounded-md border border-orange-500/20 w-fit">
+                                                        <span className="material-symbols-outlined text-[10px]">warning</span>
+                                                        {r.warning.toUpperCase()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 font-mono font-black text-primary">
+                                            {((r.confidence || 0) * 100).toFixed(1)}%
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <Button 
+                                                variant="secondary" 
+                                                className="rounded-lg h-8 px-2 bg-primary text-white border-none text-[9px] font-black hover:bg-primary-bright shadow-sm flex items-center justify-center min-w-[90px]"
+                                                onClick={() => window.open(resolveBackendImageUrl(r.pdf_url), "_blank")}
+                                                icon="picture_as_pdf"
+                                                disabled={!r.pdf_url}
+                                            >
+                                                PDF REPORT
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                );
+                            } else {
+                                const f = item as any;
+                                return (
+                                    <tr key={`fail-${i}`} className="bg-error/[0.03] border-l-4 border-l-error">
+                                        <td className="px-6 py-6 font-mono text-error font-bold opacity-50">
+                                            {globalIndex.toString().padStart(2, '0')}
+                                        </td>
+                                        <td className="px-6 py-6">
+                                            <div className="flex items-center gap-4 opacity-70">
+                                                 <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-error/10 border border-error/20">
+                                                    <span className="material-symbols-outlined text-error text-xl">heart_broken</span>
+                                                 </div>
+                                                 <span className="font-bold truncate max-w-[150px] text-error tracking-tight">{f.name}</span>
+                                            </div>
+                                        </td>
+                                        <td colSpan={2} className="px-6 py-6">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-[9px] font-black text-error uppercase tracking-widest opacity-60">Validation Failed</span>
+                                                <span className="text-xs font-medium text-on-surface-variant line-clamp-1 italic">"{f.reason}"</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-6">
+                                            <span className="material-symbols-outlined text-error/20">cancel</span>
+                                        </td>
+                                    </tr>
+                                );
+                            }
+                        })}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="p-6 bg-surface-container-high/20 border-t border-outline/5 flex items-center justify-between">
+                    <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">
+                        Page {page + 1} of {totalPages}
+                    </p>
+                    <div className="flex gap-2">
+                        <Button 
+                            variant="ghost" 
+                            disabled={page === 0} 
+                            onClick={() => setPage(p => p - 1)}
+                            className="rounded-lg h-9 w-9 p-0"
+                            icon="chevron_left"
+                        />
+                        <Button 
+                            variant="ghost" 
+                            disabled={page === totalPages - 1} 
+                            onClick={() => setPage(p => p + 1)}
+                            className="rounded-lg h-9 w-9 p-0"
+                            icon="chevron_right"
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 }

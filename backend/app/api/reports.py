@@ -170,9 +170,10 @@ async def cache_image_url(
 @router.post("/batch")
 async def create_batch_reports(
     files: List[UploadFile] = File(...),
-    csv_file: Optional[UploadFile] = File(None),
+    csv_file: UploadFile = File(...),
     mode: str = Query("standard"),
     batch_id: Optional[str] = Query(None),
+    provider: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -195,7 +196,8 @@ async def create_batch_reports(
             files=files,
             mode=mode,
             csv_file=csv_file,
-            batch_id=batch_id
+            batch_id=batch_id,
+            provider=provider
         )
         
         # Security/Integrity: Log the user who performed the batch
@@ -210,16 +212,29 @@ async def create_batch_reports(
         for res in batch_results.get("results", []):
             meta = res.get("metadata") or {}
             
-            # Common CSV column names
-            pid = meta.get("patient_id") or meta.get("id") or meta.get("client_uuid")
+            # Expanded CSV column name mapping for robustness
+            pid = (
+                meta.get("patient_id") or 
+                meta.get("id") or 
+                meta.get("client_uuid") or 
+                meta.get("patient_no") or 
+                meta.get("uhid") or
+                meta.get("external_id")
+            )
             if pd.isna(pid) or str(pid).lower().strip() == "nan" or str(pid).strip() == "":
                 pid = None
                 
-            pname = meta.get("patient_name") or meta.get("name") or meta.get("patient")
+            pname = (
+                meta.get("patient_name") or 
+                meta.get("name") or 
+                meta.get("patient") or 
+                meta.get("full_name") or
+                meta.get("customer_name")
+            )
             if pd.isna(pname) or str(pname).lower().strip() == "nan" or str(pname).strip() == "":
                 pname = None
             
-            print(f"DEBUG DB MAP -> Image: {res.get('name')} | PID Extracted: {pid} | Name: {pname} | Raw Meta: {meta}")
+            print(f"DEBUG DB MAP -> Image: {res.get('name')} | PID Extracted: {pid} | Name: {pname}")
             
             # Locate the exact patient enforcing security controls
             patient_query = db.query(Patient)
@@ -279,7 +294,8 @@ async def create_batch_reports(
                     decision=res.get("decision"),
                     mode=mode,
                     adaptive_explanation=res.get("explanation"),
-                    override_applied=False
+                    override_applied=False,
+                    pdf_url=res.get("pdf_url", "")
                 )
                 db.add(new_report)
                 db.commit()

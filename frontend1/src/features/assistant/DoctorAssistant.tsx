@@ -193,7 +193,7 @@ export default function DoctorAssistant() {
         </div>
 
         <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex flex-col gap-2 relative z-[90]">
+          <div className="flex flex-col gap-2 relative z-[100]">
             <span className="text-sm text-on-surface-variant z-10">Context</span>
             <ul className="menu w-full relative">
               <li className={`item w-full ${isContextOpen ? 'is-open' : ''}`}>
@@ -251,7 +251,7 @@ export default function DoctorAssistant() {
             </ul>
           </div>
 
-          <div className="flex flex-col gap-2 relative z-[80]">
+          <div className="flex flex-col gap-2 relative z-[90]">
             <span className="text-sm text-on-surface-variant z-10">Task</span>
             <ul className="menu w-full relative">
               <li className={`item w-full ${isTaskOpen ? 'is-open' : ''}`}>
@@ -293,7 +293,7 @@ export default function DoctorAssistant() {
             </ul>
           </div>
 
-          <div className="flex flex-col gap-2 md:col-span-2 relative z-[100]">
+          <div className="flex flex-col gap-2 md:col-span-2 relative z-[80]">
             <span className="text-sm text-on-surface-variant z-10">Patient Lookup</span>
             <ul className={`menu w-full relative ${contextType !== 'patient' ? 'opacity-50 pointer-events-none' : ''}`}>
               <li className={`item w-full ${isPatientOpen ? 'is-open' : ''}`}>
@@ -310,11 +310,9 @@ export default function DoctorAssistant() {
                       if (patientId) setPatientId(null);
                     }}
                     disabled={contextType !== "patient"}
-                    className="w-full bg-transparent outline-none text-white placeholder-white/70 font-bold"
+                    className="w-full bg-transparent outline-none text-on-surface placeholder-on-surface-variant/70 font-bold"
                   />
-                  <svg viewBox="0 0 360 360" xmlSpace="preserve" className="shrink-0 pointer-events-none w-3.5 h-3.5">
-                    <g id="SVGRepo_iconCarrier"><path d="M325.607,79.046H34.393C15.401,79.046,0,94.448,0,113.439v133.122c0,18.991,15.401,34.393,34.393,34.393 h291.214c18.991,0,34.393-15.402,34.393-34.393V113.439C360,94.448,344.599,79.046,325.607,79.046z M300,165.733H193.303V133.2h106.697V165.733z M240.231,230.147H102.766V197.618h137.465V230.147z"></path></g>
-                  </svg>
+                  <span className="material-symbols-outlined text-on-surface-variant text-[20px] shrink-0">person_search</span>
                 </div>
                 <ul className="submenu w-full border-t-0 shadow-2xl custom-scrollbar max-h-48 overflow-y-auto bg-surface-container rounded-b-lg border border-outline/30">
                   {filteredPatients.length === 0 ? (

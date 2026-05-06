@@ -105,6 +105,7 @@ export async function createBatchReports(params: {
   csvFile?: File;
   mode?: AdaptiveScreeningMode;
   batchId?: string;
+  provider?: "local" | "cloud";
 }) {
   const formData = new FormData();
   params.files.forEach((f) => formData.append("files", f));
@@ -113,7 +114,8 @@ export async function createBatchReports(params: {
   const { data } = await api.post<BatchReportResponse>("/reports/batch", formData, {
     params: { 
       mode: params.mode || "standard",
-      batch_id: params.batchId
+      batch_id: params.batchId,
+      provider: params.provider
     },
     headers: { "Content-Type": "multipart/form-data" },
     timeout: 300000, // 5 minutes for large batches

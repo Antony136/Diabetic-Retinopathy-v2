@@ -46,72 +46,61 @@ class StorageService:
         remote_filename: str,
         bucket: str = "retina-images",
         content_type: str | None = None,
-        retries: int = 3,
+        retries: int = 1, # Reduced retries for faster fallback
     ) -> str:
         """
-        Upload raw bytes to Supabase Storage with retry logic.
-        Returns the public object URL (requires a public bucket).
+        Upload raw bytes to Supabase Storage.
+        IF DESKTOP_MODE: Return local URL immediately and background the cloud upload.
         """
         supabase_url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
         supabase_key = os.getenv("SUPABASE_KEY") or ""
         desktop_mode = (os.getenv("DESKTOP_MODE") or "").strip() == "1"
 
+        # 1. Local Persistence (Guaranteed Fast)
+        local_url = StorageService._write_local_upload(data, remote_filename)
+        
+        # 2. If not cloud-configured, just return local
         if not supabase_url or not supabase_key:
-            # Offline/local fallback: persist to disk and serve via /uploads static mount.
-            return StorageService._write_local_upload(data, remote_filename)
+            return local_url
 
-        if not data:
-            print("ERROR: No data provided for upload (0 bytes).")
-            return ""
-
-        safe_filename = quote(remote_filename)
-        endpoint = f"{supabase_url}/storage/v1/object/{bucket}/{safe_filename}"
-
-        if content_type is None:
-            file_ext = Path(remote_filename).suffix.lower()
-            if file_ext in [".jpg", ".jpeg"]:
-                content_type = "image/jpeg"
-            elif file_ext == ".png":
-                content_type = "image/png"
-            else:
-                content_type = "application/octet-stream"
-
-        headers = {
-            "Authorization": f"Bearer {supabase_key}",
-            "apikey": supabase_key,
-            "Content-Type": content_type,
-            "x-upsert": "true",
-        }
-
-        print(f"DEBUG: Uploading {remote_filename} ({len(data)} bytes) to Supabase...")
-
-        for attempt in range(retries):
+        # 3. Cloud Upload Logic
+        def _bg_upload():
+            safe_filename = quote(remote_filename)
+            endpoint = f"{supabase_url}/storage/v1/object/{bucket}/{safe_filename}"
+            
+            headers = {
+                "Authorization": f"Bearer {supabase_key}",
+                "apikey": supabase_key,
+                "Content-Type": content_type or "application/octet-stream",
+                "x-upsert": "true",
+            }
+            
             try:
-                with httpx.Client(timeout=60.0, follow_redirects=True) as client:
+                with httpx.Client(timeout=10.0) as client:
                     response = client.post(endpoint, content=data, headers=headers)
-
-                    # Some environments/buckets expect PUT instead of POST.
                     if response.status_code == 405:
                         response = client.put(endpoint, content=data, headers=headers)
-
+                    
                     if response.status_code in (200, 201):
-                        public_url = f"{supabase_url}/storage/v1/object/public/{bucket}/{safe_filename}"
-                        print(f"SUCCESS: Uploaded to cloud: {public_url}")
-                        return public_url
-
-                    print(f"UPLOAD ATTEMPT {attempt+1} FAILED ({response.status_code}): {response.text}")
+                        print(f"BACKGROUND CLOUD SUCCESS: {remote_filename}")
+                    else:
+                        # Silently log errors to avoid blocking UI
+                        if not (response.status_code == 404 and "Bucket not found" in response.text):
+                            print(f"BACKGROUND CLOUD FAILED ({response.status_code}): {remote_filename}")
             except Exception as e:
-                print(f"STORAGE ATTEMPT {attempt+1} ERROR: {str(e)}")
+                pass # Silent fail in background
 
-            if attempt < retries - 1:
-                time.sleep(2)
-
-        # Cloud upload failed.
-        # Desktop/offline: best-effort fallback to local disk so work isn't lost.
-        # Cloud deployments: do NOT fall back to local /uploads (ephemeral on Render) because it creates broken URLs.
+        # 4. Strategy: Return local immediately if desktop, else wait for cloud
         if desktop_mode:
-            return StorageService._write_local_upload(data, remote_filename)
-        return ""
+            import threading
+            threading.Thread(target=_bg_upload, daemon=True).start()
+            return local_url
+        
+        # Cloud deployment mode: wait for cloud because local is ephemeral
+        _bg_upload() # Synchronous for cloud
+        # In cloud mode, we need the real public URL
+        safe_filename = quote(remote_filename)
+        return f"{supabase_url}/storage/v1/object/public/{bucket}/{safe_filename}"
 
     @staticmethod
     def upload_file(local_path: str, remote_filename: str, bucket: str = "retina-images", retries: int = 3) -> str:

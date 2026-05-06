@@ -196,10 +196,10 @@ def run_inference(image_path: str, mode: str, model=None) -> Dict[str, Any]:
     """
     import torch
 
-    # 0. Initial Validation
+    # 0. Initial Validation (Soft check)
     is_valid, err_msg = validate_image_file(image_path)
-    if not is_valid:
-        raise ValueError(err_msg)
+    # We proceed anyway, but could log it
+    heuristic_warning = err_msg if not is_valid else None
 
     if model is None:
         model = get_cached_model(MODEL_PATH)
@@ -210,9 +210,8 @@ def run_inference(image_path: str, mode: str, model=None) -> Dict[str, Any]:
     grade_idx = torch.argmax(probs).item()
     confidence = torch.max(probs).item()
 
-    # Secondary Confidence Filter: If low probability, probably not a fundus
-    if confidence < 0.6:
-        raise ValueError("Invalid image. Please upload a retinal fundus image (JPG/PNG only).")
+    # Secondary Confidence Check (Soft check)
+    low_conf_warning = "Low confidence. Probable non-fundus image." if confidence < 0.6 else None
 
     # Core Logic Steps
     risk_score = compute_risk(probs)
@@ -236,7 +235,8 @@ def run_inference(image_path: str, mode: str, model=None) -> Dict[str, Any]:
         "mode": mode,
         "explanation": explanation,
         "override_applied": override_applied,
-        "raw_probs": [round(p.item(), 4) for p in probs]
+        "raw_probs": [round(p.item(), 4) for p in probs],
+        "warning": heuristic_warning or low_conf_warning
     }
 
 

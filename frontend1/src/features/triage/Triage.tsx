@@ -259,26 +259,6 @@ export default function Triage() {
             Triage Queue
           </h1>
           
-          <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
-            <div className="flex flex-col pr-4 border-r border-white/10">
-              <span className="text-[10px] text-text-variant font-mono uppercase tracking-widest mb-1">Adaptive Mode</span>
-              <span className="text-xs text-text-primary font-mono font-bold tracking-tight">{adaptiveMode === 'high_sensitivity' ? 'SENSITIVITY_PRIORITY' : 'EFFICIENCY_TRIAGE'}</span>
-            </div>
-            <div className="flex bg-black/40 p-1 rounded-xl gap-1">
-              <button 
-                onClick={() => setAdaptiveMode('standard')}
-                className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold transition-all tracking-widest ${adaptiveMode === 'standard' ? 'bg-primary-bright text-black shadow-[0_0_15px_rgba(200,124,255,0.4)]' : 'text-text-variant hover:text-text-primary'}`}
-              >
-                STANDARD
-              </button>
-              <button 
-                onClick={() => setAdaptiveMode('high_sensitivity')}
-                className={`px-4 py-2 rounded-lg text-[10px] font-mono font-bold transition-all tracking-widest ${adaptiveMode === 'high_sensitivity' ? 'bg-secondary-bright text-black shadow-[0_0_15px_rgba(255,100,200,0.4)]' : 'text-text-variant hover:text-text-primary'}`}
-              >
-                HIGH_SENSITIVITY
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="overflow-x-auto no-scrollbar">

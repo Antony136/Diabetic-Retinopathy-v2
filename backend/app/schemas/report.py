@@ -48,6 +48,7 @@ class ReportResponse(BaseModel):
     mode: Optional[str] = None
     adaptive_explanation: Optional[str] = None
     override_applied: Optional[bool] = False
+    pdf_url: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     source: Optional[str] = None
