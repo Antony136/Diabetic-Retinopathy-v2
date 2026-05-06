@@ -228,6 +228,9 @@ async def generate_with_fallback(
     if not hasattr(generate_with_fallback, "_groq_restricted"):
         setattr(generate_with_fallback, "_groq_restricted", False)
 
+    primary: ProviderName = cfg.provider
+    secondary: ProviderName = "groq" if primary == "ollama" else "ollama"
+
     async def _try(provider: ProviderName) -> str:
         if provider == "ollama":
             return await _call_ollama(f"{system_prompt}\n\n{user_prompt}".strip(), cfg)
